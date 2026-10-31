@@ -1,0 +1,35 @@
+# Development roadmap
+
+The code, UI and documentation are English. Development explanations are Hebrew. Each delivered stage includes a complete cumulative source package.
+
+| Stage | Scope | State |
+| --- | --- | --- |
+| 1–4.2 | Validation, visual responsive table, ranges, setup, betting ledger and desktop sticky table | Delivered |
+| 5–6 | Bounded Exact/Auto equity, main/side-pot settlement, closing-call Chip EV | Delivered |
+| 7 | Independent 2–9-player tournament ICM snapshot calculator | Delivered |
+| 8 | Outcome-weighted monetary ICM comparison for supported Fold/Call decisions; tournament configuration persistence and elimination handling | Delivered |
+| 8.1 | Separate navigation views, lazy panel loading and retained session drafts/results | Delivered |
+| 9 | Weighted combinations and explicit action-specific ranges, with consistent conditioning and validation | Delivered for review |
+| Accounts before trial | Registration, verification, server sessions and private per-user history | Delivered for review |
+| After review of 9 and accounts | Trial deployment with a persistent frontend/backend URL and phone access | On hold until explicit user instruction |
+| 10 | Restricted heads-up river decision tree with configured sizes and responses | Planned |
+| 11 | Strategic solving on the restricted tree with convergence evidence | Planned |
+| 12 | Larger streets/game trees, performance and background execution | Planned |
+| 13 | Broader production access, account/history features and operational improvements | Planned |
+
+## Trial deployment: waiting for user review
+
+Complete stage 9 and the requested account/private-history milestone locally and deliver the full result first. The user will review it and explicitly request trial deployment afterward. Finishing stage 9 does not authorize publishing or hosting changes. No deployment is performed as part of stage 9. Hosting provider, domain, access controls and any paid service choices will be handled when deployment work is explicitly started.
+
+## Stage 9 delivered parts
+
+- 9.1: weighted class/physical combo notation, overrides and validation.
+- 9.2: product-weighted joint sampling, collision conditioning, Exact accumulation and payouts.
+- 9.3: one-node observed-action profiles, explicit ledger-action selection and weighted per-outcome ICM.
+- 9.4: dedicated Ranges navigation, matrix brush, JSON exchange, draft retention, persistence and checks.
+
+See `STEP_9_WEIGHTED_ACTION_RANGES.md` for the delivered semantics and supported limits. Inputs are supplied priors/frequencies, not automatically solved strategy.
+
+## ICM integration constraint
+
+Stage 8 evaluates ICM separately for each complete outcome stack vector, then weight the monetary results. Applying ICM to average ending stacks is not equivalent. See `STEP_8_ICM_DECISIONS.md` for implemented scope, elimination rules and outside-table assumptions. Fold branches, returned uncalled chips, side pots, elimination payouts and simultaneous eliminations require explicit semantics and tests. The stage 7 endpoint currently accepts only surviving positive stacks; this alone is not sufficient to value all decision branches.
