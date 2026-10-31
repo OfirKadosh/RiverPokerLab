@@ -1,0 +1,34 @@
+# A Blueprint creates the service only when explicitly applied in Render.
+services:
+  - type: web
+    name: river-poker-lab
+    runtime: node
+    plan: free
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: npm --prefix backend ci --omit=dev && npm --prefix frontend ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_FRONTEND
+        value: "true"
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: AUTH_ALLOW_DEV_DELIVERY
+        value: "false"
+      - key: AUTH_ALLOW_MANUAL_DELIVERY
+        value: "true"
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: SMS_PROVIDER
+        value: disabled
+      - key: VITE_API_URL
+        value: /api

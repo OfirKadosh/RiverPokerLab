@@ -13,10 +13,12 @@ interface User {
   username: string;
   email: string;
   phone: string;
+  manuallyApproved?: boolean;
   emailVerified: boolean;
   phoneVerified: boolean;
 }
 interface Verification {
+  manual?: boolean;
   username: string;
   channel: "email" | "sms";
   emailHint: string;
@@ -177,6 +179,7 @@ function AuthScreen({
     [verification, setVerification] = useState(initialVerification);
   const [channels, setChannels] = useState<string[]>([]),
     [development, setDevelopment] = useState(false),
+    [manualChannels, setManualChannels] = useState<string[]>([]),
     [channel, setChannel] = useState<string>(
       initialVerification?.channel || "email",
     );
@@ -197,6 +200,7 @@ function AuthScreen({
       .then((data) => {
         setChannels(data.channels || []);
         setDevelopment(!!data.development);
+        setManualChannels(data.manualChannels || []);
         setChannel((current) =>
           data.channels?.includes(current)
             ? current
@@ -233,7 +237,9 @@ function AuthScreen({
         setNotice("Account verified. Sign in to continue.");
       } else if (data.verification)
         setNotice(
-          "A verification code was requested. Check the selected contact channel.",
+          data.verification.manual
+            ? "Ask the administrator for your activation code. No email or SMS was sent."
+            : "A verification code was requested. Check the selected contact channel.",
         );
     } catch (error) {
       setError(
@@ -301,6 +307,12 @@ function AuthScreen({
                 : verification?.emailHint}{" "}
               · Code expires after 10 minutes. Five code attempts maximum.
             </p>
+            {verification?.manual && (
+              <p className="auth-notice" role="status">
+                Ask the administrator for the activation code for this username.
+                No email or SMS was sent. Request a new code if it expires.
+              </p>
+            )}
             <label className="field-label">
               VERIFICATION CODE
               <input
@@ -327,7 +339,7 @@ function AuthScreen({
               >
                 {channels.map((value) => (
                   <option key={value} value={value}>
-                    {value === "sms" ? "SMS" : "Email"}
+                    {manualChannels.includes(value) ? "Administrator approval" : value === "sms" ? "SMS" : "Email"}
                   </option>
                 ))}
               </select>
@@ -425,7 +437,7 @@ function AuthScreen({
                   >
                     {channels.map((value) => (
                       <option key={value} value={value}>
-                        {value === "sms" ? "SMS" : "Email"}
+                        {manualChannels.includes(value) ? "Administrator approval" : value === "sms" ? "SMS" : "Email"}
                       </option>
                     ))}
                   </select>
@@ -488,6 +500,12 @@ function AuthScreen({
             {notice}
           </p>
         )}
+        {manualChannels.includes(channel) && mode === "register" && (
+          <p className="field-help">
+            Beta accounts are activated manually. After registering, ask the
+            administrator for your code. Contact details remain unverified.
+          </p>
+        )}
         {development && (
           <p className="field-help">
             Local development delivery is enabled. Codes appear only in the
@@ -504,6 +522,11 @@ export function AccountPanel() {
   return (
     <section className="sidebar-section" aria-label="Account details">
       <h2>{auth.user?.username}</h2>
+      {auth.user?.manuallyApproved && (
+        <p className="auth-notice">
+          Account activated by the administrator. Contact verification is listed separately below.
+        </p>
+      )}
       <dl className="account-details">
         <dt>Email</dt>
         <dd>

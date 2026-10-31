@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test src/engine/tests/validation.test.js src/engine/tests/tableState.test.js src/engine/tests/ranges.test.js src/engine/tests/handSetup.test.js src/engine/tests/betting.test.js src/engine/tests/payoutAnalysis.test.js src/engine/tests/analysisApi.test.js src/engine/tests/icm.test.js src/engine/tests/tournament.test.js src/engine/tests/weightedRanges.test.js src/engine/tests/auth.test.js"
+    "test": "node --test src/engine/tests/validation.test.js src/engine/tests/tableState.test.js src/engine/tests/ranges.test.js src/engine/tests/handSetup.test.js src/engine/tests/betting.test.js src/engine/tests/payoutAnalysis.test.js src/engine/tests/analysisApi.test.js src/engine/tests/icm.test.js src/engine/tests/tournament.test.js src/engine/tests/weightedRanges.test.js src/engine/tests/auth.test.js src/engine/tests/hosting.test.js",
+    "start": "node src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -15,5 +16,8 @@
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
     "mongoose": "^9.11.4"
+  },
+  "engines": {
+    "node": ">=22 <25"
   }
 }

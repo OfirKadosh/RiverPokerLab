@@ -1,6 +1,6 @@
 # Accounts, verification and private spot history
 
-This cumulative source package includes stage 9 and adds accounts before the trial deployment. **Nothing is published or deployed.** Trial deployment remains on hold until the user reviews the project and explicitly asks to start it.
+This cumulative source package includes stage 9 and adds accounts before the trial deployment. **The source is uploaded to GitHub; no public service is deployed.** Hosting preparation is now authorized. See [DEPLOYMENT.md](DEPLOYMENT.md) for the separate hosted manual approval mode and live checks still required.
 
 ## What is included
 
@@ -70,7 +70,7 @@ The code was tested with fake delivery and mocked provider HTTP calls. **No real
 
 Email addresses are trimmed/lowercased; usernames use 3–30 ASCII letters, digits or underscores and are unique case-insensitively. International phone formatting spaces, parentheses and hyphens normalize away. Email, username and phone are unique. Passwords require 15–128 Unicode code points, up to 512 UTF-8 bytes, with no forced composition rules. Passwords are never trimmed or silently truncated.
 
-Account activation requires **one** selected contact to be proved. Email proof sets `emailVerifiedAt`; SMS proof sets `phoneVerifiedAt`. The Account page accurately marks the other contact unverified. A verified account can use either its stored username or email identifier with its password. This is account/contact verification during activation, **not** multi-factor authentication on every login or identity/KYC verification.
+For genuine email/SMS delivery, account activation requires **one** selected contact to be proved. Hosted manual approval instead sets `accountApprovedAt` and leaves contact proof unchanged; it is documented in DEPLOYMENT.md. Email proof sets `emailVerifiedAt`; SMS proof sets `phoneVerifiedAt`. The Account page accurately marks the other contact unverified. A verified account can use either its stored username or email identifier with its password. This is account/contact verification during activation, **not** multi-factor authentication on every login or identity/KYC verification.
 
 Password reset, changing email/phone/password, verifying an additional contact from Account, account deletion and a device-management dashboard are not included in this milestone. Any future recovery flow must use a verified contact, not treat an unverified address as proof of ownership.
 
@@ -95,7 +95,7 @@ Codes contain eight cryptographically random digits, expire after 10 minutes, an
 
 Rate limits are persisted in MongoDB fixed-window buckets: registration 5/IP/hour; login 30/IP/15 minutes and 10/normalized identifier/15 minutes; code sends 5/user/hour and 10/IP/hour; code confirmation 30/IP/15 minutes plus the five-attempt challenge limit. A failed/cooldown send can still consume the attempt quota. Limits continue across server restarts and shared app instances using the same database.
 
-Password hashes use salted scrypt, N=131072, r=8, p=1, with constant-time derived-key comparison. This configuration requires roughly 128 MiB per concurrent hash and should be accounted for when choosing hosting later. Unknown-user password checks perform a comparable derivation, and login errors do not identify which credential was wrong.
+Password hashes use salted scrypt, N=131072, r=8, p=1, with constant-time derived-key comparison. This configuration requires roughly 128 MiB per hash. Derivations are serialized per Node process with at most eight waiting requests; excess work receives a retryable 503. Memory for the engine and the rest of the server must also fit the hosting instance. Unknown-user password checks perform a comparable derivation, and login errors do not identify which credential was wrong.
 
 Unsafe API requests require JSON plus `X-Requested-With: RiverPokerLab`. The client wrapper supplies it and includes cookies. Origins are checked against an exact allowlist, credentialed CORS does not use a wildcard, and cross-site browser requests are rejected. API/account responses are `Cache-Control: no-store`. These checks complement SameSite/HttpOnly cookies; they do not rely on hiding controls in the frontend.
 
@@ -133,7 +133,7 @@ Updated complete files: backend `src/server.js`, `src/models/Spot.js`, `package.
 
 ## Verification and sources
 
-Run `npm test` in backend and `npm run build` in frontend. The complete 315-test suite passes: all previous 302 math/API regressions and 13 account/security scenarios. Existing engine tests use an explicitly injected test identity fixture; this is not an environment flag or production auth bypass. Dedicated account tests exercise the real auth router/middleware with an in-memory repository.
+Run `npm test` in backend and `npm run build` in frontend. The complete 320-test suite passes: all previous 302 math/API regressions, 13 account/security scenarios and five hosting/manual activation scenarios. Existing engine tests use an explicitly injected test identity fixture; this is not an environment flag or production auth bypass. Dedicated account tests exercise the real auth router/middleware with an in-memory repository.
 
 Checks cover registration validation, scrypt, verification/replay/concurrency, pending/expired access denial, both verification channels, resend/expiry/attempt limits, rate limits, session rotation and 12-hour/30-day expiry, logout revocation, production cookie flags/HTTPS, CSRF/origins, ownership spoofing, two-user/legacy history isolation, provider failure and mocked provider request construction.
 

@@ -11,15 +11,15 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | 8.1 | Separate navigation views, lazy panel loading and retained session drafts/results | Delivered |
 | 9 | Weighted combinations and explicit action-specific ranges, with consistent conditioning and validation | Delivered for review |
 | Accounts before trial | Registration, verification, server sessions and private per-user history | Delivered for review |
-| After review of 9 and accounts | Trial deployment with a persistent frontend/backend URL and phone access | On hold until explicit user instruction |
+| Hosting preparation | Same-origin frontend/API, explicit manual approval, free Render settings and verification | Prepared; live deployment pending |
 | 10 | Restricted heads-up river decision tree with configured sizes and responses | Planned |
 | 11 | Strategic solving on the restricted tree with convergence evidence | Planned |
 | 12 | Larger streets/game trees, performance and background execution | Planned |
 | 13 | Broader production access, account/history features and operational improvements | Planned |
 
-## Trial deployment: waiting for user review
+## Trial deployment: preparation authorized
 
-Complete stage 9 and the requested account/private-history milestone locally and deliver the full result first. The user will review it and explicitly request trial deployment afterward. Finishing stage 9 does not authorize publishing or hosting changes. No deployment is performed as part of stage 9. Hosting provider, domain, access controls and any paid service choices will be handled when deployment work is explicitly started.
+The user authorized preparation for a free personal trial on Render, using the existing Atlas database and manual activation codes supplied by the administrator. See DEPLOYMENT.md for the prepared configuration and validation. No hosting service has been created, no live database was contacted, and no paid plan was activated. Registration remains open; accounts gain access after activation. The next operational step is connecting Render and entering private environment settings, followed by live HTTPS/device/database checks.
 
 ## Stage 9 delivered parts
 

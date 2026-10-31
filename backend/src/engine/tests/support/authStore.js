@@ -71,18 +71,19 @@ class MemoryAuthStore {
     user.verificationAttempts++;
     return clone(user);
   }
-  async completeVerification(id, hash, nonce, channel, now) {
+  async completeVerification(id, hash, nonce, channel, now, manual = false) {
     const user = this.users.get(String(id));
     if (
       !user ||
       user.verificationHash !== hash ||
       user.verificationNonce !== nonce ||
       user.verificationChannel !== channel ||
+      (user.verificationDelivery === "manual") !== manual ||
       user.verificationExpiresAt <= now ||
       user.verificationAttempts > 5
     )
       return null;
-    user[channel === "email" ? "emailVerifiedAt" : "phoneVerifiedAt"] =
+    user[manual ? "accountApprovedAt" : channel === "email" ? "emailVerifiedAt" : "phoneVerifiedAt"] =
       clone(now);
     delete user.verificationHash;
     delete user.verificationNonce;

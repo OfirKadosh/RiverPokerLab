@@ -65,19 +65,20 @@ class MongoAuthStore {
       { new: true },
     ).lean();
   }
-  completeVerification(id, hash, nonce, channel, now) {
+  completeVerification(id, hash, nonce, channel, now, manual = false) {
     return User.findOneAndUpdate(
       {
         _id: id,
         verificationHash: hash,
         verificationNonce: nonce,
         verificationChannel: channel,
+        verificationDelivery: manual ? "manual" : { $ne: "manual" },
         verificationExpiresAt: { $gt: now },
         verificationAttempts: { $lte: 5 },
       },
       {
         $set: {
-          [channel === "email" ? "emailVerifiedAt" : "phoneVerifiedAt"]: now,
+          [manual ? "accountApprovedAt" : channel === "email" ? "emailVerifiedAt" : "phoneVerifiedAt"]: now,
         },
         $unset: {
           verificationHash: 1,

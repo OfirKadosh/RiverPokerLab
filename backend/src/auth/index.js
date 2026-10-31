@@ -20,6 +20,7 @@ function authConfig(env = process.env) {
     throw Error("AUTH_SECRET must contain at least 32 characters.");
   const origins = (
     env.APP_ORIGINS ||
+    (env.RENDER === "true" ? env.RENDER_EXTERNAL_URL : "") ||
     (production ? "" : "http://localhost:5173,http://127.0.0.1:5173")
   )
     .split(",")
@@ -141,10 +142,11 @@ function createAuth({
     cookie(res, raw, purpose === "authenticated" && remember, duration);
     return { expiresAt, remember, expiresInMs: duration };
   }
-  const verified = (user) => !!(user?.emailVerifiedAt || user?.phoneVerifiedAt);
+  const verified = (user) => !!(user?.accountApprovedAt || user?.emailVerifiedAt || user?.phoneVerifiedAt);
   function verificationInfo(user) {
     return {
       username: user.username,
+      manual: user.verificationDelivery === "manual",
       channel: user.verificationChannel || "email",
       emailHint: `${user.email[0]}***@${user.email.split("@")[1]}`,
       phoneHint: `***${user.phone.slice(-4)}`,
@@ -184,6 +186,7 @@ function createAuth({
       user._id,
       {
         verificationChannel: channel,
+        verificationDelivery: delivery.config.manualChannels?.includes(channel) ? "manual" : "contact",
         verificationHash: hash,
         verificationNonce: nonce,
         verificationExpiresAt: new Date(+instant + 10 * 60 * 1000),
@@ -202,6 +205,8 @@ function createAuth({
       await delivery.send({
         channel,
         to: channel === "email" ? user.email : user.phone,
+        userId: String(user._id),
+        username: user.username,
         code,
       });
     } catch (error) {
@@ -254,6 +259,7 @@ function createAuth({
       success: true,
       channels: problem ? [] : delivery.config.channels,
       development: !problem && delivery.config.development,
+      manualChannels: problem ? [] : delivery.config.manualChannels || [],
       configured: !problem,
     }),
   );
@@ -383,6 +389,7 @@ function createAuth({
       attempt.verificationNonce,
       attempt.verificationChannel,
       now(),
+      attempt.verificationDelivery === "manual",
     );
     if (!completed) throw new AuthError(400, "Code expired or already used.");
     const raw = rawCookie(req);

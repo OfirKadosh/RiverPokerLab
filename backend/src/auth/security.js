@@ -6,7 +6,23 @@ const {
   createHash,
 } = require("node:crypto");
 const { promisify } = require("node:util");
-const derive = promisify(scrypt);
+const deriveScrypt = promisify(scrypt);
+let hashing = false;
+const hashQueue = [];
+async function derive(...args) {
+  if (hashing) {
+    if (hashQueue.length >= 8)
+      throw new AuthError(503, "Sign-in service is busy. Try again shortly.", "HASH_BUSY");
+    await new Promise((resolve) => hashQueue.push(resolve));
+  } else hashing = true;
+  try {
+    return await deriveScrypt(...args);
+  } finally {
+    const next = hashQueue.shift();
+    if (next) next();
+    else hashing = false;
+  }
+}
 const PARAMETERS = { N: 1 << 17, r: 8, p: 1, maxmem: 192 * 1024 * 1024 };
 class AuthError extends Error {
   constructor(status, message, code) {
@@ -100,6 +116,7 @@ function publicUser(user) {
     username: user.username,
     email: user.email,
     phone: user.phone,
+    manuallyApproved: !!user.accountApprovedAt,
     emailVerified: !!user.emailVerifiedAt,
     phoneVerified: !!user.phoneVerifiedAt,
   };

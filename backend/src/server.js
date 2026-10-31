@@ -22,7 +22,8 @@ const { validateTournament } = require("./engine/tournament");
 const { calculateICM } = require("./engine/icm");
 
 const { createAuth, authConfig } = require("./auth");
-function createApp({ auth = createAuth() } = {}) {
+const { frontendDirectory, serveFrontend } = require("./hosting");
+function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1 } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -40,6 +41,10 @@ function createApp({ auth = createAuth() } = {}) {
       allowedHeaders: ["Content-Type", "X-Requested-With"],
     }),
   );
+  app.get("/healthz", (req, res) => {
+    const ready = databaseReady();
+    res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
+  });
   app.use(express.json({ limit: "2mb" }));
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
@@ -285,6 +290,8 @@ function createApp({ auth = createAuth() } = {}) {
     }
   });
 
+  serveFrontend(app, frontendDir);
+
   // Return JSON for malformed request bodies, matching the existing API format.
   app.use((err, req, res, next) => {
     if (err.type === "entity.too.large")
@@ -307,7 +314,7 @@ function createApp({ auth = createAuth() } = {}) {
 
   return app;
 }
-const app = createApp();
+const app = createApp({ frontendDir: require.main === module ? frontendDirectory() : null });
 // Importing the app for tests must not connect to the production database.
 if (require.main === module) {
   (async () => {
@@ -337,7 +344,20 @@ if (require.main === module) {
         require("./models/AuthRateLimit").init(),
       ]);
       const PORT = process.env.PORT || 5000;
-      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+      const server = app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+      let stopping = false;
+      const stop = () => {
+        if (stopping) return;
+        stopping = true;
+        const deadline = setTimeout(() => process.exit(1), 10000);
+        deadline.unref();
+        server.close(async () => {
+          await mongoose.disconnect();
+          clearTimeout(deadline);
+        });
+      };
+      process.once("SIGTERM", stop);
+      process.once("SIGINT", stop);
     } catch (error) {
       console.error(
         "Startup failed. Check MongoDB connection and index configuration.",

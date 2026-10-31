@@ -6,6 +6,8 @@ const schema = new mongoose.Schema(
     usernameKey: { type: String, required: true, unique: true },
     phone: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
+    accountApprovedAt: Date,
+    verificationDelivery: { type: String, enum: ["manual", "contact"] },
     emailVerifiedAt: Date,
     phoneVerifiedAt: Date,
     verificationChannel: { type: String, enum: ["email", "sms"] },

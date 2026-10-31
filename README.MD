@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Hosting preparation
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared free Render service, same-origin client/API and explicit hosted manual activation. The source is uploaded to GitHub; no public service has been created. Hosted manual approval is separate from contact verification and does not label email/phone as verified. Upgrade hosting and switch to a real delivery provider through settings later.
+
 ## Current capabilities
 
 - Eight navigable workspaces: Spot setup, Hand actions, Ranges, Analysis, Tournament, ICM calculator, History and Account.
@@ -91,7 +95,7 @@ From `backend`:
 npm test
 ```
 
-The 315 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
+The 320 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
 
 The unchanged legacy smoke test is also available:
 
