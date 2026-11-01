@@ -49,6 +49,8 @@ function registration(body) {
       400,
       "Username must use 3–30 letters, numbers or underscores.",
     );
+  if (username.toLowerCase() === "admin")
+    throw new AuthError(400, "This username is reserved.");
   if (!/^\+[1-9]\d{7,14}$/.test(phone))
     throw new AuthError(
       400,
@@ -114,8 +116,9 @@ function publicUser(user) {
   return {
     id: String(user._id),
     username: user.username,
-    email: user.email,
-    phone: user.phone,
+    role: user.role === "admin" ? "admin" : "user",
+    email: user.email || null,
+    phone: user.phone || null,
     manuallyApproved: !!user.accountApprovedAt,
     emailVerified: !!user.emailVerifiedAt,
     phoneVerified: !!user.phoneVerifiedAt,

@@ -1,0 +1,37 @@
+const express = require('express');
+const { createApp } = require('../server');
+const USER = Object.freeze({
+  id: '00000000000000000000de01', username: 'UI Preview', role: 'user',
+  email: null, phone: null, emailVerified: false, phoneVerified: false,
+});
+const loopback = value => ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost', '[::1]'].includes(value);
+function createPreviewApp(env = process.env) {
+  if (env.NODE_ENV !== 'development' || env.RENDER === 'true')
+    throw Error('UI preview is available only in local development.');
+  const app = express();
+  app.use((req,res,next) => {
+    let local = false;
+    try {
+      const host = new URL(`http://${req.headers.host}`);
+      local = loopback(host.hostname) && loopback(req.socket.remoteAddress) &&
+        (!req.get('origin') || req.get('origin') === host.origin) && req.get('sec-fetch-site') !== 'cross-site';
+    } catch {}
+    if (!local) return res.status(403).json({success:false,error:'UI preview accepts local same-origin requests only.'});
+    res.set('Cache-Control','no-store'); next();
+  });
+  app.use(express.json({limit:'2mb'}));
+  app.get('/api/spots', (req,res) => res.json({success:true,spots:[],preview:true}));
+  app.use((req,res,next) => {
+    const permitted = req.method === 'GET' && ['/api/auth/me','/api/auth/config'].includes(req.path) ||
+      req.method === 'POST' && ['/api/calculate','/api/icm','/api/analyze-decision','/api/ranges/preview'].includes(req.path);
+    if (!permitted || (req.path === '/api/calculate' && req.body?.saveSpot !== undefined && req.body.saveSpot !== false))
+      return res.status(403).json({success:false,error:'Saving and account actions are disabled in UI preview. Use authenticated development for persistence.'});
+    next();
+  });
+  const router = express.Router();
+  router.get('/me', (req,res) => res.json({success:true,user:USER,preview:true}));
+  router.get('/config', (req,res) => res.json({success:true,configured:true,channels:[],development:false,preview:true}));
+  app.use(createApp({auth:{router,config:{origins:[]},middleware(req,res,next) {req.user=USER;next();}}}));
+  return app;
+}
+module.exports = { createPreviewApp };

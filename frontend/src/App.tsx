@@ -1158,12 +1158,12 @@ function App() {
                   </button>
                   <button
                     className="secondary-button full-width save-button"
-                    disabled={!!issue || !!setupIssue || busy}
+                    disabled={auth.preview || !!issue || !!setupIssue || busy}
                     onClick={() => {
                       void calculate(5000, true, !!results?.decisionAnalysis);
                     }}
                   >
-                    {saving ? "Saving spot…" : "Save spot to history"}
+                    {auth.preview ? "Saving disabled in UI preview" : saving ? "Saving spot…" : "Save spot to history"}
                   </button>
                   {setupIssue && (
                     <p className="field-help validation-note">

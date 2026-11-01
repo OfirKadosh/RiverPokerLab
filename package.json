@@ -7,7 +7,9 @@
     "start": "npm --prefix backend start",
     "test": "npm --prefix backend test",
     "dev:backend": "npm --prefix backend run dev",
-    "dev:frontend": "npm --prefix frontend run dev"
+    "dev:frontend": "npm --prefix frontend run dev",
+    "admin:create": "npm --prefix backend run admin:create --",
+    "preview:dev": "npm --prefix frontend run preview:dev"
   },
   "engines": {
     "node": ">=22 <25"

@@ -2552,3 +2552,5 @@ select:disabled {
   .view-content:not([hidden]), .picker-dialog[open], .picker-dialog::backdrop,
   .loading-emblem::before, .status-indicator.is-working { animation: none; }
 }
+
+.preview-banner { padding: 12px 20px; background: #27391d; border-bottom: 1px solid #7eaa4a; color: #d5efb7; font-size: 12px; line-height: 1.6; text-align: center; }

@@ -13,6 +13,7 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | Accounts before trial | Registration, verification, server sessions and private per-user history | Delivered for review |
 | Personal trial | Same-origin frontend/API, manual approval, free Render and Atlas | Live; user confirmed core flow |
 | Beta stabilization | Loading transitions, bounded CPU worker, Mongoose compatibility and isolated development | Development branch; ready for review |
+| Admin / UI preview | Private admin provisioning and local screens without login/Atlas | Implemented on development branch; production provisioning pending owner password |
 | 10 | Restricted heads-up river decision tree with configured sizes and responses | Planned |
 | 11 | Strategic solving on the restricted tree with convergence evidence | Planned |
 | 12 | Larger streets/game trees, performance and background execution | Planned |

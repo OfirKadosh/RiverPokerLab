@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
 const schema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: function () { return this.role !== "admin"; }, unique: true },
     username: { type: String, required: true },
     usernameKey: { type: String, required: true, unique: true },
-    phone: { type: String, required: true, unique: true },
+    phone: { type: String, required: function () { return this.role !== "admin"; }, unique: true },
+    role: { type: String, enum: ["user", "admin"], default: "user", immutable: true },
     passwordHash: { type: String, required: true },
     accountApprovedAt: Date,
     verificationDelivery: { type: String, enum: ["manual", "contact"] },

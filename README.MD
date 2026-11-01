@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Admin and local screen preview
+
+See [ADMIN_AND_UI_PREVIEW.md](ADMIN_AND_UI_PREVIEW.md) for private one-time `admin` creation and `npm run preview:dev`, which opens all screens locally without sign-in or Atlas. Preview uses real calculations but blocks saving and account changes. Production authentication stays mandatory.
+
 ## Beta stabilization branch
 
 See [BETA_STABILIZATION.md](BETA_STABILIZATION.md) for half-second loading feedback, reduced-motion behavior, bounded worker-thread calculations, Mongoose compatibility and isolated local development. This branch is for review; the live personal trial remains on its previously deployed main revision.
@@ -106,7 +110,7 @@ From `backend`:
 npm test
 ```
 
-The 325 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
+The 332 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
 
 The unchanged legacy smoke test is also available:
 
