@@ -8,6 +8,8 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { apiFetch } from "../lib/api";
+import { feedbackFetch } from "../lib/loading";
+import { LoadingIndicator } from "./LoadingIndicator";
 interface User {
   id: string;
   username: string;
@@ -143,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     >
       {checking || (loggingOut && !identity.user) ? (
         <main className="auth-shell">
-          <p role="status">Checking your session…</p>
+          <LoadingIndicator label="Checking your session…" />
         </main>
       ) : identity.user ? (
         <div key={identity.user.id}>{children}</div>
@@ -215,7 +217,7 @@ function AuthScreen({
     setError(null);
     setNotice(null);
     try {
-      const r = await apiFetch(`${auth.api}/auth/${path}`, {
+      const r = await feedbackFetch(`${auth.api}/auth/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -328,7 +330,7 @@ function AuthScreen({
               />
             </label>
             <button className="primary-button full-width" disabled={busy}>
-              Verify account
+              {busy ? <LoadingIndicator label="Verifying…" compact /> : "Verify account"}
             </button>
             <label className="field-label">
               SEND VIA
@@ -350,7 +352,7 @@ function AuthScreen({
               disabled={busy || !channels.length}
               onClick={() => void send("verification/send", { channel })}
             >
-              Resend verification code
+              {busy ? "Please wait…" : "Resend verification code"}
             </button>
             <button
               type="button"
@@ -483,7 +485,7 @@ function AuthScreen({
               disabled={busy || (mode === "register" && !channels.length)}
             >
               {busy
-                ? "Please wait…"
+                ? <LoadingIndicator label="Please wait…" compact />
                 : mode === "login"
                   ? "Sign in"
                   : "Create account"}
@@ -562,7 +564,7 @@ export function AccountPanel() {
           void auth.logout().catch((error) => setError(error.message))
         }
       >
-        {auth.loggingOut ? "Signing out…" : "Sign out of this device"}
+        {auth.loggingOut ? <LoadingIndicator label="Signing out…" compact /> : "Sign out of this device"}
       </button>
       {error && <p role="alert">{error}</p>}
     </section>

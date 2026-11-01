@@ -28,14 +28,14 @@ class MongoAuthStore {
       row = await Rate.findOneAndUpdate(
         { _id: key },
         { $inc: { count: 1 }, $setOnInsert: { expiresAt } },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: "after" },
       ).lean();
     } catch (error) {
       if (error.code !== 11000) throw error;
       row = await Rate.findOneAndUpdate(
         { _id: key },
         { $inc: { count: 1 } },
-        { new: true },
+        { returnDocument: "after" },
       ).lean();
     }
     return row.count;
@@ -50,7 +50,7 @@ class MongoAuthStore {
         ],
       },
       { $set: data },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
   }
   attemptVerification(id, now) {
@@ -62,7 +62,7 @@ class MongoAuthStore {
         verificationAttempts: { $lt: 5 },
       },
       { $inc: { verificationAttempts: 1 } },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
   }
   completeVerification(id, hash, nonce, channel, now, manual = false) {
@@ -86,7 +86,7 @@ class MongoAuthStore {
           verificationExpiresAt: 1,
         },
       },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
   }
   async cancelVerification(id, hash) {

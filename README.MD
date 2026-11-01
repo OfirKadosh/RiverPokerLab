@@ -2,9 +2,13 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Beta stabilization branch
+
+See [BETA_STABILIZATION.md](BETA_STABILIZATION.md) for half-second loading feedback, reduced-motion behavior, bounded worker-thread calculations, Mongoose compatibility and isolated local development. This branch is for review; the live personal trial remains on its previously deployed main revision.
+
 ## Hosting preparation
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared free Render service, same-origin client/API and explicit hosted manual activation. The source is uploaded to GitHub; no public service has been created. Hosted manual approval is separate from contact verification and does not label email/phone as verified. Upgrade hosting and switch to a real delivery provider through settings later.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared free Render service, same-origin client/API and explicit hosted manual activation. The initial personal trial is live; this stabilization branch has not been deployed. Hosted manual approval is separate from contact verification and does not label email/phone as verified. Upgrade hosting and switch to a real delivery provider through settings later.
 
 ## Current capabilities
 
@@ -44,25 +48,32 @@ In free equity mode, starting stacks are recorded before forced blinds and curre
 
 ## Requirements
 
-- Node.js 20 or newer and npm.
+- Node.js 22 or 24 and npm (Render is configured for Node 22).
 - A MongoDB connection for accounts, sessions and authenticated API access, including history. Database-free tests use explicit fixtures.
 - A private AUTH_SECRET and an enabled verification channel (explicit development delivery is available for local review).
 
 ## Setup
 
-From `backend`, install dependencies with `npm ci`. Keep your existing `.env` and MongoDB URI, then add the auth/provider settings from [ACCOUNTS_AND_VERIFICATION.md](ACCOUNTS_AND_VERIFICATION.md) and `.env.example`. AUTH_SECRET must be generated privately; the old MongoDB-only configuration is no longer enough. Never commit credentials.
-
-Start the backend:
+For isolated development, install dependencies from the repository root:
 
 ```bash
-node src/server.js
+npm --prefix backend ci
+npm --prefix frontend ci
 ```
 
-From `frontend`, install dependencies with `npm ci`, then start Vite:
+Copy `backend/.env.development.example` to the private `backend/.env.development`, enter your development database credentials and a fresh AUTH_SECRET, then run these commands in separate terminals:
 
 ```bash
-npm run dev
+npm run dev:backend
 ```
+
+```bash
+npm run dev:frontend
+```
+
+The backend launcher requires the development file and forces the `river_poker_lab_dev` database. Use a database user restricted to that database and keep it separate from the production database. See [BETA_STABILIZATION.md](BETA_STABILIZATION.md) for isolation details. Never point a development client at the live API.
+
+`npm start` remains the hosting command and uses deployment environment settings; keep the real connection URI and secret private.
 
 The frontend uses `/api` by default. Vite forwards `/api` to `http://127.0.0.1:5000`. Keep the proxy target in `frontend/vite.config.ts` aligned with your backend port.
 
@@ -95,7 +106,7 @@ From `backend`:
 npm test
 ```
 
-The 320 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
+The 325 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
 
 The unchanged legacy smoke test is also available:
 

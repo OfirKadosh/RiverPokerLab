@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
+require("dotenv").config(process.env.APP_ENV_FILE ? { path: process.env.APP_ENV_FILE } : {});
 
 const Spot = require("./models/Spot");
 const {
@@ -12,18 +12,15 @@ const { replayBetting } = require("./engine/betting");
 const { validateTableState } = require("./engine/tableState");
 const {
   calculationSettings,
-  calculateSnapshot,
-  analyzeClosingCall,
   ledgerConfig,
 } = require("./engine/analysis");
-const { previewWeightedRange } = require("./engine/weightedRanges");
 
 const { validateTournament } = require("./engine/tournament");
-const { calculateICM } = require("./engine/icm");
 
 const { createAuth, authConfig } = require("./auth");
 const { frontendDirectory, serveFrontend } = require("./hosting");
-function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1 } = {}) {
+const { computeForRequest, ComputeError, pool } = require("./compute/pool");
+function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -50,12 +47,14 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
   app.use("/api", auth.middleware);
 
   // Independent tournament valuation; no cards, betting history or database required.
-  app.post("/api/icm", (req, res) => {
+  app.post("/api/icm", async (req, res) => {
     try {
-      res.json({ success: true, ...calculateICM(req.body) });
+      res.json({ success: true, ...await compute(req, res, "icm", req.body) });
     } catch (error) {
+      if (res.destroyed) return;
+      if (error instanceof ComputeError) res.set("Retry-After", "1");
       res
-        .status(error instanceof ValidationError ? 400 : 500)
+        .status(error instanceof ValidationError ? 400 : error instanceof ComputeError ? error.status : 500)
         .json({ success: false, error: error.message });
     }
   });
@@ -116,29 +115,12 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
         typeof req.body.includeDecisionAnalysis !== "boolean"
       )
         throw new ValidationError("includeDecisionAnalysis must be a boolean.");
-      const analysis = calculateSnapshot({
-        players,
-        board,
-        gameType,
-        iterations,
-        tableState,
-        settings,
-        bettingState,
+      const { analysis, decisionAnalysis } = await compute(req, res, "calculate", {
+        players, board, gameType, gameMode, iterations, tableState, settings,
+        bettingState, tournament, includeDecisionAnalysis: req.body.includeDecisionAnalysis,
       });
+      if (res.destroyed) return;
       const { results, rangeStats, sampling, proposals } = analysis;
-      const decisionAnalysis = req.body.includeDecisionAnalysis
-        ? analyzeClosingCall({
-            players,
-            board,
-            gameType,
-            gameMode,
-            iterations,
-            tableState,
-            settings,
-            bettingState,
-            tournament,
-          })
-        : undefined;
       const hasRanges = players.some((player) => !Array.isArray(player));
       const playerInputs = players.map((player) =>
         Array.isArray(player) ? { type: "hand", cards: player } : player,
@@ -208,14 +190,16 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
         savedSpotId,
       });
     } catch (err) {
+      if (res.destroyed) return;
+      if (err instanceof ComputeError) res.set("Retry-After", "1");
       res
-        .status(err instanceof ValidationError ? 400 : 500)
+        .status(err instanceof ValidationError ? 400 : err instanceof ComputeError ? err.status : 500)
         .json({ success: false, error: err.message });
     }
   });
 
   // Explicit analysis endpoint: unsupported strategic spots return an explanatory scope result.
-  app.post("/api/analyze-decision", (req, res) => {
+  app.post("/api/analyze-decision", async (req, res) => {
     try {
       const input = validateCalculateInput(req.body);
       const settings = calculationSettings(req.body);
@@ -247,7 +231,7 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
         );
       res.json({
         success: true,
-        analysis: analyzeClosingCall({
+        analysis: await compute(req, res, "decision", {
           ...input,
           tableState,
           settings,
@@ -256,24 +240,28 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
         }),
       });
     } catch (error) {
+      if (res.destroyed) return;
+      if (error instanceof ComputeError) res.set("Retry-After", "1");
       res
-        .status(error instanceof ValidationError ? 400 : 500)
+        .status(error instanceof ValidationError ? 400 : error instanceof ComputeError ? error.status : 500)
         .json({ success: false, error: error.message });
     }
   });
 
   // Parse with the same authoritative grammar used by the simulation.
-  app.post("/api/ranges/preview", (req, res) => {
+  app.post("/api/ranges/preview", async (req, res) => {
     try {
       if (!req.body || typeof req.body !== "object" || Array.isArray(req.body))
         throw new ValidationError("Request body must be an object.");
       res.json({
         success: true,
-        ...previewWeightedRange(req.body, req.body.deadCards),
+        ...await compute(req, res, "range", req.body),
       });
     } catch (err) {
+      if (res.destroyed) return;
+      if (err instanceof ComputeError) res.set("Retry-After", "1");
       res
-        .status(err instanceof ValidationError ? 400 : 500)
+        .status(err instanceof ValidationError ? 400 : err instanceof ComputeError ? err.status : 500)
         .json({ success: false, error: err.message });
     }
   });
@@ -336,7 +324,7 @@ if (require.main === module) {
       return;
     }
     try {
-      await mongoose.connect(process.env.MONGO_URI);
+      await mongoose.connect(process.env.MONGO_URI, process.env.APP_DATABASE_NAME ? { dbName: process.env.APP_DATABASE_NAME } : {});
       await Promise.all([
         Spot.init(),
         require("./models/User").init(),
@@ -352,6 +340,7 @@ if (require.main === module) {
         const deadline = setTimeout(() => process.exit(1), 10000);
         deadline.unref();
         server.close(async () => {
+          await pool.close();
           await mongoose.disconnect();
           clearTimeout(deadline);
         });

@@ -1,6 +1,6 @@
 # Free trial deployment preparation
 
-The complete application is stored in the private `OfirKadosh/RiverPokerLab` repository. This update prepares hosting; **it does not create a service, deploy publicly, contact Atlas, or send messages**.
+The complete application is stored in the private `OfirKadosh/RiverPokerLab` repository. The initial personal trial is now live at https://river-poker-lab.onrender.com/ and the user confirmed the core flow. This guide retains the setup instructions. The stabilization branch described in [BETA_STABILIZATION.md](BETA_STABILIZATION.md) has not been merged or deployed.
 
 ## Topology and current access
 
@@ -69,15 +69,15 @@ Keep the same service, URL, repository and Atlas database. Upgrade the compute p
 
 For automatic email, verify a domain in Resend and change runtime settings to `EMAIL_PROVIDER=resend`, `RESEND_API_KEY=...`, `EMAIL_FROM=...`, and `AUTH_ALLOW_MANUAL_DELIVERY=false`. Keep `SMS_PROVIDER=disabled` unless separately configured. Restart/redeploy to apply environment changes. No source change is needed. Existing manually activated users keep access; their contact status does not silently become verified. New email challenges prove the contact normally. Future billing/paid access is a separate feature and is not enabled by paying the hosting provider.
 
-The free service can sleep after inactivity and has limited CPU/RAM. Memory-heavy scrypt derivations are serialized within this single Node process and the waiting queue is capped; overload returns a retryable 503 without weakening password hashing. Poker calculations remain synchronous and can delay other requests while running. Start with personal testing, measure representative calculations, and reassess concurrency before distributing broadly. Upgrading improves resources but is not a guarantee of performance for arbitrary workloads.
+The free service can sleep after inactivity and has limited CPU/RAM. Memory-heavy scrypt derivations are serialized within this single Node process and the waiting queue is capped; overload returns a retryable 503 without weakening password hashing. In the stabilization branch, heavy calculations run on one bounded worker thread while account/history operations stay on the main thread; see BETA_STABILIZATION.md for queue and timeout limits. Start with personal testing, measure representative calculations, and reassess concurrency before distributing broadly. Upgrading improves resources but is not a guarantee of performance for arbitrary workloads.
 
-## Validation in this update
+## Validation of initial hosting preparation (historical)
 
 - 320 backend tests passed (the previous 315 plus five hosting/manual activation scenarios).
 - Frontend production build passed.
 - Real-browser tests used the built React files through a local HTTPS reverse proxy and real account routes, with an in-memory account/history store. Registration, manual-code activation after reload, Secure/HttpOnly remembered cookie, unverified contacts, authenticated equity/save/history, mobile layout and logout passed.
 - HTTP tests cover static assets, missing/hidden files, API authentication/JSON behavior, health status, exact origins, HTTPS enforcement, provider switches, one-use codes and the bounded hashing queue.
-- No real Atlas, Render service, email or SMS delivery was used. No public deployment or billing was activated.
+- During initial preparation, no real Atlas, Render service, email or SMS delivery was used and no deployment/billing was activated. The user subsequently deployed and confirmed the personal trial; current branch validation is documented separately.
 
 ## Complete source changes
 

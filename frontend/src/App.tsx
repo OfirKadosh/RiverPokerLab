@@ -1,4 +1,5 @@
-import { apiFetch as fetch } from "./lib/api";
+import { LoadingIndicator, PageTransition } from "./components/LoadingIndicator";
+import { feedbackFetch as fetch } from "./lib/loading";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { replayBetting } from "./lib/betting";
 import type { BettingAction } from "./lib/betting";
@@ -265,19 +266,25 @@ function App() {
     picker?.kind === "board" ? board : currentSeat?.cards || [];
   const busy = status === "loading" || status === "queued";
 
+  const historyRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => historyRequest.current?.abort(), []);
   async function fetchSavedSpots() {
+    historyRequest.current?.abort();
+    const request = new AbortController();
+    historyRequest.current = request;
     setHistoryLoading(true);
     try {
-      const response = await fetch(`${API}/spots`);
+      const response = await fetch(`${API}/spots`, { signal: request.signal });
       const data = await response.json();
       if (!response.ok || !data.success || !Array.isArray(data.spots))
         throw new Error("History unavailable");
+      if (request.signal.aborted) return;
       setSavedSpots(data.spots);
       setHistoryError(false);
     } catch {
-      setHistoryError(true);
+      if (!request.signal.aborted) setHistoryError(true);
     } finally {
-      setHistoryLoading(false);
+      if (!request.signal.aborted) setHistoryLoading(false);
     }
   }
   const historyRequested = useRef(false);
@@ -784,7 +791,7 @@ function App() {
               aria-live="polite"
             >
               <span
-                className={`status-indicator ${busy ? "is-loading" : ""}`}
+                className={`status-indicator ${busy ? "is-working" : ""}`}
               />
               <div>
                 <strong>
@@ -808,11 +815,10 @@ function App() {
           </section>
         )}
         <aside className="sidebar" aria-label={`${pageInfo.label} controls`}>
+          <PageTransition view={page} label={pageInfo.label}>
           <Suspense
             fallback={
-              <div className="route-loading" role="status">
-                Loading view…
-              </div>
+              <LoadingIndicator label="Loading view…" />
             }
           >
             {page === "spot" && (
@@ -1291,7 +1297,9 @@ function App() {
                     {historyLoading ? "Loading…" : "Refresh"}
                   </button>
                 </div>
-                {historyError ? (
+                {historyLoading ? (
+                  <LoadingIndicator label="Loading saved spots…" />
+                ) : historyError ? (
                   <div className="inline-note">
                     Cannot load history. Check that the backend and MongoDB are
                     available, then refresh.
@@ -1331,6 +1339,7 @@ function App() {
               </section>
             )}
           </Suspense>
+          </PageTransition>
           {notice && (
             <div className="notice" role="status">
               {notice}
@@ -1374,7 +1383,7 @@ function App() {
           onClose={() => setPicker(null)}
           alternativeContent={
             currentSeat?.mode === "range" ? (
-              <Suspense fallback={<p role="status">Loading range editor…</p>}>
+              <Suspense fallback={<LoadingIndicator label="Loading range editor…" />}>
                 <RangeEditor
                   key={currentSeat.id}
                   value={currentSeat.range}

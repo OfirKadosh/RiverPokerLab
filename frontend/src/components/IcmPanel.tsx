@@ -1,4 +1,5 @@
-import { apiFetch as fetch } from "../lib/api";
+import { LoadingIndicator } from "./LoadingIndicator";
+import { feedbackFetch as fetch } from "../lib/loading";
 import { useEffect, useRef, useState } from "react";
 import type { Seat } from "../lib/poker";
 import { formatChips } from "../lib/poker";
@@ -230,10 +231,11 @@ export function IcmPanel({
       </label>
       <button
         className="primary-button full-width"
+        aria-label={loading ? "Calculating ICM…" : "Calculate ICM"}
         disabled={!confirmed || loading}
         onClick={() => void calculate()}
       >
-        {loading ? "Calculating ICM…" : "Calculate ICM"}
+        {loading ? <LoadingIndicator label="Calculating ICM…" compact /> : "Calculate ICM"}
       </button>
       {failure?.key === key && (
         <p role="alert" className="validation-note">

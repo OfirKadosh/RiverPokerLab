@@ -1,4 +1,5 @@
-import { apiFetch as fetch } from "../lib/api";
+import { LoadingIndicator } from "./LoadingIndicator";
+import { feedbackFetch as fetch } from "../lib/loading";
 import { useEffect, useRef, useState } from "react";
 import type { Seat, TournamentSettings } from "../lib/poker";
 import { fieldSetter } from "../lib/workspaceState";
@@ -234,7 +235,7 @@ export function TournamentSettingsPanel({
         disabled={!confirmed || busy}
         onClick={() => void apply()}
       >
-        {busy ? "Applying…" : "Apply tournament settings"}
+        {busy ? <LoadingIndicator label="Applying…" compact /> : "Apply tournament settings"}
       </button>
       <button
         className="text-button"

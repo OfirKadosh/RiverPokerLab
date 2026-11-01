@@ -1,4 +1,5 @@
-import { apiFetch as fetch } from "../lib/api";
+import { LoadingIndicator } from "./LoadingIndicator";
+import { feedbackFetch as fetch } from "../lib/loading";
 import { useEffect, useState } from "react";
 import { RANKS } from "../lib/poker";
 import type { RangeConfig, RangeAction, RangeDraft } from "../lib/poker";
@@ -275,7 +276,7 @@ export function RangeEditor({
       </label>
       <div className="range-summary" role="status">
         {pending ? (
-          "Checking range…"
+          <LoadingIndicator label="Checking range…" compact />
         ) : error ? (
           <span className="validation-note">{error}</span>
         ) : preview ? (

@@ -11,15 +11,16 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | 8.1 | Separate navigation views, lazy panel loading and retained session drafts/results | Delivered |
 | 9 | Weighted combinations and explicit action-specific ranges, with consistent conditioning and validation | Delivered for review |
 | Accounts before trial | Registration, verification, server sessions and private per-user history | Delivered for review |
-| Hosting preparation | Same-origin frontend/API, explicit manual approval, free Render settings and verification | Prepared; live deployment pending |
+| Personal trial | Same-origin frontend/API, manual approval, free Render and Atlas | Live; user confirmed core flow |
+| Beta stabilization | Loading transitions, bounded CPU worker, Mongoose compatibility and isolated development | Development branch; ready for review |
 | 10 | Restricted heads-up river decision tree with configured sizes and responses | Planned |
 | 11 | Strategic solving on the restricted tree with convergence evidence | Planned |
 | 12 | Larger streets/game trees, performance and background execution | Planned |
 | 13 | Broader production access, account/history features and operational improvements | Planned |
 
-## Trial deployment: preparation authorized
+## Personal trial and ongoing development
 
-The user authorized preparation for a free personal trial on Render, using the existing Atlas database and manual activation codes supplied by the administrator. See DEPLOYMENT.md for the prepared configuration and validation. No hosting service has been created, no live database was contacted, and no paid plan was activated. Registration remains open; accounts gain access after activation. The next operational step is connecting Render and entering private environment settings, followed by live HTTPS/device/database checks.
+The personal trial is live at https://river-poker-lab.onrender.com/ and the user confirmed registration, login and history work. Ongoing improvements are developed on a separate branch, with no merge or live deployment as part of this stabilization step. See BETA_STABILIZATION.md for the current update, tests and review/rollout workflow. Registration remains open with manual activation. A restricted heads-up river strategy tree remains the next engine milestone after stabilization.
 
 ## Stage 9 delivered parts
 
