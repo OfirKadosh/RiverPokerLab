@@ -2598,3 +2598,20 @@ select:disabled {
   .main-navigation { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .table-workspace { top:184px; max-height:calc(100dvh - 200px); }
 }
+
+/* Restricted river strategy report */
+.river-solver{margin-top:24px;padding-top:24px;border-top:1px solid var(--border,#35443e);min-width:0}
+.solver-report{display:grid;gap:16px;margin-top:18px;min-width:0}
+.solver-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.solver-metrics>div{display:flex;flex-direction:column;gap:8px;padding:16px;background:#142b25;border:1px solid #38534a;border-radius:12px}
+.solver-metrics strong{font-size:1.3rem;color:#c7ef9e}.solver-metrics small{font-size:.68rem;letter-spacing:.06em}
+.solver-convergence{margin:0;padding:14px;border:1px solid #38534a;border-radius:12px;min-width:0}
+.solver-convergence svg{display:block;width:100%;max-height:180px}.solver-convergence figcaption{font-size:.82rem}
+.solver-action-legend{display:flex;gap:8px;flex-wrap:wrap}.solver-action-legend span{border-left:4px solid;padding:6px 10px;background:#142b25;font-size:.8rem}
+.solver-matrix{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:3px;width:100%;max-width:640px}
+.solver-matrix button{min-width:0;padding:8px 0;border:1px solid #52695e;border-radius:3px;color:#0e1d17;font-size:clamp(.52rem,1.4vw,.8rem);font-weight:700}
+.solver-matrix button:disabled{background:#20312b;color:#76877e;opacity:.45}.solver-matrix button:not(:disabled){cursor:pointer}
+.solver-matrix button[aria-pressed=true]{outline:3px solid white;outline-offset:0;z-index:1}
+.solver-matrix button:not(:disabled):not([style]){background:#b8b6a7}
+.solver-combos th small,.solver-combos td small{display:block;margin-top:4px;font-size:.7rem;font-weight:400}
+@media(max-width:600px){.solver-metrics{grid-template-columns:1fr}.solver-matrix{gap:2px}.solver-matrix button{padding:7px 0}.solver-combos{max-width:100%}}

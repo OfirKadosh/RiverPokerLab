@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Stage 11 development branch
+
+See [STEP_11_RIVER_SOLVER.md](STEP_11_RIVER_SOLVER.md). Branch `step-11-river-strategy-solver` adds CFR average strategies for the restricted heads-up Hold'em cash river tree, per-combo frequencies and action EV, a reached-range matrix, exact restricted best-response exploitability and honest convergence/stop reports. It includes stage 10 and all earlier development work. It is not merged or deployed; the live site stays on its current release.
+
 ## Stage 10 development branch
 
 See [STEP_10_RIVER_TREE.md](STEP_10_RIVER_TREE.md). The new River tree workspace explores a bounded heads-up Hold'em cash river tree with exact private-range payoffs, configurable bet/raise sizes, refunds and split chips. It does not solve strategy or root action EV. Branch `step-10-river-decision-tree` includes all earlier stabilization/admin/preview work and is not deployed.
