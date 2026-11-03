@@ -20,6 +20,7 @@ export const PAGES = [
     label: "Analysis",
     description: "Explore equity, pot payouts and Fold versus Call.",
   },
+  { id: "river", label: "River tree", description: "Explore a restricted heads-up river betting tree and conditional payoffs." },
   {
     id: "tournament",
     label: "Tournament",
