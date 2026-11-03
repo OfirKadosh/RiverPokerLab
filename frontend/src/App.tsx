@@ -27,6 +27,7 @@ import type {
 import { AccountPanel, useAuth } from "./components/AuthProvider";
 import "./App.css";
 
+import { createRiverWorkspace } from "./lib/riverTree";
 import { PAGES, usePage } from "./lib/navigation";
 import {
   createIcmWorkspace,
@@ -68,6 +69,8 @@ const HandSetupPanel = lazy(() =>
   })),
 );
 
+const RiverTreePanel = lazy(() => import("./components/RiverTreePanel").then(module => ({ default: module.RiverTreePanel })));
+
 const API = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 type PickerTarget = { kind: "seat"; id: number } | { kind: "board" };
 
@@ -76,6 +79,7 @@ function App() {
   const { page, navigate } = usePage();
   const pageInfo = PAGES.find((item) => item.id === page)!;
   const hasTable = ["spot", "hand", "analysis"].includes(page);
+  const [riverWorkspace, setRiverWorkspace] = useState(createRiverWorkspace);
   const [icmWorkspace, setIcmWorkspace] = useState(createIcmWorkspace);
   const [tournamentDraft, setTournamentDraft] = useState(createTournamentDraft);
   const [rangeDrafts, setRangeDrafts] = useState<Record<number, RangeDraft>>(
@@ -1282,6 +1286,7 @@ function App() {
                 setState={setIcmWorkspace}
               />
             )}
+            {page === "river" && <RiverTreePanel api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "account" && <AccountPanel />}
             {page === "history" && (
               <section className="sidebar-section history-section">

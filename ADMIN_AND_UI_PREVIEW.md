@@ -42,7 +42,7 @@ npm run preview:dev
 
 Open the local URL printed by Vite, normally `http://127.0.0.1:5173`. No backend startup, AUTH_SECRET, MongoDB URI, Atlas database or registration is needed for this mode.
 
-The Vite development server mounts a dedicated local Express adapter for `/api`. It supplies an ephemeral `UI Preview` identity, real math through the existing compute worker and empty in-memory history responses. All eight screens, card selection, betting UI, ranges, equity and ICM can be explored. Drafts stay in memory for the current browser session, as before; a reload can clear them. A permanent banner identifies the preview.
+The Vite development server mounts a dedicated local Express adapter for `/api`. It supplies an ephemeral `UI Preview` identity, real math through the existing compute worker and empty in-memory history responses. All nine screens (including River tree), card selection, betting UI, ranges, equity and ICM can be explored. Drafts stay in memory for the current browser session, as before; a reload can clear them. A permanent banner identifies the preview.
 
 Saving is disabled in the UI and rejected by the adapter. Registration, login, logout and other account mutations are rejected. No real user/session or saved spot is created. For testing accounts and persistence, use the separate authenticated development workflow documented in BETA_STABILIZATION.md.
 
@@ -61,3 +61,5 @@ The complete backend suite passes **332 tests** (the prior 325 plus five admin/c
 A real browser opened all eight views in preview without running a backend or connecting to Atlas, performed real equity and ICM, checked disabled/forbidden saves, refreshed without a login gate and checked 320/390/1440 widths. A build with `--mode ui-preview` was rejected as intended. No real production admin was created by tests; test passwords and accounts are synthetic.
 
 Added complete files: `backend/src/admin/provision.js`, `backend/scripts/{createAdmin,secretPrompt}.js`, `backend/src/dev/preview.js`, `backend/src/engine/tests/{admin,preview}.test.js` and this guide. Existing user/auth code, account/table UI, Vite configuration, package scripts and documentation are updated. No file needs deleting. Download the branch ZIP to get the full cumulative project.
+
+The step-10-river-decision-tree branch additionally includes STEP_10_RIVER_TREE.md; its current combined suite has 370 tests. The 332-test results above describe the preceding admin/preview milestone.

@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Stage 10 development branch
+
+See [STEP_10_RIVER_TREE.md](STEP_10_RIVER_TREE.md). The new River tree workspace explores a bounded heads-up Hold'em cash river tree with exact private-range payoffs, configurable bet/raise sizes, refunds and split chips. It does not solve strategy or root action EV. Branch `step-10-river-decision-tree` includes all earlier stabilization/admin/preview work and is not deployed.
+
 ## Admin and local screen preview
 
 See [ADMIN_AND_UI_PREVIEW.md](ADMIN_AND_UI_PREVIEW.md) for private one-time `admin` creation and `npm run preview:dev`, which opens all screens locally without sign-in or Atlas. Preview uses real calculations but blocks saving and account changes. Production authentication stays mandatory.
@@ -16,7 +20,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared free Render service, same-or
 
 ## Current capabilities
 
-- Eight navigable workspaces: Spot setup, Hand actions, Ranges, Analysis, Tournament, ICM calculator, History and Account.
+- Nine navigable workspaces: Spot setup, Hand actions, Ranges, Analysis, River tree, Tournament, ICM calculator, History and Account.
 - Registration/sign-in, email or SMS activation, remembered device sessions and private per-user saved history.
 - Session state and drafts retained across navigation, with inactive panels unmounted and optional panels loaded on demand.
 
@@ -110,7 +114,7 @@ From `backend`:
 npm test
 ```
 
-The 332 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
+The 370 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
 
 The unchanged legacy smoke test is also available:
 
@@ -167,7 +171,7 @@ See [STEP_7_ICM.md](STEP_7_ICM.md) for the independent ICM calculator and [ROADM
 
 ## Stage 8
 
-See [STEP_8_ICM_DECISIONS.md](STEP_8_ICM_DECISIONS.md) for outcome-weighted ICM decisions, saved full-field settings, elimination rules, API fields and complete-file replacement instructions. Independent worksheet drafts remain separate; applied decision settings are saved with spots. Trial deployment is on hold until the user reviews stage 9 and explicitly asks to start deployment. Earlier stage guides describe their historical snapshots.
+See [STEP_8_ICM_DECISIONS.md](STEP_8_ICM_DECISIONS.md) for outcome-weighted ICM decisions, saved full-field settings, elimination rules, API fields and complete-file replacement instructions. Independent worksheet drafts remain separate; applied decision settings are saved with spots. The original personal trial is live; later development remains on separate branches for a combined reviewed release. Earlier stage guides describe their historical snapshots.
 
 ## Stage 8.1
 
@@ -175,7 +179,7 @@ The navigation reorganization is delivered before stage 9. Historical stage guid
 
 ## Stage 9
 
-See [STEP_9_WEIGHTED_ACTION_RANGES.md](STEP_9_WEIGHTED_ACTION_RANGES.md) for all four delivered range sub-stages, notation, conditional frequency semantics, UI/API fields, verification and complete-file replacement instructions. Weighted ranges remain Hold'em-only; Omaha uses four specific cards. `npm test` now runs the full backend suite. No trial deployment has been performed.
+See [STEP_9_WEIGHTED_ACTION_RANGES.md](STEP_9_WEIGHTED_ACTION_RANGES.md) for all four delivered range sub-stages, notation, conditional frequency semantics, UI/API fields, verification and complete-file replacement instructions. Weighted ranges remain Hold'em-only; Omaha uses four specific cards. `npm test` now runs the full backend suite. Stage 9 itself did not deploy; the original personal trial was subsequently deployed. This development branch has not been deployed.
 
 ## Accounts before trial deployment
 

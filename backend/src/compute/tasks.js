@@ -1,6 +1,7 @@
 const { calculateSnapshot, analyzeClosingCall } = require('../engine/analysis');
 const { calculateICM } = require('../engine/icm');
 const { previewWeightedRange } = require('../engine/weightedRanges');
+const { buildRiverTree } = require('../engine/riverTree');
 const { ValidationError } = require('../engine/errors');
 function executeTask(kind, input) {
   switch (kind) {
@@ -9,6 +10,7 @@ function executeTask(kind, input) {
         analysis: calculateSnapshot(input),
         decisionAnalysis: input.includeDecisionAnalysis ? analyzeClosingCall(input) : undefined,
       };
+    case 'riverTree': return buildRiverTree(input);
     case 'decision': return analyzeClosingCall(input);
     case 'icm': return calculateICM(input);
     case 'range': return previewWeightedRange(input, input.deadCards);

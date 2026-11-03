@@ -1,0 +1,10 @@
+import type { RangeDraft } from './poker';
+export interface RiverPlayerDraft { name: string; stack: string; mode: 'hand'|'range'; cards: (string|null)[]; rangeDraft: RangeDraft }
+export interface RiverDraft { players: RiverPlayerDraft[]; board: (string|null)[]; pot: string; chipUnit: string; minBet: string; bets: string; raises: string; maxRaises: string; includeAllIn: boolean }
+export interface RiverAction { type: 'check'|'bet'|'raise'|'call'|'fold'; player: number; label: string; to?: number; nodeId: number }
+export interface RiverNode { id:number; parentId:number|null; incoming:string|null; kind:'decision'|'terminal'; actor:number|null; pot:number; contributions:number[]; remaining:number[]; actions:RiverAction[]; toCall?:number; effectiveCap?:number; minRaiseTo?:number|null; omitted?:string[]; outcome?:{reason:'fold'|'showdown';winner:number|null;contestPot:number;refunds:number[];expectedAwards:number[];endingStacks:number[];netFromRiver:number[];interpretation:string} }
+export interface RiverTree { rootId:number; input:{board:string[];potSize:number;chipUnit:number;players:{name:string;position:string;stack:number}[]}; chance:{jointDeals:number;totalMass:number;winProbability:number[];tieProbability:number;availableCombos:number[]}; nodes:RiverNode[]; summary:{nodes:number;decisions:number;terminals:number;effectiveStack:number}; notes:string[] }
+export interface RiverWorkspace { draft:RiverDraft; response:{key:string;tree:RiverTree}|null; selected:number }
+export function createRiverWorkspace():RiverWorkspace {
+  return {draft:{players:[{name:'OOP',stack:'200',mode:'hand',cards:['Ah','Ac'],rangeDraft:{range:'AA',actionRanges:{},rangeAction:'base'}},{name:'IP',stack:'200',mode:'hand',cards:['Kh','Kc'],rangeDraft:{range:'KK',actionRanges:{},rangeAction:'base'}}],board:['2s','3d','7h','8c','9s'],pot:'100',chipUnit:'1',minBet:'2',bets:'50, 100',raises:'50, 100',maxRaises:'1',includeAllIn:true},response:null,selected:0};
+}
