@@ -59,6 +59,18 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
     }
   });
 
+  app.post("/api/river-solve", async (req, res) => {
+    try {
+      const solution = await compute(req, res, "riverSolve", req.body);
+      if (!res.destroyed) res.json({ success: true, solution });
+    } catch (error) {
+      if (res.destroyed) return;
+      if (error instanceof ComputeError) res.set("Retry-After", "1");
+      res.status(error instanceof ValidationError ? 400 : error instanceof ComputeError ? error.status : 500)
+        .json({ success: false, error: error.message });
+    }
+  });
+
   // Independent tournament valuation; no cards, betting history or database required.
   app.post("/api/icm", async (req, res) => {
     try {

@@ -1,0 +1,67 @@
+import {useEffect,useRef,useState} from 'react';
+import type {Dispatch,SetStateAction} from 'react';
+import type {RiverTree,RiverWorkspace} from '../lib/riverTree';
+import {feedbackFetch} from '../lib/loading';
+import {LoadingIndicator} from './LoadingIndicator';
+const num=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(n);
+const pct=(n:number|null)=>n===null?'—':`${(n*100).toFixed(2)}%`;
+const money=(n:number|null)=>n===null?'—':num(n);
+const colors=['#8ab4fa','#64d98b','#f5c96a','#be97f5','#ef9f87','#abb2bd'];
+const ranks='AKQJT98765432';
+function handClass(cards:string[]){const [a,b]=cards;return a[0]===b[0]?a[0]+b[0]:ranks.indexOf(a[0])<ranks.indexOf(b[0])?a[0]+b[0]+(a[1]===b[1]?'s':'o'):b[0]+a[0]+(a[1]===b[1]?'s':'o');}
+function publicPath(tree:RiverTree,id:number){const labels:string[]=[];let n=tree.nodes[id];while(n.parentId!==null){labels.unshift(n.incoming||'');n=tree.nodes[n.parentId];}return labels.join(' → ')||'Root';}
+export function RiverSolverPanel({api,tree,treeKey,state,setState,building}:{api:string;tree:RiverTree;treeKey:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;building:boolean}){
+  const key=JSON.stringify([treeKey,state.solver]),result=state.solution?.key===key?state.solution.result:null;
+  const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[filter,setFilter]=useState<string|null>(null);
+  const request=useRef<AbortController|null>(null);
+  useEffect(()=>{request.current?.abort();setLoading(false);setError(null);setFilter(null);return()=>request.current?.abort();},[key,tree]);
+  useEffect(()=>setFilter(null),[state.selected]);
+  const node=tree.nodes[state.selected],policy=result?.metrics.nodePolicies.find(n=>n.nodeId===node?.id);
+  function settings(field:'iterations'|'target',value:string){setState(s=>({...s,solver:{...s.solver,[field]:value},solution:null}));}
+  async function solve(){
+    request.current?.abort();const controller=new AbortController();request.current=controller;setLoading(true);setError(null);
+    try{
+      if(!state.solver.iterations.trim()||!state.solver.target.trim())throw Error('Enter both the iteration limit and exploitability target.');
+      const response=await feedbackFetch(`${api}/river-solve`,{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({...tree.input,solver:{maxIterations:Number(state.solver.iterations),targetPotPct:Number(state.solver.target)}})});
+      const data=await response.json();if(controller.signal.aborted)return;
+      if(!response.ok||!data.success)throw Error(data.error||'Cannot solve this river tree.');
+      setState(s=>JSON.stringify([JSON.stringify(s.draft),s.solver])===key?{...s,solution:{key,result:data.solution}}:s);
+    }catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Cannot reach the solver.');}
+    finally{if(!controller.signal.aborted)setLoading(false);}
+  }
+  const maxY=result?Math.max(...result.history.map(h=>h.exploitabilityPotPct),.001):1;
+  const points=result?.history.map(h=>`${10+580*h.iteration/Math.max(result.iterationsCompleted,1)},${140-125*h.exploitabilityPotPct/maxY}`).join(' ');
+  return <section className="river-solver" aria-label="River strategy solver">
+    <h3>Average strategy · restricted river game</h3>
+    <p className="inline-note">Solve both players' private-hand strategies using CFR. Quality is measured by exact best responses in this tree. Other bet sizes, turn play, Omaha, tournaments and full-game GTO are outside this solution.</p>
+    <div className="river-settings"><label className="field-label">ITERATION LIMIT<input aria-label="Solver iteration limit" type="number" min="100" max="20000" step="100" value={state.solver.iterations} onChange={e=>settings('iterations',e.target.value)}/></label><label className="field-label">EXPLOITABILITY TARGET · % STARTING POT<input aria-label="Solver exploitability target" type="number" min="0" max="5" step="0.1" value={state.solver.target} onChange={e=>settings('target',e.target.value)}/></label></div>
+    <p className="field-help">Up to 1,000 legal joint deals, 4,000 information sets and 30 million deal × node × iteration work units. Narrow ranges or reduce iterations/sizes when the budget is exceeded. Results stay in this session.</p>
+    <button className="primary-button" disabled={loading||building} onClick={()=>void solve()}>{loading?<LoadingIndicator compact label="Solving and checking best responses…"/>:'Solve river strategy'}</button>
+    {loading&&<p role="status" className="field-help">The solver is running in a CPU worker. The final report includes actual completed iterations; there is no live percentage estimate.</p>}
+    {error&&<p className="validation-note" role="alert">{error}</p>}
+    {result&&<div className="solver-report">
+      <p role="status" className={result.targetReached?'auth-notice':'validation-note'}>{result.targetReached?'Target reached within this tree.':'Iteration limit reached; target NOT reached.'} {result.iterationsCompleted.toLocaleString('en-US')} iterations · {result.runtimeMs} ms · {result.jointDeals} joint deals · {result.informationSets} information sets.</p>
+      <div className="solver-metrics"><div><small>EXPLOITABILITY</small><strong>{num(result.metrics.exploitability)} chips</strong><span>{result.metrics.exploitabilityPotPct.toFixed(4)}% of starting pot</span></div><div><small>NASHCONV · SUM OF DEVIATION GAINS</small><strong>{num(result.metrics.nashConv)} chips</strong><span>Exploitability = NashConv / 2</span></div></div>
+      <div className="river-outcome-wrap"><table className="river-outcome"><caption>Root EV · net from river-start stack</caption><thead><tr><th>Player</th><th>Average strategy</th><th>Best response</th><th>Unilateral gain</th></tr></thead><tbody>{tree.input.players.map((p,i)=><tr key={i}><th>{p.name}</th><td>{num(result.metrics.expectedNet[i])}</td><td>{num(result.metrics.bestResponseNet[i])}</td><td>{num(result.metrics.deviationGains[i])}</td></tr>)}</tbody></table></div>
+      <p className="field-help">The existing pot is awarded by play: the two average net EVs sum to {num(tree.input.potSize)} chips. Each best response changes only that player's strategy against the other player's average strategy.</p>
+      <figure className="solver-convergence"><figcaption>Measured exploitability · % starting pot · checkpoints may fluctuate</figcaption><svg viewBox="0 0 600 155" role="img" aria-label={`Exploitability from ${result.history[0].exploitabilityPotPct.toFixed(4)} to ${result.metrics.exploitabilityPotPct.toFixed(4)} percent of starting pot`}><path d="M10 10V140H590" stroke="#6e817d" fill="none"/><polyline points={points} stroke="#b9ed73" strokeWidth="3" fill="none"/></svg><small>0 → {result.iterationsCompleted} iterations · vertical scale 0–{maxY.toFixed(3)}%</small></figure>
+      <details><summary>Exact convergence checkpoints</summary><div className="river-outcome-wrap"><table className="river-outcome"><thead><tr><th>Iteration</th><th>Exploitability · chips</th><th>% starting pot</th></tr></thead><tbody>{result.history.map(h=><tr key={h.iteration}><td>{h.iteration}</td><td>{num(h.exploitability)}</td><td>{h.exploitabilityPotPct.toFixed(4)}%</td></tr>)}</tbody></table></div></details>
+      <label className="field-label">STRATEGY AT PUBLIC NODE<select aria-label="Strategy public node" value={node?.kind==='decision'?state.selected:''} onChange={e=>setState(s=>({...s,selected:Number(e.target.value)}))}><option value="" disabled>Select a decision node</option>{tree.nodes.filter(n=>n.kind==='decision').map(n=><option key={n.id} value={n.id}>#{n.id} · {publicPath(tree,n.id)} · {tree.input.players[n.actor!].name}</option>)}</select></label>
+      {!policy&&<p className="inline-note">This is a terminal branch. Select a decision node to inspect its strategy.</p>}
+      {policy&&<>
+        <h4>{tree.input.players[policy.actor].name} · node #{node.id} · reached {pct(policy.reachProbability)}</h4>
+        <div className="solver-action-legend">{node.actions.map((a,j)=><span key={j} style={{borderColor:colors[j%colors.length]}}>{a.label}: {pct(policy.frequencies[j])} · EV {money(policy.actionEv[j])}</span>)}</div>
+        <p className="field-help">Public frequencies use the range that actually reaches this node. Each combo's action EV forces that action, then follows the average continuation, measured from river start. Off-path own choices retain counterfactual EV; an impossible opponent path has no EV (—).</p>
+        <div className="solver-matrix" role="group" aria-label="Solved hand classes">{[...ranks].flatMap((r,i)=>[...ranks].map((c,j)=>{
+          const label=i===j?r+c:i<j?r+c+'s':c+r+'o',combos=policy.combos.filter(h=>handClass(h.cards)===label);
+          const mass=combos.reduce((s,h)=>s+h.reachProbability,0);let stop=0;
+          const gradient=node.actions.map((_,a)=>{const from=stop;stop+=mass>0?combos.reduce((s,h)=>s+h.reachProbability*h.frequencies[a],0)/mass*100:0;return `${colors[a%colors.length]} ${from}% ${stop}%`;}).join(',');
+          return <button key={label} type="button" disabled={!combos.length} aria-label={`${label}${mass===0?' off path':''}`} aria-pressed={filter===label} className={filter===label?'selected':''} style={mass>0?{background:`linear-gradient(to right,${gradient})`}:undefined} onClick={()=>setFilter(filter===label?null:label)}>{label}</button>;
+        }))}</div>
+        <button className="text-button" onClick={()=>setFilter(null)}>All combos{filter?` · showing ${filter}`:''}</button>
+        <div className="river-outcome-wrap solver-combos"><table className="river-outcome"><caption>Private combo strategies · {filter||'all classes'}</caption><thead><tr><th>Combo</th><th>Node range</th><th>Status</th>{node.actions.map(a=><th key={a.nodeId}>{a.label}<small>Frequency / action EV</small></th>)}</tr></thead><tbody>{policy.combos.filter(c=>!filter||handClass(c.cards)===filter).map(c=><tr key={c.cards.join('')}><th>{c.cards.join(' ')}</th><td>{pct(c.conditionalProbability)}</td><td>{c.valueKind}</td>{c.frequencies.map((f,a)=><td key={a}>{pct(f)}<small>{money(c.actionEv[a])} chips</small></td>)}</tr>)}</tbody></table></div>
+      </>}
+      <details className="river-notes"><summary>Solver scope and value definitions</summary><ul>{result.notes.map(n=><li key={n}>{n}</li>)}</ul></details>
+    </div>}
+  </section>;
+}

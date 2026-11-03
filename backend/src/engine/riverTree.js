@@ -45,8 +45,8 @@ function validateRiverInput(input) {
     raiseSizes:sizes(optional(input.raiseSizes, [0.5,1]),2,'Raise sizes'), maxRaises, includeAllIn };
 }
 // Exact product-weighted private deals conditioned on all known and mutual blockers.
-// Shared by the tree now; stage 11 can use these private outcomes for information sets.
-function prepareRiverDeals(model) {
+// Shared by the branch explorer and the private-information strategy solver.
+function prepareRiverDeals(model, limits=LIMITS) {
   const prepared = prepareRanges(model.players.map(p => p.input),model.board,1);
   const board = model.board.map(cardFromString), caches=[new Map(),new Map()];
   const deals=[]; let mass=0; const wins=[0,0]; let ties=0;
@@ -55,7 +55,7 @@ function prepareRiverDeals(model) {
     if (!caches[index].has(key)) caches[index].set(key,evaluatePlayer(cards,board,'holdem'));
     return caches[index].get(key);
   };
-  const result=walkDeals(prepared.candidates,board,{maxDeals:LIMITS.jointDeals,maxSteps:LIMITS.searchSteps,candidateWeights:prepared.candidateWeights},(hands,weight)=>{
+  const result=walkDeals(prepared.candidates,board,{maxDeals:limits.jointDeals,maxSteps:limits.searchSteps,candidateWeights:prepared.candidateWeights},(hands,weight)=>{
     const a=score(0,hands[0]),b=score(1,hands[1]);
     const winner=a===b ? null : a>b ? 0 : 1;
     mass+=weight; if(winner===null) ties+=weight; else wins[winner]+=weight;
@@ -68,6 +68,9 @@ function prepareRiverDeals(model) {
 }
 function buildRiverTree(input) {
   const model=validateRiverInput(input), chance=prepareRiverDeals(model);
+  return buildRiverTreeFromModel(model,chance);
+}
+function buildRiverTreeFromModel(model,chance) {
   const {players,pot,minBet,denomination}=model, cap=Math.min(...players.map(p=>p.stack));
   const money=n=>n*denomination/100;
   const clean=n=>Math.abs(n)<1e-10 ? 0 : n;
@@ -149,4 +152,4 @@ function buildRiverTree(input) {
     ],
   };
 }
-module.exports={LIMITS,validateRiverInput,prepareRiverDeals,buildRiverTree};
+module.exports={LIMITS,validateRiverInput,prepareRiverDeals,buildRiverTree,buildRiverTreeFromModel};
