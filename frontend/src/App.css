@@ -2621,3 +2621,9 @@ select:disabled {
 .river-job-status progress{display:block;appearance:none;width:100%;height:9px;margin-top:14px;border:0;border-radius:5px;background:#30473a;overflow:hidden}
 .river-job-status progress::-webkit-progress-bar{background:#30473a}.river-job-status progress::-webkit-progress-value{background:#b9ed73}.river-job-status progress::-moz-progress-bar{background:#b9ed73}
 @media(max-width:600px){.river-job-status{padding:14px}.river-job-status .river-toolbar button{max-width:100%}}
+
+.solver-budget{margin:14px 0;padding:14px;border:1px solid #48624c;border-radius:10px;background:#172c23;font-size:.85rem;overflow-wrap:anywhere}
+.solver-budget p{margin:7px 0}.solver-budget.over-budget{border-color:#c3a45c;background:#342c1b;color:#ffe1a4}
+.solver-performance{padding:14px;border:1px solid #38534a;border-radius:10px;min-width:0}.solver-performance summary{cursor:pointer}
+
+.solver-report .river-outcome th:first-child{min-width:60px;overflow-wrap:normal}

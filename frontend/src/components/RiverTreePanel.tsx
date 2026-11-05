@@ -50,10 +50,10 @@ export function RiverTreePanel({api,state,setState,source,jobController}:{jobCon
     if(weighted){next.draft.players[0]={...next.draft.players[0],mode:'range',rangeDraft:{range:'AhAc@25%, ThTc@75%',actionRanges:{},rangeAction:'base'}};next.draft.players[1].cards=['Qh','Qc'];}
     setState(next);setNotice('Example loaded. Build the tree to inspect its branches.');
   }
-  function benchmark(){
+  function benchmark(expanded=false){
     request.current?.abort();setLoading(false);setError(null);const next=createRiverWorkspace();
-    next.draft={...next.draft,players:next.draft.players.map(p=>({...p,stack:'1',mode:'range',rangeDraft:{range:'2h2c,3h3c,4h4c',actionRanges:{},rangeAction:'base'}})),board:['As','Ks','Qh','9d','7c'],pot:'2',minBet:'1',bets:'50',raises:'',maxRaises:'0',includeAllIn:false};
-    next.solver={iterations:'20000',target:'0.1'};setState(next);setNotice('Three-hand reference game loaded. Build, then solve. Its theoretical OOP net is 17/18 chips.');
+    next.draft={...next.draft,players:next.draft.players.map(p=>({...p,stack:'1',mode:'range',rangeDraft:{range:expanded?'22,33,44,55,66,88,TT,JJ':'2h2c,3h3c,4h4c',actionRanges:{},rangeAction:'base'}})),board:['As','Ks','Qh','9d','7c'],pot:'2',minBet:'1',bets:'50',raises:'',maxRaises:'0',includeAllIn:false};
+    next.solver=expanded?{iterations:'3000',target:'0'}:{iterations:'20000',target:'0.1'};setState(next);setNotice(expanded?'Larger-range example loaded: 48 physical combos per player and 2,064 legal joint deals. Build, then solve. The zero target asks for all 3,000 iterations; convergence is not guaranteed.':'Three-hand reference game loaded. Build, then solve. Its theoretical OOP net is 17/18 chips.');
   }
   function copy(){
     if(source.gameType!=='holdem'||source.gameMode!=='cash'||source.seats.length!==2||source.board.some(c=>!c)||source.inHand){setError('Copy requires two players, a five-card board and Hold\'em cash in free spot mode. Finish configuring the source or use an example.');return;}
@@ -72,8 +72,8 @@ export function RiverTreePanel({api,state,setState,source,jobController}:{jobCon
   const path:RiverNode[]=[];if(tree&&selected){let n:RiverNode|undefined=selected;while(n){path.unshift(n);n=n.parentId===null?undefined:tree.nodes[n.parentId];}}
   return <section className="sidebar-section river-panel" aria-label="River decision tree workspace">
     <h2>Heads-up river tree</h2>
-    <p className="inline-note">Stage 11 · No-limit Hold'em cash only. Build an exact betting tree, then solve an approximate strategy within its configured actions.</p>
-    <div className="river-toolbar"><button className="secondary-button" onClick={()=>example(false)}>Load fixed-hand example</button><button className="secondary-button" onClick={()=>example(true)}>Load weighted example</button><button className="secondary-button" onClick={benchmark}>Load 3-hand benchmark</button><button className="text-button" onClick={copy}>Copy cards and pot from spot</button></div>
+    <p className="inline-note">Stage 12.2 · No-limit Hold'em cash only. Build an exact betting tree, then solve an approximate strategy within its configured actions.</p>
+    <div className="river-toolbar"><button className="secondary-button" onClick={()=>example(false)}>Load fixed-hand example</button><button className="secondary-button" onClick={()=>example(true)}>Load weighted example</button><button className="secondary-button" onClick={()=>benchmark(false)}>Load 3-hand benchmark</button><button className="secondary-button" onClick={()=>benchmark(true)}>Load larger-range example</button><button className="text-button" onClick={copy}>Copy cards and pot from spot</button></div>
     <div className="river-board" aria-label="River board">{draft.board.map((card,i)=><Card key={i} value={card} label={`River board card ${i+1}`} small onClick={()=>open('board',i)}/>)}</div>
     <p className="field-help">This worksheet is session-only and is not saved to History. The pot already exists at river start. Stacks are chips BEHIND at that moment. OOP acts first; IP is the button. No outstanding river bet, rake or side pots.</p>
     <div className="river-player-grid">{draft.players.map((p,i)=><div key={i} className="river-player"><h3>{i===0?'Out of position':'In position · button'}</h3>

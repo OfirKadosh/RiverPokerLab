@@ -5,6 +5,7 @@ const { cardFromString } = require('./card');
 const { prepareRanges } = require('./rangeSampler');
 const { walkDeals } = require('./exact');
 const { evaluatePlayer } = require('./engine');
+const {LIMITS:SOLVER_LIMITS}=require('./riverBudget');
 const LIMITS = Object.freeze({ jointDeals: 20000, searchSteps: 200000, nodes: 512 });
 const fail = message => { throw new ValidationError(message); };
 const optional = (value, fallback) => value === undefined ? fallback : value;
@@ -137,7 +138,7 @@ function buildRiverTreeFromModel(model,chance) {
   }
   visit({actor:0,contributions:[0,0],checked:false,raisesUsed:0,lastFullRaise:minBet});
   return {
-    version:1,scope:'heads-up-river-holdem-cash',method:'exact-private-deals',rootId:0,
+    version:1,solverLimits:SOLVER_LIMITS,scope:'heads-up-river-holdem-cash',method:'exact-private-deals',rootId:0,
     input:{gameType:'holdem',gameMode:'cash',board:model.board,potSize:money(pot),chipUnit:money(1),minBet:money(minBet),
       players:players.map(p=>({...p,stack:money(p.stack)})),betSizes:model.betSizes,raiseSizes:model.raiseSizes,maxRaises:model.maxRaises,includeAllIn:model.includeAllIn},
     chance:{jointDeals:chance.deals.length,totalMass:chance.totalMass,winProbability:chance.winProbability,tieProbability:chance.tieProbability,availableCombos:chance.availableCombos,rangeStats:chance.rangeStats},

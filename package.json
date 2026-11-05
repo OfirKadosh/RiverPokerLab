@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "npm --prefix frontend run build",
+    "benchmark:river": "npm --prefix backend run benchmark:river --",
     "start": "npm --prefix backend start",
     "test": "npm --prefix backend test && npm --prefix frontend test",
     "dev:backend": "npm --prefix backend run dev",
