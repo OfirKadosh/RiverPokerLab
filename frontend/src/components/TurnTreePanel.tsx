@@ -1,3 +1,5 @@
+import {TournamentTreePanel} from './TournamentTreePanel';
+import type {TournamentWorkspace} from '../lib/tournamentTree';
 import {buildSolverRequest} from '@river-poker-lab/core';
 import {useState} from 'react';
 import type {Dispatch,SetStateAction} from 'react';
@@ -12,7 +14,7 @@ import type {RiverJobController} from '../hooks/useRiverJob';
 const num=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(n);
 const percent=(n:number|null)=>n===null?'—':`${(n*100).toFixed(2)}%`;
 const money=(n:number|null)=>n===null?'—':num(n);
-export function TurnTreePanel({api,state,setState,controller,blocked}:{api:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;controller:RiverJobController;blocked:boolean}){
+export function TurnTreePanel({icmState,setIcmState,api,state,setState,controller,blocked}:{icmState:TournamentWorkspace;setIcmState:Dispatch<SetStateAction<TournamentWorkspace>>;api:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;controller:RiverJobController;blocked:boolean}){
   const {draft}=state,key=riverSolutionKey(state),result=state.solution?.key===key?state.solution.result:null,tree=result?.turnTree;
   const node=tree?.nodes[state.selected]||tree?.nodes[0],policy=result?.metrics.nodePolicies.find(p=>p.nodeId===node?.id),publicValue=result?.metrics.publicValues?.find(p=>p.nodeId===node?.id);
   const [error,setError]=useState<string|null>(null),[picker,setPicker]=useState<'board'|number|null>(null),[active,setActive]=useState(0);
@@ -51,6 +53,7 @@ export function TurnTreePanel({api,state,setState,controller,blocked}:{api:strin
       <details><summary>Convergence checkpoints</summary><div className="river-outcome-wrap"><table className="river-outcome"><thead><tr><th>Iteration</th><th>Exploitability · % pot</th></tr></thead><tbody>{result.history.map(h=><tr key={h.iteration}><td>{h.iteration}</td><td>{h.exploitabilityPotPct.toFixed(4)}%</td></tr>)}</tbody></table></div></details><details><summary>Scope and accounting</summary><ul>{result.notes.map(n=><li key={n}>{n}</li>)}</ul></details>
     </div>}
     <p className="field-help">This worksheet is session-only. Switching pages preserves a running job; changing its inputs cancels it. Server restarts can lose temporary tasks/results.</p>
+    <TournamentTreePanel street="turn" draft={draft} onSource={draft=>setState(s=>({...s,draft,selected:0,response:null,solution:null}))} state={icmState} setState={setIcmState} blocked={blocked||controller.active}/>
     {picker!==null&&<CardPicker title={picker==='board'?'Turn board':`${draft.players[picker].name} · turn hand`} cards={cards} activeIndex={active} usedCards={used} onActiveIndex={setActive} onPick={pick} onClose={()=>setPicker(null)}/>}
   </section>;
 }

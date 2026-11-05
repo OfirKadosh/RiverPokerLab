@@ -53,3 +53,7 @@ npm run build
 ```
 
 The native contract fixture compiles with `lib: ["ES2020"]` and no DOM/React/Node types. Runtime tests load the module in a VM with no browser globals or Node builtin imports, and exercise a native-style injected transport/UUID adapter. This is a portability boundary check, not a built or physically tested iOS/Android app.
+
+## Tournament action comparison (13.2)
+
+`buildTournamentTreeRequest(draft, tournament, responsePolicy, street)` builds an explicitly confirmed field/fixed-policy request. `client.compareTournamentTree(request, init)` returns a separate `TournamentTreeAnalysis` with `icm-tree-ev` prize metadata, full-field expected prizes, action deltas, and chip values. It is not `RiverSolution`, a closing-call-only value, or an equilibrium solver. `parseValuation` distinguishes all three metadata variants. Native token/platform integration remains stage 14; this adds no native shell. See the root stage 13.2 guide for supported assumptions and bounds.

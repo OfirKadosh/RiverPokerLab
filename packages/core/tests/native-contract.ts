@@ -10,5 +10,6 @@ export function nativeFoundation(transport:FetchTransport,draft:SolverDraft,crea
 export function valuationLabel(wire:unknown):string{
   const result:Valuation=parseValuation(wire);
   if(result.kind==='chip-ev'){const cash:ChipValuation=result;return cash.baseline+':'+cash.expectedNet[0];}
-  return result.unit+':'+result.expectedByAction.call;
+  if(result.kind==='icm-prize-ev')return result.unit+':'+result.expectedByAction.call;
+  return result.unit+':'+result.evaluation;
 }

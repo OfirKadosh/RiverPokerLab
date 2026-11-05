@@ -23,6 +23,7 @@ function createApiClient({baseUrl,fetch:transport=globalThis.fetch,credentials='
   const idPath=id=>{if(typeof id!=='string'||!/^[a-zA-Z0-9-]{1,80}$/.test(id))throw new ContractError('Invalid calculation ID.','id');return '/river-jobs/'+id;};
   return {raw,request,
     capabilities:async init=>{const data=await request('/capabilities',init);if(data.capabilities?.contractVersion!==API_CONTRACT_VERSION)throw new ApiError('This API contract version is not supported by the client.',200,{code:'CONTRACT_VERSION'});return data;},
+    compareTournamentTree:(input,init)=>json('/tournament-tree',input,'POST',init),
     calculate:(input,init)=>json('/calculate',input,'POST',init),analyzeDecision:(input,init)=>json('/analyze-decision',input,'POST',init),calculateIcm:(input,init)=>json('/icm',input,'POST',init),
     buildRiverTree:(input,init)=>json('/river-tree',input,'POST',init),createSolverJob:(input,requestId,init)=>json('/river-jobs',{input,requestId},'POST',init),
     getSolverJob:(id,init)=>request(idPath(id),init),listSolverJobs:init=>request('/river-jobs',init),cancelSolverJob:(id,init)=>json(idPath(id),{},'DELETE',init),

@@ -220,3 +220,13 @@ export interface LoginRequest {identifier:string;password:string;remember:boolea
 export interface RegistrationRequest {email:string;username:string;phone:string;password:string;channel:"email"|"sms"}
 
 export interface IcmSnapshot {model:string;method:string;playerCount:number;totalChips:number;totalPrize:number;payouts:number[];results:{playerIndex:number;name:string;stack:number;chipShare:number;prizeEquity:number;prizeShare:number;proportionalPrize:number;differenceFromProportional:number;finishProbabilities:number[]}[]}
+
+/** Fixed responses are assumptions, not an equilibrium policy. Weights normalize over legal actions. */
+export type ActionWeights=Partial<Record<'fold'|'check'|'call'|'bet'|'raise'|'allin',number>>;
+export interface ResponseProfile {turn:ActionWeights;river:ActionWeights;combos?:{cards:string[];turn?:ActionWeights;river?:ActionWeights}[]}
+export interface FixedResponsePolicy {confirmed:true;players:ResponseProfile[]}
+export interface TournamentTreeContext {fieldConfirmed:true;eliminationRule:'starting-stack-split';handStartStacks:number[];otherPlayers:{name:string;stack:number}[];payouts:number[]}
+export interface TournamentTreeRequest {analysisKind:'fixed-policy-icm';street:'turn'|'river';spot:Omit<import('./index').RiverSpotRequest,'gameMode'>&{gameMode:'tournament'};tournament:TournamentTreeContext;responsePolicy:FixedResponsePolicy}
+export interface TournamentActionValue {index:number;type:string;label:string;frequency:number|null;prizeEv:number|null;chipNet:number|null;deltaPrize:number|null;deltaChips:number|null;expectedPrizes:(number|null)[]}
+export interface TournamentNodeValue {nodeId:number;reachProbability:number;expectedPrizes:(number|null)[];riverProbabilities?:{card:string;probability:number|null}[];actor?:number;referenceAction?:number;preferredActions?:number[];actions?:TournamentActionValue[];combos?:{cards:string[];reachProbability:number;conditionalProbability:number|null;valueKind:string;frequencies:number[];prizeEv:(number|null)[];chipNet:(number|null)[]}[]}
+export interface TournamentTreeAnalysis {contractVersion:1;analysisKind:'fixed-policy-icm';valuation:import('./index').IcmTreeValuation;street:'turn'|'river';runtimeMs:number;fingerprint:string;input:{spot:unknown;tournament:TournamentTreeContext;responsePolicy:FixedResponsePolicy};field:{players:{name:string;stack:number}[];payouts:number[];totalPrize:number};privateDeals:number;scenarios:number;nodeDealVisits:number;uniqueOutcomes:number;limits:Record<string,number>;tree:TurnPublicNode[];nodes:TournamentNodeValue[];notes:string[]}
