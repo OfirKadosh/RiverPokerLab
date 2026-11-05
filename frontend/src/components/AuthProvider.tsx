@@ -10,34 +10,7 @@ import type { ReactNode } from "react";
 import { apiFetch } from "../lib/api";
 import { feedbackFetch } from "../lib/loading";
 import { LoadingIndicator } from "./LoadingIndicator";
-interface User {
-  id: string;
-  username: string;
-  role?: "user" | "admin";
-  email: string | null;
-  phone: string | null;
-  manuallyApproved?: boolean;
-  emailVerified: boolean;
-  phoneVerified: boolean;
-}
-interface Verification {
-  manual?: boolean;
-  username: string;
-  channel: "email" | "sms";
-  emailHint: string;
-  phoneHint: string;
-}
-interface Session {
-  expiresInMs?: number;
-  expiresAt: string;
-  remember: boolean;
-}
-interface Identity {
-  preview?: boolean;
-  user: User | null;
-  verification?: Verification;
-  session?: Session;
-}
+import type {AccountUser as User,VerificationState as Verification,AccountSession as Session,AccountIdentity as Identity} from '@river-poker-lab/core';
 interface AuthContextValue extends Identity {
   api: string;
   refresh: () => Promise<void>;

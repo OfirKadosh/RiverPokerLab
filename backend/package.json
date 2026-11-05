@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test src/engine/tests/validation.test.js src/engine/tests/tableState.test.js src/engine/tests/ranges.test.js src/engine/tests/handSetup.test.js src/engine/tests/betting.test.js src/engine/tests/payoutAnalysis.test.js src/engine/tests/analysisApi.test.js src/engine/tests/icm.test.js src/engine/tests/tournament.test.js src/engine/tests/weightedRanges.test.js src/engine/tests/auth.test.js src/engine/tests/hosting.test.js src/engine/tests/compute.test.js src/engine/tests/admin.test.js src/engine/tests/preview.test.js src/engine/tests/riverTree.test.js src/engine/tests/riverSolver.test.js src/engine/tests/solverJobs.test.js src/engine/tests/riverPerformance.test.js src/engine/tests/turnSolver.test.js",
+    "test": "node --test src/engine/tests/validation.test.js src/engine/tests/tableState.test.js src/engine/tests/ranges.test.js src/engine/tests/handSetup.test.js src/engine/tests/betting.test.js src/engine/tests/payoutAnalysis.test.js src/engine/tests/analysisApi.test.js src/engine/tests/icm.test.js src/engine/tests/tournament.test.js src/engine/tests/weightedRanges.test.js src/engine/tests/auth.test.js src/engine/tests/hosting.test.js src/engine/tests/compute.test.js src/engine/tests/admin.test.js src/engine/tests/preview.test.js src/engine/tests/riverTree.test.js src/engine/tests/riverSolver.test.js src/engine/tests/solverJobs.test.js src/engine/tests/riverPerformance.test.js src/engine/tests/turnSolver.test.js src/engine/tests/coreContract.test.js",
     "benchmark:river": "node scripts/benchmarkRiver.js",
     "start": "node src/server.js",
     "dev": "node scripts/dev.js",
@@ -18,7 +18,8 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
-    "mongoose": "^9.11.4"
+    "mongoose": "^9.11.4",
+    "@river-poker-lab/core": "file:../packages/core"
   },
   "engines": {
     "node": ">=22 <25"

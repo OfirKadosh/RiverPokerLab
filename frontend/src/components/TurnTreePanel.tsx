@@ -1,3 +1,4 @@
+import {buildSolverRequest} from '@river-poker-lab/core';
 import {useState} from 'react';
 import type {Dispatch,SetStateAction} from 'react';
 import {Card} from './Card';
@@ -11,7 +12,6 @@ import type {RiverJobController} from '../hooks/useRiverJob';
 const num=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(n);
 const percent=(n:number|null)=>n===null?'—':`${(n*100).toFixed(2)}%`;
 const money=(n:number|null)=>n===null?'—':num(n);
-function size(text:string){if(!text.trim())return [];if(!/^\d+(?:\.\d+)?$/.test(text.trim()))throw Error('Use one percentage per street, or leave it blank for no sized bet.');return [Number(text)/100];}
 export function TurnTreePanel({api,state,setState,controller,blocked}:{api:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;controller:RiverJobController;blocked:boolean}){
   const {draft}=state,key=riverSolutionKey(state),result=state.solution?.key===key?state.solution.result:null,tree=result?.turnTree;
   const node=tree?.nodes[state.selected]||tree?.nodes[0],policy=result?.metrics.nodePolicies.find(p=>p.nodeId===node?.id),publicValue=result?.metrics.publicValues?.find(p=>p.nodeId===node?.id);
@@ -19,7 +19,7 @@ export function TurnTreePanel({api,state,setState,controller,blocked}:{api:strin
   function update(changes:Partial<RiverDraft>){setState(s=>({...s,draft:{...s.draft,...changes},selected:0}));setError(null);}
   function player(index:number,changes:Partial<RiverPlayerDraft>){update({players:draft.players.map((p,i)=>i===index?{...p,...changes}:p)});}
   function select(id:number){setState(s=>({...s,selected:id}));}
-  function solve(){setError(null);try{controller.start({solverStreet:'turn',gameType:'holdem',gameMode:'cash',board:draft.board,potSize:Number(draft.pot),chipUnit:Number(draft.chipUnit),minBet:Number(draft.minBet),betSizes:size(draft.bets),riverBetSizes:size(draft.riverBets||''),raiseSizes:[],maxRaises:0,includeAllIn:draft.includeAllIn,players:draft.players.map(p=>({name:p.name,stack:Number(p.stack),input:p.mode==='hand'?p.cards:{type:'range',...p.rangeDraft}})),solver:{maxIterations:Number(state.solver.iterations),targetPotPct:Number(state.solver.target)}});}catch(e){setError(e instanceof Error?e.message:'Invalid turn settings.');}}
+  function solve(){setError(null);try{controller.start(buildSolverRequest(draft,state.solver,'turn'));}catch(e){setError(e instanceof Error?e.message:'Invalid turn settings.');}}
   const cards=picker==='board'?draft.board:typeof picker==='number'?draft.players[picker].cards:[];
   const used=new Set([...draft.board,...draft.players.filter(p=>p.mode==='hand').flatMap(p=>p.cards)].filter((c):c is string=>!!c));
   function pick(card:string|null){const next=[...cards];next[active]=card;if(picker==='board')update({board:next});else if(typeof picker==='number')player(picker,{cards:next});if(card)setActive(Math.min(active+1,next.length-1));}

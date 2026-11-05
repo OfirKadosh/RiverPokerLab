@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm --prefix frontend run build",
+    "build": "npm run typecheck:core && npm --prefix frontend run build",
     "benchmark:river": "npm --prefix backend run benchmark:river --",
     "start": "npm --prefix backend start",
-    "test": "npm --prefix backend test && npm --prefix frontend test",
+    "test": "npm --prefix packages/core test && npm --prefix backend test && npm --prefix frontend test",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "admin:create": "npm --prefix backend run admin:create --",
-    "preview:dev": "npm --prefix frontend run preview:dev"
+    "preview:dev": "npm --prefix frontend run preview:dev",
+    "test:core": "npm --prefix packages/core test",
+    "typecheck:core": "node frontend/node_modules/typescript/bin/tsc -p packages/core/tsconfig.native.json"
   },
   "engines": {
     "node": ">=22 <25"

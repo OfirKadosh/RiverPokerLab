@@ -1,3 +1,4 @@
+const {icmActionValuation}=require('@river-poker-lab/core');
 const { ValidationError } = require("./errors");
 const { chipUnits, preparePots, settleScores } = require("./payouts");
 const { resolveTournamentOutcome } = require("./tournament");
@@ -117,6 +118,7 @@ function createICMObserver({
           : "Fold";
     const outcomes = [...pairs.values()].sort((a, b) => b.mass - a.mass);
     return {
+      valuation: icmActionValuation(meanCall[heroIndex],meanFold[heroIndex]),
       available: true,
       model: "Malmuth-Harville ICM",
       unit: "prize-units",

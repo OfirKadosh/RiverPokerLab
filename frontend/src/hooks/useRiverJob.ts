@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Dispatch,SetStateAction} from 'react';
-import {apiFetch} from '../lib/api';
-import {feedbackFetch} from '../lib/loading';
+import {apiClient} from '../lib/api';
+
 import {RiverJobClient,activeJob} from '../lib/riverJobClient';
 import type {ClientJob} from '../lib/riverJobClient';
 import type {RiverWorkspace} from '../lib/riverTree';
@@ -12,14 +12,12 @@ export function useRiverJob(api:string,state:RiverWorkspace,setState:Dispatch<Se
   const currentKey=useRef(key);currentKey.current=key;
   useEffect(()=>{
     const service=new RiverJobClient(async(path,init)=>{
-      const timeout=new AbortController();
-      const abort=()=>timeout.abort();init?.signal?.addEventListener('abort',abort,{once:true});
-      if(init?.signal?.aborted)timeout.abort();
-      const timer=setTimeout(abort,10000);
-      try{
-        const response=await (init?.method==='POST'?feedbackFetch:apiFetch)(api+path,{...init,signal:timeout.signal});
-        const data=await response.json();if(!response.ok||!data.success)throw Object.assign(Error(data.error||'Cannot reach the calculation service.'),{status:response.status});return data;
-      }finally{clearTimeout(timer);init?.signal?.removeEventListener('abort',abort);}
+      const started=performance.now(),data=await apiClient.request(path,init);
+      // Visual feedback belongs to the browser host; the portable controller has no UI delay.
+      if(init?.method==='POST'&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+        const remaining=500-(performance.now()-started);if(remaining>0)await new Promise(resolve=>setTimeout(resolve,remaining));
+      }
+      return data;
     },next=>{
       setJob(next&&(activeJob(next)||next.key===currentKey.current)?next:null);
       if(next?.status==='completed'&&next.solution){const result=next.solution;setState(s=>riverSolutionKey(s)===next.key?{...s,solution:{key:next.key,result}}:s);}

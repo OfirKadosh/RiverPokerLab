@@ -19,8 +19,11 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | 12.1 | Owner-scoped background river jobs, measured progress, cancel and navigation continuity | Delivered on step-12-1-background-solver; not deployed |
 | 12.2 | Compiled CFR traversal, reproducible profiling/benchmarks, larger bounded ranges and resource feedback | Delivered on step-12-2-solver-performance; not deployed |
 | 12.3 | Bounded two-street CFR, exact legal runouts, hidden-future-safe best responses and turn explorer | Delivered on step-12-3-turn-river-solver; not deployed |
-| Combined beta update | Cumulative owner review, final candidate checks and approved deployment | Next; see RELEASE_REVIEW.md |
-| 13 | Tester feedback, account/history features and operational improvements | After the reviewed update |
+| 13.1 | Portable domain/solver/account DTOs, shared request/API/job client and explicit valuation metadata | Delivered on step-13-1-shared-core-api; not deployed |
+| 13.2 | Outcome-weighted turn/river tournament action comparison under defined responses | Planned |
+| 13.3 | Native shell with platform authentication/lifecycle adapters | Planned |
+| Combined beta update | Owner review of selected 13.x scope, candidate checks and approved deployment | See RELEASE_REVIEW.md |
+| Later | Tester feedback, account/history features and operational improvements | After the reviewed update |
 
 ## Personal trial and ongoing development
 

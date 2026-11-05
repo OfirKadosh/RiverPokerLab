@@ -1,3 +1,4 @@
+const {assertChipSolverValuation}=require('@river-poker-lab/core');
 const { ValidationError } = require('./errors');
 const { validateSimulationInput } = require('./validation');
 const { chipUnits } = require('./payouts');
@@ -17,6 +18,7 @@ function sizes(value, maximum, label) {
 }
 function validateRiverInput(input, {street='river'}={}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('River tree input must be an object.');
+  try{assertChipSolverValuation(input);}catch(error){fail(error.message);}
   if ((optional(input.gameType, 'holdem')) !== 'holdem' || (optional(input.gameMode, 'cash')) !== 'cash')
     fail('Stage 10 supports heads-up no-limit Hold\'em cash Chip EV only; Omaha and tournament ICM trees are not supported.');
   if (input.tournament || input.betting || input.initialContributions) fail('Start at a fresh river decision with no outstanding bet or imported action ledger.');
