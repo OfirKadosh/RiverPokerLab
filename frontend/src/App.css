@@ -2635,3 +2635,17 @@ select:disabled {
 @media(max-width:760px){.main-navigation{grid-template-columns:repeat(3,minmax(0,1fr))}.turn-runouts{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
 @media(min-width:761px){.table-workspace{top:calc(var(--navigation-height,64px) + 16px);max-height:calc(100dvh - var(--navigation-height,64px) - 96px)}}
+
+/* Tournament action valuation reuses the existing tree workspaces. */
+.tournament-comparison { margin-top: 1.5rem; border: 1px solid var(--border, #43534c); padding: 1rem; border-radius: 16px; }
+.tournament-comparison > summary { cursor: pointer; font-weight: 700; font-size: 1.1rem; }
+.tournament-comparison details { margin: 1rem 0; }
+.tournament-comparison fieldset { min-width: 0; border: 1px solid #43534c; border-radius: 10px; }
+.icm-weight-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
+.icm-outside-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:.7rem; align-items:end; margin:1rem 0; }
+.tournament-comparison textarea { width:100%; max-width:100%; box-sizing:border-box; color:inherit; background:#15251e; padding:.7rem; border:1px solid #43534c; }
+.icm-computing { display:flex; gap:.7rem; align-items:center; }
+.icm-spinner { width:18px; height:18px; border:2px solid #43534c; border-top-color:#cceaa4; border-radius:50%; animation:icm-spin .7s linear infinite; flex-shrink:0; }
+@keyframes icm-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .icm-spinner { animation:none; border-top-color:#cceaa4; } }
+@media (max-width:480px) { .icm-weight-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .icm-outside-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }

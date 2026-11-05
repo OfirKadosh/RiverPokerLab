@@ -52,6 +52,11 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
 
   app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
 
+  app.post("/api/tournament-tree",async(req,res)=>{
+    try{const analysis=await compute(req,res,"tournamentTree",req.body);if(!res.destroyed)res.json({success:true,analysis});}
+    catch(error){if(res.destroyed)return;if(error instanceof ComputeError)res.set("Retry-After","1");res.status(error instanceof ValidationError?400:error instanceof ComputeError?error.status:500).json({success:false,error:error instanceof ValidationError||error instanceof ComputeError?error.message:"Cannot compare tournament actions."});}
+  });
+
   function jobFailure(res,error){
     const status=error instanceof ValidationError?400:error instanceof JobError?error.status:500;
     if(status===503)res.set("Retry-After","1");

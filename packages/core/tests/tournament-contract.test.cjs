@@ -1,0 +1,9 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const {buildTournamentTreeRequest,buildSolverRequest,parseValuation,icmTreeValuation}=require('../src');
+const draft={players:[{name:'OOP',stack:'98',mode:'hand',cards:['Qh','Qc']},{name:'IP',stack:'98',mode:'range',rangeDraft:{range:'AhAc@40%,ThTc@60%',actionRanges:{},rangeAction:'base'}}],board:['2s','3d','7h','8c','9s'],pot:'4',chipUnit:'1',minBet:'2',bets:'',raises:'',maxRaises:'0',includeAllIn:true};
+const field={fieldConfirmed:true,eliminationRule:'starting-stack-split',handStartStacks:[100,100],otherPlayers:[{name:'Outside',stack:98}],payouts:[50,50,0]},policy={confirmed:true,players:[{turn:{check:1},river:{check:1}},{turn:{check:1},river:{check:1}}]};
+test('Tournament factory preserves source, copies nested inputs, labels prize units, and leaves cash builder unchanged',()=>{
+ const before=JSON.stringify(draft),r=buildTournamentTreeRequest(draft,field,policy);assert.equal(r.spot.gameMode,'tournament');assert.equal(r.analysisKind,'fixed-policy-icm');assert.equal(r.street,'river');assert.equal(JSON.stringify(draft),before);assert.notEqual(r.tournament,field);assert.notEqual(r.responsePolicy.players[0],policy.players[0]);assert.equal(buildSolverRequest(draft,{iterations:'100',target:'0'}).gameMode,'cash');
+});
+test('Tournament factory requires explicit field and policy confirmation',()=>{assert.throws(()=>buildTournamentTreeRequest(draft,{...field,fieldConfirmed:false},policy));assert.throws(()=>buildTournamentTreeRequest(draft,field,{...policy,confirmed:false}));});
+test('Tree prize metadata cannot be read as cash or closing-call metadata',()=>{const v=icmTreeValuation();assert.deepEqual(parseValuation(v),v);assert.equal(v.unit,'prize-units');assert.equal(v.expectedNet,undefined);assert.equal(v.expectedByAction,undefined);for(const change of [{unit:'chips'},{evaluation:'GTO'},{baseline:'turn-start-stack'}])assert.throws(()=>parseValuation({...v,...change}));});

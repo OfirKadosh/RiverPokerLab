@@ -20,9 +20,9 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | 12.2 | Compiled CFR traversal, reproducible profiling/benchmarks, larger bounded ranges and resource feedback | Delivered on step-12-2-solver-performance; not deployed |
 | 12.3 | Bounded two-street CFR, exact legal runouts, hidden-future-safe best responses and turn explorer | Delivered on step-12-3-turn-river-solver; not deployed |
 | 13.1 | Portable domain/solver/account DTOs, shared request/API/job client and explicit valuation metadata | Delivered on step-13-1-shared-core-api; not deployed |
-| 13.2 | Outcome-weighted turn/river tournament action comparison under defined responses | Planned |
-| 13.3 | Native shell with platform authentication/lifecycle adapters | Planned |
-| Combined beta update | Owner review of selected 13.x scope, candidate checks and approved deployment | See RELEASE_REVIEW.md |
+| 13.2 | Outcome-weighted turn/river tournament action comparison under fixed responses | Delivered on step-13-2-tournament-decisions; not deployed |
+| 14 (formerly 13.3) | Native shell with platform authentication/lifecycle adapters | Deferred until after the second beta |
+| Combined beta update | Owner review of stages through 13.2, candidate checks and approved deployment | See RELEASE_REVIEW.md |
 | Later | Tester feedback, account/history features and operational improvements | After the reviewed update |
 
 ## Personal trial and ongoing development
@@ -41,3 +41,7 @@ See `STEP_9_WEIGHTED_ACTION_RANGES.md` for the delivered semantics and supported
 ## ICM integration constraint
 
 Stage 8 evaluates ICM separately for each complete outcome stack vector, then weight the monetary results. Applying ICM to average ending stacks is not equivalent. See `STEP_8_ICM_DECISIONS.md` for implemented scope, elimination rules and outside-table assumptions. Fold branches, returned uncalled chips, side pots, elimination payouts and simultaneous eliminations require explicit semantics and tests. The stage 7 endpoint currently accepts only surviving positive stacks; this alone is not sufficient to value all decision branches.
+
+## Second beta scope
+
+Stage 13.2 completes the intended development scope before owner review for the second beta. The native shell is moved from 13.3 to stage 14 and does not block this release. See `STEP_13_2_TOURNAMENT_DECISIONS.md` and `RELEASE_REVIEW.md`.

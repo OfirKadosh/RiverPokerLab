@@ -112,4 +112,4 @@ Production-build Chromium review uses a memory-backed authenticated user (no Atl
 
 13.2 adds bounded turn/river tournament action valuation using complete field/payout inputs and outcome-weighted ICM against explicitly defined response policies. Full tournament equilibrium solving requires its own mathematical treatment; it is not enabled by the new result types.
 
-13.3 adds the native shell and platform-specific authentication/lifecycle integration. Review the selected scope before a combined beta update; see `RELEASE_REVIEW.md`. No rollout is automatic.
+Stage 14 (formerly 13.3) adds the native shell and platform-specific authentication/lifecycle integration after the second beta. Stages through 13.2 are reviewed for that beta; see `RELEASE_REVIEW.md`. No rollout is automatic.

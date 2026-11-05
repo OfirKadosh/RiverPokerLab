@@ -22,7 +22,7 @@ function percentages(value,label,maxCount){
 }
 function assertChipSolverValuation(input){
   if(input?.valuation!==undefined&&(!input.valuation||typeof input.valuation!=='object'||Array.isArray(input.valuation)||input.valuation.kind!=='chip-ev'||input.valuation.unit!==undefined&&input.valuation.unit!=='chips'))
-    fail('This strategy solver supports chip-ev only. Tournament ICM tree valuation is not implemented.','valuation');
+    fail('This strategy solver supports chip-ev only. Use the separate fixed-policy tournament comparison for ICM.','valuation');
 }
 function spot(draft,street){
   if(!draft||typeof draft!=='object'||!['turn','river'].includes(street))fail('Choose a river or turn spot.','street');
@@ -68,10 +68,17 @@ function icmActionValuation(call,fold){
   finite(call,'call');finite(fold,'fold');if(call<0||fold<0)fail('Expected prize values cannot be negative.','valuation');
   return {kind:'icm-prize-ev',unit:'prize-units',baseline:'absolute-expected-prize',model:'Malmuth-Harville ICM',expectedByAction:{call,fold},difference:{action:'call',reference:'fold',value:call-fold}};
 }
+function icmTreeValuation(){return {kind:'icm-tree-ev',unit:'prize-units',baseline:'absolute-expected-prize',model:'Malmuth-Harville ICM',evaluation:'fixed-response-policy'};}
+function buildTournamentTreeRequest(draft,tournament,responsePolicy,street='river'){
+  const input=spot(draft,street);
+  if(!tournament||tournament.fieldConfirmed!==true||!responsePolicy||responsePolicy.confirmed!==true)fail('Confirm the full tournament field and fixed response policies.','tournament');
+  return {analysisKind:'fixed-policy-icm',street,spot:{...input,gameMode:'tournament'},tournament:JSON.parse(JSON.stringify(tournament)),responsePolicy:JSON.parse(JSON.stringify(responsePolicy))};
+}
 function parseValuation(value){
   if(!value||typeof value!=='object')fail('Missing valuation metadata.','valuation');
+  if(value.kind==='icm-tree-ev'&&value.unit==='prize-units'&&value.baseline==='absolute-expected-prize'&&value.model==='Malmuth-Harville ICM'&&value.evaluation==='fixed-response-policy')return icmTreeValuation();
   if(value.kind==='chip-ev'&&value.unit==='chips'&&value.baseline===`${value.street}-start-stack`)return chipValuation(value.street,value.expectedNet,value.startingPot);
   if(value.kind==='icm-prize-ev'&&value.unit==='prize-units'&&value.baseline==='absolute-expected-prize'&&value.model==='Malmuth-Harville ICM')return icmActionValuation(value.expectedByAction?.call,value.expectedByAction?.fold);
   fail('Unsupported valuation kind, unit or baseline.','valuation');
 }
-module.exports={API_CONTRACT_VERSION,RANKS,SUITS,SYMBOLS,SUIT_NAMES,handSize,ContractError,normalizeCard,buildRiverTreeRequest,buildSolverRequest,assertChipSolverValuation,chipValuation,icmActionValuation,parseValuation};
+module.exports={buildTournamentTreeRequest,icmTreeValuation,API_CONTRACT_VERSION,RANKS,SUITS,SYMBOLS,SUIT_NAMES,handSize,ContractError,normalizeCard,buildRiverTreeRequest,buildSolverRequest,assertChipSolverValuation,chipValuation,icmActionValuation,parseValuation};

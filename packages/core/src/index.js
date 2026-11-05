@@ -19,3 +19,5 @@ exports.ApiError=client.ApiError;
 exports.createApiClient=client.createApiClient;
 exports.activeJob=jobs.activeJob;
 exports.RiverJobClient=jobs.RiverJobClient;
+exports.buildTournamentTreeRequest=contracts.buildTournamentTreeRequest;
+exports.icmTreeValuation=contracts.icmTreeValuation;

@@ -1,3 +1,5 @@
+import {TournamentTreePanel} from './TournamentTreePanel';
+import type {TournamentWorkspace} from '../lib/tournamentTree';
 import {buildRiverTreeRequest} from '@river-poker-lab/core';
 import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
@@ -18,7 +20,7 @@ function Branch({node,tree,selectedId,onSelect}:{node:RiverNode;tree:RiverTree;s
   return <li><div className={`river-tree-row ${selectedId===node.id?'selected':''}`}><button className="text-button" aria-current={selectedId===node.id?'step':undefined} onClick={()=>onSelect(node.id)}>{node.id===0?'Start of river':node.incoming}<small>{node.kind==='decision'?`${tree.input.players[node.actor!].name} to act`:node.outcome?.reason==='fold'?'Fold award':'Showdown'}</small></button></div>
     {node.actions.length>0&&<details open={node.id===0}><summary>{node.actions.length} configured actions</summary><ul>{node.actions.map(a=><Branch key={a.nodeId} node={tree.nodes[a.nodeId]} tree={tree} selectedId={selectedId} onSelect={onSelect}/>)}</ul></details>}</li>;
 }
-export function RiverTreePanel({api,state,setState,source,jobController,blocked=false}:{blocked?:boolean;jobController:RiverJobController;api:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;source:{seats:Seat[];board:(string|null)[];pot:number;gameType:GameType;gameMode:GameMode;inHand:boolean}}) {
+export function RiverTreePanel({icmState,setIcmState,api,state,setState,source,jobController,blocked=false}:{icmState:TournamentWorkspace;setIcmState:Dispatch<SetStateAction<TournamentWorkspace>>;blocked?:boolean;jobController:RiverJobController;api:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;source:{seats:Seat[];board:(string|null)[];pot:number;gameType:GameType;gameMode:GameMode;inHand:boolean}}) {
   const {draft}=state,key=JSON.stringify(draft),tree=state.response?.key===key?state.response.tree:null;
   const selected=tree?.nodes.find(n=>n.id===state.selected)||tree?.nodes[0];
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[notice,setNotice]=useState<string|null>(null);
@@ -100,6 +102,7 @@ export function RiverTreePanel({api,state,setState,source,jobController,blocked=
       <RiverSolverPanel controller={jobController} tree={tree} treeKey={key} state={state} setState={setState} building={loading||blocked}/>
       <details className="river-notes"><summary>Scope and accounting rules</summary><ul>{tree.notes.map(n=><li key={n}>{n}</li>)}</ul></details>
     </div>}
+    <TournamentTreePanel street="river" draft={draft} onSource={draft=>setState(s=>({...s,draft,selected:0,response:null,solution:null}))} state={icmState} setState={setIcmState} blocked={blocked||jobController.active}/>
     {picker!==null&&<CardPicker title={picker==='board'?'River board':`${draft.players[picker].name} · river hand`} cards={cards} activeIndex={active} usedCards={used} onActiveIndex={setActive} onPick={pick} onClose={()=>setPicker(null)}/>}
   </section>;
 }

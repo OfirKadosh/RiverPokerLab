@@ -1,3 +1,4 @@
+import {createTournamentWorkspace} from './lib/tournamentTree';
 import { LoadingIndicator, PageTransition } from "./components/LoadingIndicator";
 import { feedbackFetch as fetch } from "./lib/loading";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -88,6 +89,8 @@ function App() {
   const { page, navigate } = usePage();
   const pageInfo = PAGES.find((item) => item.id === page)!;
   const hasTable = ["spot", "hand", "analysis"].includes(page);
+  const [riverIcm,setRiverIcm]=useState(createTournamentWorkspace);
+  const [turnIcm,setTurnIcm]=useState(createTournamentWorkspace);
   const [riverWorkspace, setRiverWorkspace] = useState(createRiverWorkspace);
   const riverJob = useRiverJob(API, riverWorkspace, setRiverWorkspace);
   const [turnWorkspace,setTurnWorkspace]=useState(createTurnWorkspace);
@@ -1300,8 +1303,8 @@ function App() {
                 setState={setIcmWorkspace}
               />
             )}
-            {page === "turn" && <TurnTreePanel api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active} />}
-            {page === "river" && <RiverTreePanel blocked={turnJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
+            {page === "turn" && <TurnTreePanel icmState={turnIcm} setIcmState={setTurnIcm} api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active} />}
+            {page === "river" && <RiverTreePanel icmState={riverIcm} setIcmState={setRiverIcm} blocked={turnJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "account" && <AccountPanel />}
             {page === "history" && (
               <section className="sidebar-section history-section">
