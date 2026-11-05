@@ -147,7 +147,8 @@ function assessPolicy(game,policy,details=false) {
   }
   return {...result,nodePolicies};
 }
-function solveRiverTree(input) {
+function solveRiverTree(input, {onProgress = () => {}} = {}) {
+  onProgress({phase:"preparing",completedIterations:0,maxIterations:input?.solver?.maxIterations ?? 2000});
   const started=performance.now(), options=solverOptions(input),game=prepareRiverGame(input);
   const estimatedWork=(options.maxIterations+60)*game.deals.length*game.tree.nodes.length;
   if(estimatedWork>LIMITS.work)throw new ValidationError('Solver work budget exceeded. Reduce iterations, sizes or private ranges. No partial solution is returned.');
@@ -178,17 +179,24 @@ function solveRiverTree(input) {
   }
   const history=[];let completed=0,policy=current,assessment=assessPolicy(game,policy);
   const record=()=>history.push({iteration:completed,exploitability:assessment.exploitability,exploitabilityPotPct:assessment.exploitabilityPotPct,expectedNet:assessment.expectedNet});
-  record();const checkEvery=Math.max(10,Math.ceil(options.maxIterations/10));
+  record();
+  const report=(phase)=>onProgress({phase,completedIterations:completed,maxIterations:options.maxIterations,checkpoint:history.at(-1)});
+  report("solving");
+  const reportEvery=Math.max(1,Math.ceil(options.maxIterations/100));
+  const checkEvery=Math.max(10,Math.ceil(options.maxIterations/10));
   let targetReached=assessment.exploitabilityPotPct<=options.targetPotPct;
   while(completed<options.maxIterations&&!targetReached){
     updatePolicy();
     for(let d=0;d<game.deals.length;d++)traverse(0,d,1,1);
     completed++;
     if(completed%checkEvery===0||completed===options.maxIterations){
+      report("evaluating");
       policy=averagePolicy(game,sums);assessment=assessPolicy(game,policy);record();
       targetReached=assessment.exploitabilityPotPct<=options.targetPotPct;
     }
+    if(completed%reportEvery===0||targetReached||completed===options.maxIterations)report("solving");
   }
+  report("evaluating");
   // Initial uniform policy is retained only when it already meets the target at iteration zero.
   const analysis=assessPolicy(game,policy,true);
   const fingerprint=createHash('sha256').update(JSON.stringify(game.tree.input)).digest('hex');

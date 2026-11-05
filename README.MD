@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Stage 12.1 development branch
+
+See [STEP_12_1_BACKGROUND_SOLVER.md](STEP_12_1_BACKGROUND_SOLVER.md). Branch `step-12-1-background-solver` adds owner-scoped background river jobs, measured iteration/checkpoint progress, explicit cancellation and a banner that survives navigation. Network retries preserve the same task, and stale results cannot populate changed inputs. Results are temporarily retained in bounded process memory; server restarts can lose them. This complete branch includes stage 11 and is for local review, without a production deployment.
+
 ## Stage 11 development branch
 
 See [STEP_11_RIVER_SOLVER.md](STEP_11_RIVER_SOLVER.md). Branch `step-11-river-strategy-solver` adds CFR average strategies for the restricted heads-up Hold'em cash river tree, per-combo frequencies and action EV, a reached-range matrix, exact restricted best-response exploitability and honest convergence/stop reports. It includes stage 10 and all earlier development work. It is not merged or deployed; the live site stays on its current release.
@@ -112,18 +116,18 @@ The **Existing call amount** disclosure preserves the original request field. It
 
 ## Verification
 
-From `backend`:
+Install both backend and frontend dependencies, then run from the repository root:
 
 ```bash
 npm test
 ```
 
-The 370 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
+The backend and standalone frontend client tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
 
 The unchanged legacy smoke test is also available:
 
 ```bash
-node src/engine/test.js
+node backend/src/engine/test.js
 ```
 
 From `frontend`:
@@ -183,7 +187,7 @@ The navigation reorganization is delivered before stage 9. Historical stage guid
 
 ## Stage 9
 
-See [STEP_9_WEIGHTED_ACTION_RANGES.md](STEP_9_WEIGHTED_ACTION_RANGES.md) for all four delivered range sub-stages, notation, conditional frequency semantics, UI/API fields, verification and complete-file replacement instructions. Weighted ranges remain Hold'em-only; Omaha uses four specific cards. `npm test` now runs the full backend suite. Stage 9 itself did not deploy; the original personal trial was subsequently deployed. This development branch has not been deployed.
+See [STEP_9_WEIGHTED_ACTION_RANGES.md](STEP_9_WEIGHTED_ACTION_RANGES.md) for all four delivered range sub-stages, notation, conditional frequency semantics, UI/API fields, verification and complete-file replacement instructions. Weighted ranges remain Hold'em-only; Omaha uses four specific cards. `npm test` now runs the full backend suite and frontend job-client checks. Stage 9 itself did not deploy; the original personal trial was subsequently deployed. This development branch has not been deployed.
 
 ## Accounts before trial deployment
 

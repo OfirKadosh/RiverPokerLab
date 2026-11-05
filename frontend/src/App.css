@@ -2615,3 +2615,9 @@ select:disabled {
 .solver-matrix button:not(:disabled):not([style]){background:#b8b6a7}
 .solver-combos th small,.solver-combos td small{display:block;margin-top:4px;font-size:.7rem;font-weight:400}
 @media(max-width:600px){.solver-metrics{grid-template-columns:1fr}.solver-matrix{gap:2px}.solver-matrix button{padding:7px 0}.solver-combos{max-width:100%}}
+
+.river-job-status{margin:16px auto;padding:16px 20px;width:min(100%,1100px);border:1px solid #597e5e;border-radius:14px;background:#162d24;color:#e3eddc;box-sizing:border-box;min-width:0}
+.river-job-status p{margin:8px 0;font-size:.85rem;overflow-wrap:anywhere}
+.river-job-status progress{display:block;appearance:none;width:100%;height:9px;margin-top:14px;border:0;border-radius:5px;background:#30473a;overflow:hidden}
+.river-job-status progress::-webkit-progress-bar{background:#30473a}.river-job-status progress::-webkit-progress-value{background:#b9ed73}.river-job-status progress::-moz-progress-bar{background:#b9ed73}
+@media(max-width:600px){.river-job-status{padding:14px}.river-job-status .river-toolbar button{max-width:100%}}
