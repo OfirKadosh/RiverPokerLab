@@ -1,3 +1,4 @@
+const {API_CONTRACT_VERSION,chipValuation}=require('@river-poker-lab/core');
 const { createHash } = require('node:crypto');
 const { performance } = require('node:perf_hooks');
 const { ValidationError } = require('./errors');
@@ -184,7 +185,7 @@ function solveRiverTree(input, {onProgress = () => {}} = {}) {
   // Initial uniform policy is retained only when it already meets the target at iteration zero.
   const analysis=assessPolicy(game,policy,true);
   const fingerprint=createHash('sha256').update(JSON.stringify(game.tree.input)).digest('hex');
-  return {version:1,algorithm:'full-traversal-simultaneous-CFR',strategy:'reach-weighted-average',scope:game.tree.scope,
+  return {contractVersion:API_CONTRACT_VERSION,valuation:chipValuation('river',analysis.expectedNet,game.tree.input.potSize),version:1,algorithm:'full-traversal-simultaneous-CFR',strategy:'reach-weighted-average',scope:game.tree.scope,
     input:game.tree.input,fingerprint,options,iterationsCompleted:completed,stopReason:targetReached?'target-reached':'iteration-limit',
     targetReached,runtimeMs:Math.round(performance.now()-started),jointDeals:game.deals.length,informationSets:game.informationSets,
     estimatedWork,limits:LIMITS,metrics:analysis,history,

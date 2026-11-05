@@ -1,6 +1,6 @@
 # Next beta update — review before deployment
 
-The feature development through stage 12.3 is ready for combined review. This document does not authorize or perform a merge, release tag, environment change or deployment. The owner will inspect the cumulative result before approving rollout.
+The cumulative development through stage 13.1 is available for review. The updated plan continues with 13.2 tournament action valuation and 13.3 a native shell before reviewing the selected scope for a beta update. This document does not authorize or perform a merge, release tag, environment change or deployment. The owner will inspect the cumulative result before approving rollout.
 
 ## Included in the proposed update
 
@@ -9,9 +9,10 @@ The feature development through stage 12.3 is ready for combined review. This do
 - Restricted river tree, CFR average strategies, per-combo action EV, exact restricted best responses and measured convergence.
 - Background jobs with real progress, cancellation, ownership and bounded temporary retention.
 - Compiled river traversal, recorded before/after benchmarks, larger bounded ranges and resource feedback.
+- Portable shared contracts/API/job client, explicit valuation metadata and authenticated capability discovery. Native token support and tournament-tree valuation remain disabled.
 - Bounded turn-and-river strategy with all legal runouts, correct private-information/chance handling, and a separate navigation workspace.
 
-The source is cumulative on `step-12-3-turn-river-solver`. Draft PRs are stacked on their preceding development branches; they are not separate production deployments. Existing `main` and the Render deployment were not modified during these stages.
+The source is cumulative on `step-13-1-shared-core-api`. Draft PRs are stacked on their preceding development branches; they are not separate production deployments. Existing `main` and the Render deployment were not modified during these stages.
 
 ## Before approving the combined release
 
@@ -33,4 +34,4 @@ Background tasks/results live in bounded process memory and can be lost on resta
 
 ## Work after this update
 
-Stage 13 can cover feedback from beta testers, account/history improvements and operational features. Further solver streets, game types, broader trees and durable/shared job storage can be planned separately. They do not need to delay reviewing and releasing the current bounded feature set.
+Stage 13.2 covers bounded turn/river tournament action valuation under defined response policies. Stage 13.3 adds the native shell and platform authentication/lifecycle integration. The owner will choose the final beta scope before rollout. Tester feedback, broader solver games and durable/shared job storage can follow separately.

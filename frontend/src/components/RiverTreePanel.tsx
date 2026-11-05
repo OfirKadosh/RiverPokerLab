@@ -1,3 +1,4 @@
+import {buildRiverTreeRequest} from '@river-poker-lab/core';
 import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { feedbackFetch } from '../lib/loading';
@@ -13,12 +14,6 @@ import type { RiverWorkspace, RiverTree, RiverNode, RiverDraft, RiverPlayerDraft
 import type { Seat, GameType, GameMode } from '../lib/poker';
 const chips=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(Math.abs(n)<1e-9?0:n);
 const percent=(n:number)=>`${(n*100).toFixed(2)}%`;
-const fractions=(text:string,label:string)=>{
-  if(!text.trim())return [];
-  const parts=text.split(',').map(s=>s.trim());
-  if(parts.some(s=>!/^\d+(?:\.\d+)?$/.test(s)))throw Error(`${label}: enter positive percentages separated by commas.`);
-  return parts.map(Number).map(n=>n/100);
-};
 function Branch({node,tree,selectedId,onSelect}:{node:RiverNode;tree:RiverTree;selectedId:number;onSelect:(id:number)=>void}) {
   return <li><div className={`river-tree-row ${selectedId===node.id?'selected':''}`}><button className="text-button" aria-current={selectedId===node.id?'step':undefined} onClick={()=>onSelect(node.id)}>{node.id===0?'Start of river':node.incoming}<small>{node.kind==='decision'?`${tree.input.players[node.actor!].name} to act`:node.outcome?.reason==='fold'?'Fold award':'Showdown'}</small></button></div>
     {node.actions.length>0&&<details open={node.id===0}><summary>{node.actions.length} configured actions</summary><ul>{node.actions.map(a=><Branch key={a.nodeId} node={tree.nodes[a.nodeId]} tree={tree} selectedId={selectedId} onSelect={onSelect}/>)}</ul></details>}</li>;
@@ -37,8 +32,7 @@ export function RiverTreePanel({api,state,setState,source,jobController,blocked=
     request.current?.abort();const controller=new AbortController();request.current=controller;setLoading(true);setError(null);setNotice(null);
     try{
       const response=await feedbackFetch(`${api}/river-tree`,{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,
-        body:JSON.stringify({gameType:'holdem',gameMode:'cash',board:draft.board,potSize:Number(draft.pot),chipUnit:Number(draft.chipUnit),minBet:Number(draft.minBet),betSizes:fractions(draft.bets,'Bet sizes'),raiseSizes:fractions(draft.raises,'Raise sizes'),maxRaises:Number(draft.maxRaises),includeAllIn:draft.includeAllIn,
-          players:draft.players.map(p=>({name:p.name,stack:Number(p.stack),input:p.mode==='hand'?p.cards:{type:'range',...p.rangeDraft}}))})});
+        body:JSON.stringify(buildRiverTreeRequest(draft))});
       const data=await response.json();if(controller.signal.aborted)return;
       if(!response.ok||!data.success)throw Error(data.error||'Cannot build the river tree.');
       setState(s=>JSON.stringify(s.draft)===key?{...s,response:{key,tree:data.tree},selected:0}:s);

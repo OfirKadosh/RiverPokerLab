@@ -7,6 +7,8 @@ export default defineConfig(({ command, mode }) => {
     throw Error("UI preview cannot be built for deployment. Use the normal production build.");
   const preview = command === "serve" && mode === "ui-preview";
   return {
+    optimizeDeps: { include: ["@river-poker-lab/core"] },
+    build: { commonjsOptions: { include: [/packages\/core/, /node_modules/] } },
     plugins: [react(), ...(preview ? [{
       name: "local-ui-preview",
       configureServer(server: any) {

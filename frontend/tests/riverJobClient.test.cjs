@@ -1,11 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const fs=require('node:fs'),path=require('node:path');
-// Compile the standalone TypeScript service with the frontend's existing compiler.
-// No DOM, server credentials, React mount or network is involved in these race tests.
-const ts=require('../node_modules/typescript');
-const source=fs.readFileSync(path.join(__dirname,'../src/lib/riverJobClient.ts'),'utf8');
-const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
-const clientModule=import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const clientModule=Promise.resolve(require('@river-poker-lab/core'));
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn){for(let i=0;i<100;i++){if(fn())return;await pause(5);}throw Error('Client did not reach the expected state.');}
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};}

@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config(process.env.APP_ENV_FILE ? { path: process.env.APP_ENV_FILE } : {});
 
+const {API_CONTRACT_VERSION}=require("@river-poker-lab/core");
+const {capabilities}=require("./capabilities");
 const Spot = require("./models/Spot");
 const {
   ValidationError,
@@ -26,6 +28,7 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
   app.disable("x-powered-by");
   app.use((req, res, next) => {
     res.set("Cache-Control", "no-store");
+    res.set("X-River-Contract-Version",String(API_CONTRACT_VERSION));
     res.set("X-Content-Type-Options", "nosniff");
     res.set("Referrer-Policy", "same-origin");
     next();
@@ -46,6 +49,8 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
   app.use(express.json({ limit: "2mb" }));
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
+
+  app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
 
   function jobFailure(res,error){
     const status=error instanceof ValidationError?400:error instanceof JobError?error.status:500;

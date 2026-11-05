@@ -1,3 +1,4 @@
+import {buildSolverRequest} from '@river-poker-lab/core';
 import {useEffect,useState} from 'react';
 import type {Dispatch,SetStateAction} from 'react';
 import type {RiverTree,RiverWorkspace} from '../lib/riverTree';
@@ -11,11 +12,12 @@ function handClass(cards:string[]){const [a,b]=cards;return a[0]===b[0]?a[0]+b[0
 function publicPath(tree:RiverTree,id:number){const labels:string[]=[];let n=tree.nodes[id];while(n.parentId!==null){labels.unshift(n.incoming||'');n=tree.nodes[n.parentId];}return labels.join(' → ')||'Root';}
 export function RiverSolverPanel({controller,tree,treeKey,state,setState,building}:{controller:RiverJobController;tree:RiverTree;treeKey:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;building:boolean}){
   const key=JSON.stringify([treeKey,state.solver]),result=state.solution?.key===key?state.solution.result:null;
+  const [requestError,setRequestError]=useState<string|null>(null);
   const [filter,setFilter]=useState<string|null>(null);
-  useEffect(()=>setFilter(null),[key,state.selected]);
+  useEffect(()=>{setFilter(null);setRequestError(null);},[key,state.selected]);
   const node=tree.nodes[state.selected],policy=result?.metrics.nodePolicies.find(n=>n.nodeId===node?.id);
   function settings(field:'iterations'|'target',value:string){setState(s=>({...s,solver:{...s.solver,[field]:value},solution:null}));}
-  function solve(){controller.start({...tree.input,solver:{maxIterations:Number(state.solver.iterations),targetPotPct:Number(state.solver.target)}});}
+  function solve(){setRequestError(null);try{controller.start(buildSolverRequest(state.draft,state.solver,'river'));}catch(e){setRequestError(e instanceof Error?e.message:'Invalid solver input.');}}
   const limits=tree.solverLimits||{jointDeals:1000,informationSets:4000,work:30000000,maxIterations:20000,dealNodeCells:500000,typedArrayBytes:8*1024*1024};
   const iterations=Number(state.solver.iterations),cells=tree.chance.jointDeals*tree.summary.nodes;
   const estimatedWork=Number.isFinite(iterations)&&iterations>0?(iterations+60)*cells:0;
@@ -30,7 +32,7 @@ export function RiverSolverPanel({controller,tree,treeKey,state,setState,buildin
     <p className="field-help">Up to {num(limits.jointDeals)} legal joint deals, {num(limits.informationSets)} information sets and {num(limits.work/1000000)} million deal × node × iteration work units. Narrow ranges or reduce iterations/sizes when the budget is exceeded. Results stay in this session.</p>
     <div className={`solver-budget ${overBudget?'over-budget':''}`} aria-live="polite"><strong>Estimated workload: {num(estimatedWork)} / {num(limits.work)}</strong><p>{tree.chance.jointDeals} legal deals × {tree.summary.nodes} public nodes · {estimatedWork>0?(estimatedWork/limits.work*100).toFixed(1):'0'}% of the work budget.</p>{overBudget&&<p>{tree.chance.jointDeals>limits.jointDeals||cells>limits.dealNodeCells||suggestedIterations<100?'Reduce private ranges or configured sizes to fit this tree.':`Try at most ${suggestedIterations.toLocaleString('en-US')} iterations, or reduce ranges/sizes.`} The server also checks information-set and memory limits.</p>}</div>
     <button className="primary-button" disabled={controller.active||building||overBudget} onClick={solve}>{controller.active?'Calculation in progress…':'Solve river strategy'}</button>
-    {controller.error&&<p className="validation-note" role="alert">{controller.error}</p>}
+    {(controller.error||requestError)&&<p className="validation-note" role="alert">{controller.error||requestError}</p>}
     <p className="field-help">You can switch pages while solving. Editing river inputs or solver settings cancels the previous task. Tasks are temporary: server restarts can interrupt them, and retained results expire after 10 minutes or earlier under memory pressure.</p>
     {result&&<div className="solver-report">
       <p role="status" className={result.targetReached?'auth-notice':'validation-note'}>{result.targetReached?'Target reached within this tree.':'Iteration limit reached; target NOT reached.'} {result.iterationsCompleted.toLocaleString('en-US')} iterations · {result.runtimeMs} ms · {result.jointDeals} joint deals · {result.informationSets} information sets.</p>

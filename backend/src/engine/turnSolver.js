@@ -1,3 +1,4 @@
+const {API_CONTRACT_VERSION,chipValuation}=require('@river-poker-lab/core');
 const {performance}=require('node:perf_hooks');
 const {createHash}=require('node:crypto');
 const {ValidationError}=require('./errors');
@@ -164,7 +165,7 @@ function solveTurnTree(input,{onProgress=()=>{}}={}){
   while(completed<options.maxIterations&&!targetReached){turnStep(game);completed++;if(completed%checkEvery===0||completed===options.maxIterations){report('evaluating');policy=averageTurnPolicy(game);assessment=assessTurnPolicy(game,policy);record();targetReached=assessment.exploitabilityPotPct<=options.targetPotPct;}if(completed%Math.max(1,Math.ceil(options.maxIterations/100))===0||targetReached)report('solving');}
   report('evaluating');const metrics=assessTurnPolicy(game,policy,true);
   const nodes=game.nodes.map(n=>({id:n.id,parentId:n.parentId,incoming:n.incoming,kind:n.kind,actor:n.actor,street:n.street,board:n.board,pot:n.pot,remaining:n.remaining,contributions:n.contributions,toCall:n.toCall,actions:n.actions,...(n.outcome?{outcome:n.outcome}:{})}));
-  return {version:1,algorithm:'full-traversal-simultaneous-CFR',strategy:'reach-weighted-average',scope:'heads-up-turn-river-holdem-cash',input:game.input,
+  return {contractVersion:API_CONTRACT_VERSION,valuation:chipValuation('turn',metrics.expectedNet,game.P),version:1,algorithm:'full-traversal-simultaneous-CFR',strategy:'reach-weighted-average',scope:'heads-up-turn-river-holdem-cash',input:game.input,
     fingerprint:createHash('sha256').update(JSON.stringify(game.input)).digest('hex'),options,iterationsCompleted:completed,targetReached,stopReason:targetReached?'target-reached':'iteration-limit',runtimeMs:Math.round(performance.now()-started),
     jointDeals:game.scenarios.length,privateDeals:game.privateDeals,informationSets:game.informationSets,estimatedWork,limits:LIMITS,metrics,history,
     turnTree:{input:game.input,nodes,privateDeals:game.privateDeals,scenarios:game.scenarios.length,nodeDealVisits:game.visits,limits:LIMITS},

@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Stage 13.1 development branch
+
+See [STEP_13_1_SHARED_CORE.md](STEP_13_1_SHARED_CORE.md). Branch `step-13-1-shared-core-api` adds a portable private core package for DTOs, request builders, API transport and job lifecycle. The web and backend consume it now; native-style contracts compile without DOM types. New metadata distinguishes Chip EV from the existing ICM prize comparison, and authenticated capability discovery describes actual support. Native screens/token authentication and tournament tree valuation remain subsequent work. This cumulative branch has not been deployed.
+
 ## Stage 12.3 development branch
 
 See [STEP_12_3_TURN_RIVER.md](STEP_12_3_TURN_RIVER.md). Branch `step-12-3-turn-river-solver` adds a separate Turn tree workspace: bounded heads-up Hold'em cash turn/river CFR, every legal river, hidden-future-safe best responses, both-street EV and public-card posterior exploration. It includes all previous stages and has not been deployed. After owner review, the next step is the combined beta update described in [RELEASE_REVIEW.md](RELEASE_REVIEW.md).
