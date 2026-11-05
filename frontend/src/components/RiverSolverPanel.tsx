@@ -1,8 +1,7 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useState} from 'react';
 import type {Dispatch,SetStateAction} from 'react';
 import type {RiverTree,RiverWorkspace} from '../lib/riverTree';
-import {feedbackFetch} from '../lib/loading';
-import {LoadingIndicator} from './LoadingIndicator';
+import type {RiverJobController} from '../hooks/useRiverJob';
 const num=(n:number)=>new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(n);
 const pct=(n:number|null)=>n===null?'—':`${(n*100).toFixed(2)}%`;
 const money=(n:number|null)=>n===null?'—':num(n);
@@ -10,25 +9,13 @@ const colors=['#8ab4fa','#64d98b','#f5c96a','#be97f5','#ef9f87','#abb2bd'];
 const ranks='AKQJT98765432';
 function handClass(cards:string[]){const [a,b]=cards;return a[0]===b[0]?a[0]+b[0]:ranks.indexOf(a[0])<ranks.indexOf(b[0])?a[0]+b[0]+(a[1]===b[1]?'s':'o'):b[0]+a[0]+(a[1]===b[1]?'s':'o');}
 function publicPath(tree:RiverTree,id:number){const labels:string[]=[];let n=tree.nodes[id];while(n.parentId!==null){labels.unshift(n.incoming||'');n=tree.nodes[n.parentId];}return labels.join(' → ')||'Root';}
-export function RiverSolverPanel({api,tree,treeKey,state,setState,building}:{api:string;tree:RiverTree;treeKey:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;building:boolean}){
+export function RiverSolverPanel({controller,tree,treeKey,state,setState,building}:{controller:RiverJobController;tree:RiverTree;treeKey:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;building:boolean}){
   const key=JSON.stringify([treeKey,state.solver]),result=state.solution?.key===key?state.solution.result:null;
-  const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[filter,setFilter]=useState<string|null>(null);
-  const request=useRef<AbortController|null>(null);
-  useEffect(()=>{request.current?.abort();setLoading(false);setError(null);setFilter(null);return()=>request.current?.abort();},[key,tree]);
-  useEffect(()=>setFilter(null),[state.selected]);
+  const [filter,setFilter]=useState<string|null>(null);
+  useEffect(()=>setFilter(null),[key,state.selected]);
   const node=tree.nodes[state.selected],policy=result?.metrics.nodePolicies.find(n=>n.nodeId===node?.id);
   function settings(field:'iterations'|'target',value:string){setState(s=>({...s,solver:{...s.solver,[field]:value},solution:null}));}
-  async function solve(){
-    request.current?.abort();const controller=new AbortController();request.current=controller;setLoading(true);setError(null);
-    try{
-      if(!state.solver.iterations.trim()||!state.solver.target.trim())throw Error('Enter both the iteration limit and exploitability target.');
-      const response=await feedbackFetch(`${api}/river-solve`,{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({...tree.input,solver:{maxIterations:Number(state.solver.iterations),targetPotPct:Number(state.solver.target)}})});
-      const data=await response.json();if(controller.signal.aborted)return;
-      if(!response.ok||!data.success)throw Error(data.error||'Cannot solve this river tree.');
-      setState(s=>JSON.stringify([JSON.stringify(s.draft),s.solver])===key?{...s,solution:{key,result:data.solution}}:s);
-    }catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Cannot reach the solver.');}
-    finally{if(!controller.signal.aborted)setLoading(false);}
-  }
+  function solve(){controller.start({...tree.input,solver:{maxIterations:Number(state.solver.iterations),targetPotPct:Number(state.solver.target)}});}
   const maxY=result?Math.max(...result.history.map(h=>h.exploitabilityPotPct),.001):1;
   const points=result?.history.map(h=>`${10+580*h.iteration/Math.max(result.iterationsCompleted,1)},${140-125*h.exploitabilityPotPct/maxY}`).join(' ');
   return <section className="river-solver" aria-label="River strategy solver">
@@ -36,9 +23,9 @@ export function RiverSolverPanel({api,tree,treeKey,state,setState,building}:{api
     <p className="inline-note">Solve both players' private-hand strategies using CFR. Quality is measured by exact best responses in this tree. Other bet sizes, turn play, Omaha, tournaments and full-game GTO are outside this solution.</p>
     <div className="river-settings"><label className="field-label">ITERATION LIMIT<input aria-label="Solver iteration limit" type="number" min="100" max="20000" step="100" value={state.solver.iterations} onChange={e=>settings('iterations',e.target.value)}/></label><label className="field-label">EXPLOITABILITY TARGET · % STARTING POT<input aria-label="Solver exploitability target" type="number" min="0" max="5" step="0.1" value={state.solver.target} onChange={e=>settings('target',e.target.value)}/></label></div>
     <p className="field-help">Up to 1,000 legal joint deals, 4,000 information sets and 30 million deal × node × iteration work units. Narrow ranges or reduce iterations/sizes when the budget is exceeded. Results stay in this session.</p>
-    <button className="primary-button" disabled={loading||building} onClick={()=>void solve()}>{loading?<LoadingIndicator compact label="Solving and checking best responses…"/>:'Solve river strategy'}</button>
-    {loading&&<p role="status" className="field-help">The solver is running in a CPU worker. The final report includes actual completed iterations; there is no live percentage estimate.</p>}
-    {error&&<p className="validation-note" role="alert">{error}</p>}
+    <button className="primary-button" disabled={controller.active||building} onClick={solve}>{controller.active?'Calculation in progress…':'Solve river strategy'}</button>
+    {controller.error&&<p className="validation-note" role="alert">{controller.error}</p>}
+    <p className="field-help">You can switch pages while solving. Editing river inputs or solver settings cancels the previous task. Tasks are temporary: server restarts can interrupt them, and retained results expire after 10 minutes or earlier under memory pressure.</p>
     {result&&<div className="solver-report">
       <p role="status" className={result.targetReached?'auth-notice':'validation-note'}>{result.targetReached?'Target reached within this tree.':'Iteration limit reached; target NOT reached.'} {result.iterationsCompleted.toLocaleString('en-US')} iterations · {result.runtimeMs} ms · {result.jointDeals} joint deals · {result.informationSets} information sets.</p>
       <div className="solver-metrics"><div><small>EXPLOITABILITY</small><strong>{num(result.metrics.exploitability)} chips</strong><span>{result.metrics.exploitabilityPotPct.toFixed(4)}% of starting pot</span></div><div><small>NASHCONV · SUM OF DEVIATION GAINS</small><strong>{num(result.metrics.nashConv)} chips</strong><span>Exploitability = NashConv / 2</span></div></div>

@@ -2,6 +2,8 @@
 
 Branch: `step-11-river-strategy-solver`, based on stage 10 at `c66b2d4b67b7d0eaf4a3593c69d9a71c1d4af57f`. This cumulative source includes the existing account, preview, loading, equity, ranges, ICM and river-tree features. It is for local review; it does not deploy or modify production data.
 
+Current stage 12.1 branches include [background jobs](STEP_12_1_BACKGROUND_SOLVER.md): navigation preserves the calculation, while changing river inputs still cancels it. The instructions below describe the original stage-11 synchronous flow.
+
 ## Run and review
 
 ```bash

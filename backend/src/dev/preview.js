@@ -22,7 +22,8 @@ function createPreviewApp(env = process.env) {
   app.use(express.json({limit:'2mb'}));
   app.get('/api/spots', (req,res) => res.json({success:true,spots:[],preview:true}));
   app.use((req,res,next) => {
-    const permitted = req.method === 'GET' && ['/api/auth/me','/api/auth/config'].includes(req.path) ||
+    const localJob = req.path === '/api/river-jobs' && ['POST','GET'].includes(req.method) || /^\/api\/river-jobs\/[a-zA-Z0-9-]+$/.test(req.path) && ['GET','DELETE'].includes(req.method);
+    const permitted = localJob || req.method === 'GET' && ['/api/auth/me','/api/auth/config'].includes(req.path) ||
       req.method === 'POST' && ['/api/calculate','/api/icm','/api/analyze-decision','/api/ranges/preview','/api/river-tree','/api/river-solve'].includes(req.path);
     if (!permitted || (req.path === '/api/calculate' && req.body?.saveSpot !== undefined && req.body.saveSpot !== false))
       return res.status(403).json({success:false,error:'Saving and account actions are disabled in UI preview. Use authenticated development for persistence.'});

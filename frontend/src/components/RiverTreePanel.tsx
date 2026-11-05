@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { feedbackFetch } from '../lib/loading';
+import type { RiverJobController } from '../hooks/useRiverJob';
+import { RiverJobStatus } from './RiverJobStatus';
 import { RiverSolverPanel } from './RiverSolverPanel';
 import { Card } from './Card';
 import { CardPicker } from './CardPicker';
@@ -21,7 +23,7 @@ function Branch({node,tree,selectedId,onSelect}:{node:RiverNode;tree:RiverTree;s
   return <li><div className={`river-tree-row ${selectedId===node.id?'selected':''}`}><button className="text-button" aria-current={selectedId===node.id?'step':undefined} onClick={()=>onSelect(node.id)}>{node.id===0?'Start of river':node.incoming}<small>{node.kind==='decision'?`${tree.input.players[node.actor!].name} to act`:node.outcome?.reason==='fold'?'Fold award':'Showdown'}</small></button></div>
     {node.actions.length>0&&<details open={node.id===0}><summary>{node.actions.length} configured actions</summary><ul>{node.actions.map(a=><Branch key={a.nodeId} node={tree.nodes[a.nodeId]} tree={tree} selectedId={selectedId} onSelect={onSelect}/>)}</ul></details>}</li>;
 }
-export function RiverTreePanel({api,state,setState,source}:{api:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;source:{seats:Seat[];board:(string|null)[];pot:number;gameType:GameType;gameMode:GameMode;inHand:boolean}}) {
+export function RiverTreePanel({api,state,setState,source,jobController}:{jobController:RiverJobController;api:string;state:RiverWorkspace;setState:Dispatch<SetStateAction<RiverWorkspace>>;source:{seats:Seat[];board:(string|null)[];pot:number;gameType:GameType;gameMode:GameMode;inHand:boolean}}) {
   const {draft}=state,key=JSON.stringify(draft),tree=state.response?.key===key?state.response.tree:null;
   const selected=tree?.nodes.find(n=>n.id===state.selected)||tree?.nodes[0];
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null),[notice,setNotice]=useState<string|null>(null);
@@ -88,6 +90,7 @@ export function RiverTreePanel({api,state,setState,source}:{api:string;state:Riv
     <label className="icm-confirm"><input type="checkbox" checked={draft.includeAllIn} onChange={e=>update({includeAllIn:e.target.checked})}/>Include effective-stack all-in</label>
     <p className="field-help">Up to 3 bet sizes and 2 raise sizes. Raise increment = percentage × pot after calling. Targets round to the nearest chip; oversized targets merge at the effective stack. Small illegal sizes are omitted. Range text and action-prior drafts are read when building.</p>
     <button className="primary-button full-width" disabled={loading} onClick={()=>void build()}>{loading?<LoadingIndicator label="Building river tree…" compact/>:'Build river tree'}</button>
+    {jobController.job&&<RiverJobStatus controller={jobController}/>}
     {error&&<p role="alert" className="validation-note">{error}</p>}{notice&&<p role="status" className="auth-notice">{notice}</p>}
     {!tree&&!loading&&state.response&&<p className="inline-note">Inputs changed. Rebuild to see matching results.</p>}
     {tree&&selected&&<div className="river-results">
@@ -100,7 +103,7 @@ export function RiverTreePanel({api,state,setState,source}:{api:string;state:Riv
           <p>Pot before refunds: {chips(selected.pot)}</p><p className="field-help">Behind: {selected.remaining.map((n,i)=>`${tree.input.players[i].name} ${chips(n)}`).join(' · ')}</p>
           {selected.kind==='decision'?<><p>To call: {chips(selected.toCall||0)}</p>{selected.minRaiseTo!==null&&selected.minRaiseTo!==undefined&&<p className="field-help">Minimum full raise to {chips(selected.minRaiseTo)}; effective cap {chips(selected.effectiveCap||0)}.</p>}<div className="river-actions">{selected.actions.map(a=><button key={a.nodeId} className="secondary-button" onClick={()=>select(a.nodeId)}>{a.label}</button>)}</div>{selected.omitted?.map((text,i)=><p className="field-help" key={i}>{text}</p>)}<p className="field-help">This explorer shows unchanged-prior branch payoffs. Solved strategy and action EV appear below.</p></>:selected.outcome&&<><p>Contested pot: {chips(selected.outcome.contestPot)}</p><div className="river-outcome-wrap"><table className="river-outcome"><caption>Conditional payoffs · river-start stack baseline</caption><thead><tr><th>Player</th><th>Invested</th><th>Refund</th><th>Award</th><th>Ending</th><th>Net</th></tr></thead><tbody>{tree.input.players.map((p,i)=><tr key={i}><th>{p.name}</th><td>{chips(selected.contributions[i])}</td><td>{chips(selected.outcome!.refunds[i])}</td><td>{chips(selected.outcome!.expectedAwards[i])}</td><td>{chips(selected.outcome!.endingStacks[i])}</td><td>{chips(selected.outcome!.netFromRiver[i])}</td></tr>)}</tbody></table></div><p className="field-help">{selected.outcome.interpretation} Net values sum to the pot that existed before river betting. Fractional awards may be expectations over weighted hands.</p></>}
         </section></div>
-      <RiverSolverPanel api={api} tree={tree} treeKey={key} state={state} setState={setState} building={loading}/>
+      <RiverSolverPanel controller={jobController} tree={tree} treeKey={key} state={state} setState={setState} building={loading}/>
       <details className="river-notes"><summary>Scope and accounting rules</summary><ul>{tree.notes.map(n=><li key={n}>{n}</li>)}</ul></details>
     </div>}
     {picker!==null&&<CardPicker title={picker==='board'?'River board':`${draft.players[picker].name} · river hand`} cards={cards} activeIndex={active} usedCards={used} onActiveIndex={setActive} onPick={pick} onClose={()=>setPicker(null)}/>}

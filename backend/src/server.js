@@ -20,7 +20,8 @@ const { validateTournament } = require("./engine/tournament");
 const { createAuth, authConfig } = require("./auth");
 const { frontendDirectory, serveFrontend } = require("./hosting");
 const { computeForRequest, ComputeError, pool } = require("./compute/pool");
-function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest } = {}) {
+const { SolverJobs, JobError } = require("./compute/solverJobs");
+function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -34,7 +35,7 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
       origin: (origin, callback) =>
         callback(null, !origin || !!auth.config?.origins.includes(origin)),
       credentials: true,
-      methods: ["GET", "POST", "OPTIONS"],
+      methods: ["GET", "POST", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "X-Requested-With"],
     }),
   );
@@ -45,6 +46,25 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
   app.use(express.json({ limit: "2mb" }));
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
+
+  function jobFailure(res,error){
+    const status=error instanceof ValidationError?400:error instanceof JobError?error.status:500;
+    if(status===503)res.set("Retry-After","1");
+    res.status(status).json({success:false,error:status===500?"Cannot access the calculation service.":error.message});
+  }
+  app.post("/api/river-jobs",(req,res)=>{
+    try{res.status(202).json({success:true,job:jobs.create(req.user.id,req.body?.input,req.body?.requestId)});}
+    catch(error){jobFailure(res,error);}
+  });
+  app.get("/api/river-jobs",(req,res)=>{
+    try{res.json({success:true,jobs:jobs.list(req.user.id)});}catch(error){jobFailure(res,error);}
+  });
+  app.get("/api/river-jobs/:id",(req,res)=>{
+    try{res.json({success:true,job:jobs.get(req.user.id,req.params.id)});}catch(error){jobFailure(res,error);}
+  });
+  app.delete("/api/river-jobs/:id",(req,res)=>{
+    try{res.json({success:true,job:jobs.cancel(req.user.id,req.params.id)});}catch(error){jobFailure(res,error);}
+  });
 
   // Restricted stage-10 river tree; expensive enumeration stays in the CPU worker.
   app.post("/api/river-tree", async (req, res) => {

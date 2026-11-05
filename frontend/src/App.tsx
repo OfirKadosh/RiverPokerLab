@@ -27,6 +27,8 @@ import type {
 import { AccountPanel, useAuth } from "./components/AuthProvider";
 import "./App.css";
 
+import { useRiverJob } from "./hooks/useRiverJob";
+import { RiverJobStatus } from "./components/RiverJobStatus";
 import { createRiverWorkspace } from "./lib/riverTree";
 import { PAGES, usePage } from "./lib/navigation";
 import {
@@ -80,6 +82,7 @@ function App() {
   const pageInfo = PAGES.find((item) => item.id === page)!;
   const hasTable = ["spot", "hand", "analysis"].includes(page);
   const [riverWorkspace, setRiverWorkspace] = useState(createRiverWorkspace);
+  const riverJob = useRiverJob(API, riverWorkspace, setRiverWorkspace);
   const [icmWorkspace, setIcmWorkspace] = useState(createIcmWorkspace);
   const [tournamentDraft, setTournamentDraft] = useState(createTournamentDraft);
   const [rangeDrafts, setRangeDrafts] = useState<Record<number, RangeDraft>>(
@@ -683,6 +686,7 @@ function App() {
           </a>
         ))}
       </nav>
+      {riverJob.job && page !== "river" && <RiverJobStatus controller={riverJob} onOpen={()=>navigate("river")} />}
       <main
         id="main-content"
         tabIndex={-1}
@@ -1286,7 +1290,7 @@ function App() {
                 setState={setIcmWorkspace}
               />
             )}
-            {page === "river" && <RiverTreePanel api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
+            {page === "river" && <RiverTreePanel jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "account" && <AccountPanel />}
             {page === "history" && (
               <section className="sidebar-section history-section">
