@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Stage 12.2 development branch
+
+See [STEP_12_2_SOLVER_PERFORMANCE.md](STEP_12_2_SOLVER_PERFORMANCE.md). Branch `step-12-2-solver-performance` compiles the river CFR traversal into reusable buffers, preserves the mathematical solution, and adds reproducible before/after benchmarks. Bounded support increases to 4,000 legal joint deals and 60 million estimated work units, with new memory/cell checks, a live work estimate and a larger-range example. This cumulative branch includes background jobs and is for local review without deployment.
+
 ## Stage 12.1 development branch
 
 See [STEP_12_1_BACKGROUND_SOLVER.md](STEP_12_1_BACKGROUND_SOLVER.md). Branch `step-12-1-background-solver` adds owner-scoped background river jobs, measured iteration/checkpoint progress, explicit cancellation and a banner that survives navigation. Network retries preserve the same task, and stale results cannot populate changed inputs. Results are temporarily retained in bounded process memory; server restarts can lose them. This complete branch includes stage 11 and is for local review, without a production deployment.

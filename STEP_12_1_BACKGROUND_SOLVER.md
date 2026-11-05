@@ -2,6 +2,8 @@
 
 Branch: `step-12-1-background-solver`, based on stage 11 at `c0c769617a06164a78ab053ac41ca7c0c3362674`. This is complete cumulative source for local review. It includes all earlier development work. No production merge, deployment or database change is part of this stage.
 
+Current stage 12.2 branches include [compiled traversal and revised solver budgets](STEP_12_2_SOLVER_PERFORMANCE.md). Job lifecycle, authentication and temporary retention described here remain applicable.
+
 ## Run
 
 ```bash
@@ -86,7 +88,7 @@ Chromium checks use the real local-preview server and a 456-deal job. They verif
 
 ## Next stages
 
-- 12.2: profile and optimize solving before increasing private-range/work limits.
+- 12.2: delivered on its own cumulative branch; see STEP_12_2_SOLVER_PERFORMANCE.md.
 - 12.3: extend to a bounded turn-and-river game with correct chance nodes, private information and convergence checks.
 
 Keep this branch and its draft pull request separate for review before a combined release. Do not deploy automatically per stage.

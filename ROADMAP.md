@@ -17,13 +17,13 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | 10 | Restricted heads-up Hold'em cash river tree, exact weighted terminal payoffs and explorer | Delivered on step-10-river-decision-tree; not deployed |
 | 11 | CFR average strategies, combo/action EV, reached-range matrix and exact restricted exploitability | Delivered on step-11-river-strategy-solver; not deployed |
 | 12.1 | Owner-scoped background river jobs, measured progress, cancel and navigation continuity | Delivered on step-12-1-background-solver; not deployed |
-| 12.2 | Profiling, solver performance and larger ranges within measured resource bounds | Planned |
+| 12.2 | Compiled CFR traversal, reproducible profiling/benchmarks, larger bounded ranges and resource feedback | Delivered on step-12-2-solver-performance; not deployed |
 | 12.3 | Bounded turn-and-river game with chance nodes and convergence checks | Planned |
 | 13 | Broader production access, account/history features and operational improvements | Planned |
 
 ## Personal trial and ongoing development
 
-The personal trial is live at https://river-poker-lab.onrender.com/ and the user confirmed registration, login and history work. Ongoing improvements are developed on a separate branch, with no merge or live deployment as part of this stabilization step. See BETA_STABILIZATION.md for the current update, tests and review/rollout workflow. Registration remains open with manual activation. Stage 10 now adds a restricted heads-up river tree on its own branch. Stage 11 now adds restricted-tree strategy solving on its own cumulative review branch; see STEP_11_RIVER_SOLVER.md. Stage 12.1 adds temporary background river jobs and progress on its cumulative review branch; see STEP_12_1_BACKGROUND_SOLVER.md. Features will be reviewed together before a combined release; no per-stage deployment is automatic.
+The personal trial is live at https://river-poker-lab.onrender.com/ and the user confirmed registration, login and history work. Ongoing improvements are developed on a separate branch, with no merge or live deployment as part of this stabilization step. See BETA_STABILIZATION.md for the current update, tests and review/rollout workflow. Registration remains open with manual activation. Stage 10 now adds a restricted heads-up river tree on its own branch. Stage 11 now adds restricted-tree strategy solving on its own cumulative review branch; see STEP_11_RIVER_SOLVER.md. Stage 12.1 adds temporary background river jobs and progress on its cumulative review branch; see STEP_12_1_BACKGROUND_SOLVER.md. Stage 12.2 adds compiled traversal and measured capacity increases; see STEP_12_2_SOLVER_PERFORMANCE.md. Features will be reviewed together before a combined release; no per-stage deployment is automatic.
 
 ## Stage 9 delivered parts
 

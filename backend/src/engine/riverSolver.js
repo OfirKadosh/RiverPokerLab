@@ -3,7 +3,8 @@ const { performance } = require('node:perf_hooks');
 const { ValidationError } = require('./errors');
 const { cardToString } = require('./card');
 const { validateRiverInput, prepareRiverDeals, buildRiverTreeFromModel, LIMITS: TREE_LIMITS } = require('./riverTree');
-const LIMITS = Object.freeze({ jointDeals:1000, informationSets:4000, work:30000000, maxIterations:20000 });
+const { createCfrKernel } = require('./riverKernel');
+const { LIMITS, riverResourcePlan, enforceRiverBudget } = require('./riverBudget');
 function solverOptions(input) {
   if(!input||typeof input!=='object'||Array.isArray(input))throw new ValidationError('River input must be an object.');
   const options=input.solver===undefined?{}:input.solver;
@@ -38,6 +39,8 @@ function prepareRiverGame(input) {
     return {count,actions};
   });
   if(informationSets>LIMITS.informationSets)throw new ValidationError('Solver information-set limit exceeded. Narrow the private ranges.');
+  const plan=riverResourcePlan(tree,hands,deals,layout,0);
+  enforceRiverBudget(plan,{checkWork:false});
   const utilities=tree.nodes.map(node=>{
     if(node.kind!=='terminal')return null;
     return Float64Array.from(deals,d=>{
@@ -150,34 +153,14 @@ function assessPolicy(game,policy,details=false) {
 function solveRiverTree(input, {onProgress = () => {}} = {}) {
   onProgress({phase:"preparing",completedIterations:0,maxIterations:input?.solver?.maxIterations ?? 2000});
   const started=performance.now(), options=solverOptions(input),game=prepareRiverGame(input);
-  const estimatedWork=(options.maxIterations+60)*game.deals.length*game.tree.nodes.length;
-  if(estimatedWork>LIMITS.work)throw new ValidationError('Solver work budget exceeded. Reduce iterations, sizes or private ranges. No partial solution is returned.');
+  const plan=riverResourcePlan(game.tree,game.hands,game.deals,game.layout,options.maxIterations);
+  enforceRiverBudget(plan);const estimatedWork=plan.estimatedWork;
   const regrets=game.layout.map(l=>l?new Float64Array(l.count*l.actions):null),sums=game.layout.map(l=>l?new Float64Array(l.count*l.actions):null);
-  const current=uniformPolicy(game),scratch=new Float64Array(game.tree.nodes.length);
-  function updatePolicy(){
-    game.layout.forEach((l,id)=>{if(!l)return;for(let h=0;h<l.count;h++){
-      const offset=h*l.actions;let positive=0;
-      for(let a=0;a<l.actions;a++)positive+=Math.max(0,regrets[id][offset+a]);
-      for(let a=0;a<l.actions;a++)current[id][offset+a]=positive>0?Math.max(0,regrets[id][offset+a])/positive:1/l.actions;
-    }});
-  }
-  function traverse(id,d,r0,r1){
-    const node=game.tree.nodes[id];
-    if(node.kind==='terminal')return scratch[id]=game.utilities[id][d];
-    const p=node.actor,A=node.actions.length,offset=game.deals[d].hands[p]*A;
-    let value=0;
-    for(let a=0;a<A;a++){
-      const probability=current[id][offset+a];
-      value+=probability*traverse(node.actions[a].nodeId,d,p===0?r0*probability:r0,p===1?r1*probability:r1);
-    }
-    const q=game.deals[d].probability,other=p===0?r1:r0,own=p===0?r0:r1,sign=p===0?1:-1;
-    for(let a=0;a<A;a++){
-      regrets[id][offset+a]+=q*other*sign*(scratch[node.actions[a].nodeId]-value);
-      sums[id][offset+a]+=q*own*current[id][offset+a];
-    }
-    return scratch[id]=value;
-  }
-  const history=[];let completed=0,policy=current,assessment=assessPolicy(game,policy);
+  const current=uniformPolicy(game),kernel=createCfrKernel(game,current,regrets,sums);
+  const setupMs=performance.now()-started;
+  let qualityMs=0;
+  const assess=policy=>{const t=performance.now(),result=assessPolicy(game,policy);qualityMs+=performance.now()-t;return result;};
+  const history=[];let completed=0,policy=current,assessment=assess(policy);
   const record=()=>history.push({iteration:completed,exploitability:assessment.exploitability,exploitabilityPotPct:assessment.exploitabilityPotPct,expectedNet:assessment.expectedNet});
   record();
   const report=(phase)=>onProgress({phase,completedIterations:completed,maxIterations:options.maxIterations,checkpoint:history.at(-1)});
@@ -185,17 +168,18 @@ function solveRiverTree(input, {onProgress = () => {}} = {}) {
   const reportEvery=Math.max(1,Math.ceil(options.maxIterations/100));
   const checkEvery=Math.max(10,Math.ceil(options.maxIterations/10));
   let targetReached=assessment.exploitabilityPotPct<=options.targetPotPct;
+  const loopStarted=performance.now(),initialQualityMs=qualityMs;
   while(completed<options.maxIterations&&!targetReached){
-    updatePolicy();
-    for(let d=0;d<game.deals.length;d++)traverse(0,d,1,1);
+    kernel.step();
     completed++;
     if(completed%checkEvery===0||completed===options.maxIterations){
       report("evaluating");
-      policy=averagePolicy(game,sums);assessment=assessPolicy(game,policy);record();
+      policy=averagePolicy(game,sums);assessment=assess(policy);record();
       targetReached=assessment.exploitabilityPotPct<=options.targetPotPct;
     }
     if(completed%reportEvery===0||targetReached||completed===options.maxIterations)report("solving");
   }
+  const iterationMs=performance.now()-loopStarted-(qualityMs-initialQualityMs),reportStarted=performance.now();
   report("evaluating");
   // Initial uniform policy is retained only when it already meets the target at iteration zero.
   const analysis=assessPolicy(game,policy,true);
@@ -204,6 +188,9 @@ function solveRiverTree(input, {onProgress = () => {}} = {}) {
     input:game.tree.input,fingerprint,options,iterationsCompleted:completed,stopReason:targetReached?'target-reached':'iteration-limit',
     targetReached,runtimeMs:Math.round(performance.now()-started),jointDeals:game.deals.length,informationSets:game.informationSets,
     estimatedWork,limits:LIMITS,metrics:analysis,history,
+    performance:{kernel:'compiled-public-tree',timingsMs:{setup:Math.round(setupMs*10)/10,iterations:Math.round(iterationMs*10)/10,
+      quality:Math.round(qualityMs*10)/10,report:Math.round((performance.now()-reportStarted)*10)/10},
+      resources:{...plan,kernelBytes:kernel.bytes}},
     notes:[
       'Exploitability is half the sum of exact unilateral best-response gains in this configured zero-sum tree, in chips per deal.',
       'Best responses share one decision for each public history and OWN private combo. Opponent cards are never revealed.',
