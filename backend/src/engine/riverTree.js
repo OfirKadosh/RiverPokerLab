@@ -15,13 +15,13 @@ function sizes(value, maximum, label) {
   if (new Set(value).size !== value.length) fail(`${label} must not contain duplicates.`);
   return [...value].sort((a,b) => a-b);
 }
-function validateRiverInput(input) {
+function validateRiverInput(input, {street='river'}={}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('River tree input must be an object.');
   if ((optional(input.gameType, 'holdem')) !== 'holdem' || (optional(input.gameMode, 'cash')) !== 'cash')
     fail('Stage 10 supports heads-up no-limit Hold\'em cash Chip EV only; Omaha and tournament ICM trees are not supported.');
   if (input.tournament || input.betting || input.initialContributions) fail('Start at a fresh river decision with no outstanding bet or imported action ledger.');
   if (!Array.isArray(input.players) || input.players.length !== 2) fail('Exactly two players are required: OOP first, IP second.');
-  if (!Array.isArray(input.board) || input.board.length !== 5) fail('A complete five-card river board is required.');
+  if (!Array.isArray(input.board) || input.board.length !== (street==='turn'?4:5)) fail(street==='turn'?'A four-card turn board is required.':'A complete five-card river board is required.');
   const simulation = validateSimulationInput(input.players.map(p => p?.input), input.board, 'holdem', 1);
   const denomination = chipUnits(optional(input.chipUnit, 1), 'Smallest chip');
   if (!denomination) fail('Smallest chip must be positive.');

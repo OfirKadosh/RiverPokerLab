@@ -2627,3 +2627,11 @@ select:disabled {
 .solver-performance{padding:14px;border:1px solid #38534a;border-radius:10px;min-width:0}.solver-performance summary{cursor:pointer}
 
 .solver-report .river-outcome th:first-child{min-width:60px;overflow-wrap:normal}
+
+.turn-runouts{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-top:12px}
+.turn-runouts>div{display:flex;flex-direction:column;align-items:center;gap:5px}.turn-runouts small{font-size:.65rem;color:var(--muted)}
+@media(min-width:1001px){.main-navigation{grid-template-columns:repeat(10,minmax(0,1fr))}}
+@media(min-width:761px) and (max-width:1000px){.main-navigation{grid-template-columns:repeat(5,minmax(0,1fr))}.table-workspace{top:132px;max-height:calc(100dvh - 148px)}}
+@media(max-width:760px){.main-navigation{grid-template-columns:repeat(3,minmax(0,1fr))}.turn-runouts{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
+@media(min-width:761px){.table-workspace{top:calc(var(--navigation-height,64px) + 16px);max-height:calc(100dvh - var(--navigation-height,64px) - 96px)}}
