@@ -18,8 +18,9 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | 11 | CFR average strategies, combo/action EV, reached-range matrix and exact restricted exploitability | Delivered on step-11-river-strategy-solver; not deployed |
 | 12.1 | Owner-scoped background river jobs, measured progress, cancel and navigation continuity | Delivered on step-12-1-background-solver; not deployed |
 | 12.2 | Compiled CFR traversal, reproducible profiling/benchmarks, larger bounded ranges and resource feedback | Delivered on step-12-2-solver-performance; not deployed |
-| 12.3 | Bounded turn-and-river game with chance nodes and convergence checks | Planned |
-| 13 | Broader production access, account/history features and operational improvements | Planned |
+| 12.3 | Bounded two-street CFR, exact legal runouts, hidden-future-safe best responses and turn explorer | Delivered on step-12-3-turn-river-solver; not deployed |
+| Combined beta update | Cumulative owner review, final candidate checks and approved deployment | Next; see RELEASE_REVIEW.md |
+| 13 | Tester feedback, account/history features and operational improvements | After the reviewed update |
 
 ## Personal trial and ongoing development
 

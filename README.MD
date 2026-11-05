@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Stage 12.3 development branch
+
+See [STEP_12_3_TURN_RIVER.md](STEP_12_3_TURN_RIVER.md). Branch `step-12-3-turn-river-solver` adds a separate Turn tree workspace: bounded heads-up Hold'em cash turn/river CFR, every legal river, hidden-future-safe best responses, both-street EV and public-card posterior exploration. It includes all previous stages and has not been deployed. After owner review, the next step is the combined beta update described in [RELEASE_REVIEW.md](RELEASE_REVIEW.md).
+
 ## Stage 12.2 development branch
 
 See [STEP_12_2_SOLVER_PERFORMANCE.md](STEP_12_2_SOLVER_PERFORMANCE.md). Branch `step-12-2-solver-performance` compiles the river CFR traversal into reusable buffers, preserves the mathematical solution, and adds reproducible before/after benchmarks. Bounded support increases to 4,000 legal joint deals and 60 million estimated work units, with new memory/cell checks, a live work estimate and a larger-range example. This cumulative branch includes background jobs and is for local review without deployment.

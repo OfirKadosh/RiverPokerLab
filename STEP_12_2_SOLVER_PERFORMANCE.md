@@ -106,4 +106,4 @@ Chromium review verifies the new example, server-provided budget text, disabled 
 
 ## Next
 
-Stage 12.3 remains the bounded turn-and-river extension. This stage supports a complete river board only; Omaha, ICM and unrestricted/full-game GTO are outside this solver. Review this cumulative branch before approving a combined release; no per-stage deployment is automatic.
+Stage 12.3 is delivered on its cumulative branch; see STEP_12_3_TURN_RIVER.md. This stage supports a complete river board only; Omaha, ICM and unrestricted/full-game GTO are outside this solver. Review this cumulative branch before approving a combined release; no per-stage deployment is automatic.

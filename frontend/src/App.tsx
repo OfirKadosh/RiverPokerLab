@@ -29,7 +29,7 @@ import "./App.css";
 
 import { useRiverJob } from "./hooks/useRiverJob";
 import { RiverJobStatus } from "./components/RiverJobStatus";
-import { createRiverWorkspace } from "./lib/riverTree";
+import { createRiverWorkspace, createTurnWorkspace } from "./lib/riverTree";
 import { PAGES, usePage } from "./lib/navigation";
 import {
   createIcmWorkspace,
@@ -71,6 +71,7 @@ const HandSetupPanel = lazy(() =>
   })),
 );
 
+const TurnTreePanel = lazy(()=>import("./components/TurnTreePanel").then(m=>({default:m.TurnTreePanel})));
 const RiverTreePanel = lazy(() => import("./components/RiverTreePanel").then(module => ({ default: module.RiverTreePanel })));
 
 const API = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
@@ -78,11 +79,19 @@ type PickerTarget = { kind: "seat"; id: number } | { kind: "board" };
 
 function App() {
   const auth = useAuth();
+  const navigationRef=useRef<HTMLElement|null>(null);
+  useEffect(()=>{
+    const node=navigationRef.current;if(!node)return;
+    const measure=()=>node.parentElement?.style.setProperty('--navigation-height',`${Math.ceil(node.getBoundingClientRect().height)}px`);
+    const observer=new ResizeObserver(measure);observer.observe(node);measure();return()=>observer.disconnect();
+  },[]);
   const { page, navigate } = usePage();
   const pageInfo = PAGES.find((item) => item.id === page)!;
   const hasTable = ["spot", "hand", "analysis"].includes(page);
   const [riverWorkspace, setRiverWorkspace] = useState(createRiverWorkspace);
   const riverJob = useRiverJob(API, riverWorkspace, setRiverWorkspace);
+  const [turnWorkspace,setTurnWorkspace]=useState(createTurnWorkspace);
+  const turnJob=useRiverJob(API,turnWorkspace,setTurnWorkspace);
   const [icmWorkspace, setIcmWorkspace] = useState(createIcmWorkspace);
   const [tournamentDraft, setTournamentDraft] = useState(createTournamentDraft);
   const [rangeDrafts, setRangeDrafts] = useState<Record<number, RangeDraft>>(
@@ -675,7 +684,7 @@ function App() {
           <span className="build-badge">BETA</span>
         </div>
       </header>
-      <nav className="main-navigation" aria-label="Main navigation">
+      <nav ref={navigationRef} className="main-navigation" aria-label="Main navigation">
         {PAGES.map((item) => (
           <a
             key={item.id}
@@ -687,6 +696,7 @@ function App() {
         ))}
       </nav>
       {riverJob.job && page !== "river" && <RiverJobStatus controller={riverJob} onOpen={()=>navigate("river")} />}
+      {turnJob.job && page !== "turn" && <RiverJobStatus kind="turn" controller={turnJob} onOpen={()=>navigate("turn")} />}
       <main
         id="main-content"
         tabIndex={-1}
@@ -1290,7 +1300,8 @@ function App() {
                 setState={setIcmWorkspace}
               />
             )}
-            {page === "river" && <RiverTreePanel jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
+            {page === "turn" && <TurnTreePanel api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active} />}
+            {page === "river" && <RiverTreePanel blocked={turnJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "account" && <AccountPanel />}
             {page === "history" && (
               <section className="sidebar-section history-section">
