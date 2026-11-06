@@ -22,7 +22,7 @@ The code, UI and documentation are English. Development explanations are Hebrew.
 | 13.1 | Portable domain/solver/account DTOs, shared request/API/job client and explicit valuation metadata | Delivered on step-13-1-shared-core-api; not deployed |
 | 13.2 | Outcome-weighted turn/river tournament action comparison under fixed responses | Delivered on step-13-2-tournament-decisions; not deployed |
 | 14 (formerly 13.3) | Native shell with platform authentication/lifecycle adapters | Deferred until after the second beta |
-| Combined beta update | Owner review of stages through 13.2, candidate checks and approved deployment | See RELEASE_REVIEW.md |
+| Combined beta update | Owner review of stages through 13.2, candidate checks and approved deployment | Candidate on release/beta-2; awaiting approval, not deployed |
 | Later | Tester feedback, account/history features and operational improvements | After the reviewed update |
 
 ## Personal trial and ongoing development

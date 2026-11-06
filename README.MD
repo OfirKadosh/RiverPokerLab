@@ -2,6 +2,10 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Second beta release candidate
+
+Branch `release/beta-2` consolidates stages through 13.2 for owner approval. See [BETA_2_RELEASE.md](BETA_2_RELEASE.md) for validation, release notes, deployment and rollback. It has not been deployed. From the repository root, run `npm run setup` after checkout to install the backend/frontend dependencies and local shared core, then `npm run release:check`. Use `npm run preview:dev` for local UI review without Atlas/login. Stage 14 native screens are deferred until after this beta.
+
 ## Stage 13.2 development branch
 
 See [STEP_13_2_TOURNAMENT_DECISIONS.md](STEP_13_2_TOURNAMENT_DECISIONS.md). Branch `step-13-2-tournament-decisions` adds exact outcome-weighted ICM action comparison to both Turn tree and River tree: complete field/prizes, explicit fixed responses, own-combo overrides, and separate prize/chip EV columns. This is fixed-policy evaluation, not tournament equilibrium solving. Native screens move from 13.3 to stage 14, after owner review and the second beta. No deployment is performed by this development stage.

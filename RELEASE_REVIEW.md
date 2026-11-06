@@ -1,4 +1,4 @@
-# Next beta update — review before deployment
+# Second beta — consolidated release review
 
 The cumulative development through stage 13.2 is available for owner review for the second beta. The native shell formerly planned as 13.3 is deferred to stage 14 and does not block this beta. This document does not authorize or perform a merge, release tag, environment change or deployment. The owner will inspect the cumulative result before approving rollout.
 
@@ -13,15 +13,15 @@ The cumulative development through stage 13.2 is available for owner review for 
 - Outcome-weighted turn/river ICM action comparison with the complete field, explicit fixed responses, off-path labels and side-by-side chip/prize values.
 - Bounded turn-and-river strategy with all legal runouts, correct private-information/chance handling, and a separate navigation workspace.
 
-The source is cumulative on `step-13-2-tournament-decisions`. Draft PRs are stacked on their preceding development branches; they are not separate production deployments. Existing `main` and the Render deployment were not modified during these stages.
+The prepared release candidate is cumulative on `release/beta-2`, based on `step-13-2-tournament-decisions`. See `BETA_2_RELEASE.md` for the full release notes, validation and rollout/rollback procedure. Draft PRs are stacked on their preceding development branches; they are not separate production deployments. Existing `main` and the Render deployment were not modified during these stages.
 
 ## Before approving the combined release
 
-- [ ] Owner reviews the new River tree and Turn tree screens locally, including phone-sized layout, loading, cancel and page navigation.
-- [ ] Review both ICM bubble examples, explicit field/response assumptions, action deltas, zero-reach labels, and pending-request cancellation.
-- [ ] Run the cumulative `npm test` and `npm run build` on the final release candidate; record its exact commit and results.
-- [ ] Review the final diff against the current production branch, including any independent production changes since development began.
-- [ ] Verify authenticated normal-user/admin flows, manual activation, logout/remember-me, and separate histories for two users in an authenticated test environment. Database-free UI preview alone does not validate a deployed account integration.
+- [x] Owner reported successful local solver checks. Authenticated browser checks cover navigation, loading/cancellation and phone-sized layouts; live deployment checks remain pending.
+- [x] Both ICM examples and response/field semantics checked with automated engine/API and authenticated-browser checks, including off-path labels and cancellation.
+- [x] Fresh Node 22 install and `npm run release:check`: 518 tests, core typecheck and normal production build. Exact candidate revision is recorded by the consolidated PR head.
+- [x] Cumulative diff reviewed against `main` baseline `c315d22b323f642bf3eb14cafd5301f823fb4806`: eight feature commits ahead, no divergence at preparation. Recheck before merge.
+- [x] Authenticated fixture tests cover normal-user/admin login, manual activation, logout/remember-me and separate histories; production-build browser smoke checks also pass. Live Atlas/Render smoke testing remains required after approved deployment.
 - [ ] Confirm production build uses the normal mode, with preview login bypass unavailable, and current runtime/environment settings still valid.
 - [ ] Confirm the intended Render branch/revision and return-to-previous-revision procedure before rollout.
 - [ ] Owner approves the feature scope and deployment. Only then prepare the combined merge/release and deploy.

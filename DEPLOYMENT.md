@@ -2,6 +2,10 @@
 
 The complete application is stored in the private `OfirKadosh/RiverPokerLab` repository. The initial personal trial is now live at https://river-poker-lab.onrender.com/ and the user confirmed the core flow. This guide retains the setup instructions. The stabilization branch described in [BETA_STABILIZATION.md](BETA_STABILIZATION.md) has not been merged or deployed.
 
+## Second beta candidate
+
+The consolidated candidate is `release/beta-2`. See [BETA_2_RELEASE.md](BETA_2_RELEASE.md) for exact validation, approval, rollout and rollback steps. Its preparation does not merge `main` or deploy Render. Existing service settings, credentials and manual activation are reused; no destructive data migration or new provider is required.
+
 ## Topology and current access
 
 One Node/Express web service serves both the built React client and `/api`. The browser uses relative `/api` requests, so secure session cookies work on one HTTPS origin. Existing hash navigation remains unchanged. MongoDB Atlas stores users, sessions, rate-limit counters and explicitly saved spots; the web service does not need a persistent disk.

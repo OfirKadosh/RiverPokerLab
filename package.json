@@ -12,7 +12,9 @@
     "admin:create": "npm --prefix backend run admin:create --",
     "preview:dev": "npm --prefix frontend run preview:dev",
     "test:core": "npm --prefix packages/core test",
-    "typecheck:core": "node frontend/node_modules/typescript/bin/tsc -p packages/core/tsconfig.native.json"
+    "typecheck:core": "node frontend/node_modules/typescript/bin/tsc -p packages/core/tsconfig.native.json",
+    "setup": "node scripts/setup.cjs",
+    "release:check": "npm test && npm run build"
   },
   "engines": {
     "node": ">=22 <25"
