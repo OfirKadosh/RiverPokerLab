@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>River Poker Lab</title>
+  <defs>
+    <radialGradient id="felt" cx=".35" cy=".2" r="1"><stop stop-color="#244a39"/><stop offset="1" stop-color="#0b1814"/></radialGradient>
+    <linearGradient id="suit" x1="0" y1="0" x2=".5" y2="1"><stop stop-color="#e1ffbc"/><stop offset="1" stop-color="#acd67e"/></linearGradient>
+    <path id="spade" d="M512 190C451 270 270 371 270 509C270 611 388 664 472 596L452 718C446 744 426 771 400 792H624C598 771 578 744 572 718L552 596C636 664 754 611 754 509C754 371 573 270 512 190Z"/>
+    <clipPath id="suit-clip"><use href="#spade"/></clipPath>
+  </defs>
+  <path fill="url(#felt)" d="M0 0H1024V1024H0Z"/>
+  <rect x="70" y="70" width="884" height="884" rx="208" fill="none" stroke="#c5e69b" stroke-opacity=".22" stroke-width="3"/>
+  <use href="#spade" fill="url(#suit)"/>
+  <path d="M260 555C355 475 421 479 512 526S675 580 777 496" fill="none" stroke="#142b21" stroke-width="42" stroke-linecap="round" clip-path="url(#suit-clip)"/>
+</svg>
