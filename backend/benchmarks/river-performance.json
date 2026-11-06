@@ -1,0 +1,257 @@
+{
+  "node": "v24.22.1",
+  "platform": "linux",
+  "arch": "x64",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "repetitions": 5,
+  "warmups": 1,
+  "methodology": "One isolated child per engine/case; wall time includes setup, CFR and quality/reporting; explicit GC before each measured run; peak RSS includes warm-up and all repeats. No timing assertions.",
+  "cases": [
+    {
+      "name": "kuhn-6",
+      "jointDeals": 6,
+      "publicNodes": 9,
+      "iterations": 20000,
+      "baseline": {
+        "samplesMs": [
+          59.82981100000001,
+          60.81560300000001,
+          57.633177000000046,
+          51.224785,
+          53.82463799999999
+        ],
+        "medianMs": 57.633177000000046,
+        "peakRssBytes": 57425920
+      },
+      "compiled": {
+        "samplesMs": [
+          36.96067600000001,
+          30.168594000000013,
+          26.040796,
+          34.681385000000034,
+          27.214293999999995
+        ],
+        "medianMs": 30.168594000000013,
+        "peakRssBytes": 57917440,
+        "performance": {
+          "kernel": "compiled-public-tree",
+          "timingsMs": {
+            "setup": 3.4,
+            "iterations": 23.1,
+            "quality": 0.5,
+            "report": 0.2
+          },
+          "resources": {
+            "jointDeals": 6,
+            "publicNodes": 9,
+            "informationSets": 12,
+            "dealNodeCells": 54,
+            "estimatedWork": 1083240,
+            "terminalBytes": 240,
+            "kernelBytes": 408,
+            "strategyBytes": 576,
+            "coreTypedArrayBytes": 1224
+          }
+        }
+      },
+      "speedup": 1.9103700026590573,
+      "maxMetricDifference": 2.095545958979983e-13
+    },
+    {
+      "name": "pairs-456",
+      "jointDeals": 456,
+      "publicNodes": 9,
+      "iterations": 7000,
+      "baseline": {
+        "samplesMs": [
+          910.652945,
+          989.9706279999998,
+          833.2122470000004,
+          1041.7077000000004,
+          735.1037509999996
+        ],
+        "medianMs": 910.652945,
+        "peakRssBytes": 60633088
+      },
+      "compiled": {
+        "samplesMs": [
+          218.26606999999996,
+          215.42048,
+          241.04991000000007,
+          239.58717500000012,
+          218.49597900000003
+        ],
+        "medianMs": 218.49597900000003,
+        "peakRssBytes": 61804544,
+        "performance": {
+          "kernel": "compiled-public-tree",
+          "timingsMs": {
+            "setup": 7.6,
+            "iterations": 191.7,
+            "quality": 16.8,
+            "report": 2.4
+          },
+          "resources": {
+            "jointDeals": 456,
+            "publicNodes": 9,
+            "informationSets": 96,
+            "dealNodeCells": 4104,
+            "estimatedWork": 28974240,
+            "terminalBytes": 18240,
+            "kernelBytes": 22848,
+            "strategyBytes": 4608,
+            "coreTypedArrayBytes": 45696
+          }
+        }
+      },
+      "speedup": 4.167824731456499,
+      "maxMetricDifference": 5.628830734849544e-13
+    },
+    {
+      "name": "weighted-456",
+      "jointDeals": 456,
+      "publicNodes": 9,
+      "iterations": 2000,
+      "baseline": {
+        "samplesMs": [
+          266.90735599999994,
+          246.133415,
+          243.26518199999998,
+          243.4348010000001,
+          245.44391399999995
+        ],
+        "medianMs": 245.44391399999995,
+        "peakRssBytes": 60309504
+      },
+      "compiled": {
+        "samplesMs": [
+          97.30308300000002,
+          108.59592099999998,
+          108.984062,
+          105.47789,
+          89.15164900000002
+        ],
+        "medianMs": 105.47789,
+        "peakRssBytes": 59551744,
+        "performance": {
+          "kernel": "compiled-public-tree",
+          "timingsMs": {
+            "setup": 10.4,
+            "iterations": 62.3,
+            "quality": 14,
+            "report": 2.4
+          },
+          "resources": {
+            "jointDeals": 456,
+            "publicNodes": 9,
+            "informationSets": 96,
+            "dealNodeCells": 4104,
+            "estimatedWork": 8454240,
+            "terminalBytes": 18240,
+            "kernelBytes": 22848,
+            "strategyBytes": 4608,
+            "coreTypedArrayBytes": 45696
+          }
+        }
+      },
+      "speedup": 2.3269702683661944,
+      "maxMetricDifference": 1.249000902703301e-13
+    },
+    {
+      "name": "raised-12",
+      "jointDeals": 12,
+      "publicNodes": 39,
+      "iterations": 5000,
+      "baseline": {
+        "samplesMs": [
+          101.403065,
+          107.79123100000004,
+          98.01625200000001,
+          93.59725500000002,
+          95.34743200000003
+        ],
+        "medianMs": 98.01625200000001,
+        "peakRssBytes": 57987072
+      },
+      "compiled": {
+        "samplesMs": [
+          44.114851000000016,
+          38.31897699999999,
+          42.885170000000016,
+          44.80893899999995,
+          36.85646200000002
+        ],
+        "medianMs": 42.885170000000016,
+        "peakRssBytes": 58060800,
+        "performance": {
+          "kernel": "compiled-public-tree",
+          "timingsMs": {
+            "setup": 2.7,
+            "iterations": 30,
+            "quality": 3.5,
+            "report": 0.7
+          },
+          "resources": {
+            "jointDeals": 12,
+            "publicNodes": 39,
+            "informationSets": 56,
+            "dealNodeCells": 468,
+            "estimatedWork": 2368080,
+            "terminalBytes": 2400,
+            "kernelBytes": 2016,
+            "strategyBytes": 3648,
+            "coreTypedArrayBytes": 8064
+          }
+        }
+      },
+      "speedup": 2.285551205696514,
+      "maxMetricDifference": 2.098460294419624e-13
+    },
+    {
+      "name": "expanded-2064",
+      "jointDeals": 2064,
+      "publicNodes": 9,
+      "iterations": 3000,
+      "baseline": null,
+      "compiled": {
+        "samplesMs": [
+          456.737836,
+          463.386216,
+          514.4202599999999,
+          474.05225199999995,
+          433.14190499999995
+        ],
+        "medianMs": 463.386216,
+        "peakRssBytes": 88473600,
+        "performance": {
+          "kernel": "compiled-public-tree",
+          "timingsMs": {
+            "setup": 15.7,
+            "iterations": 353,
+            "quality": 54.1,
+            "report": 10.3
+          },
+          "resources": {
+            "jointDeals": 2064,
+            "publicNodes": 9,
+            "informationSets": 192,
+            "dealNodeCells": 18576,
+            "estimatedWork": 56842560,
+            "terminalBytes": 82560,
+            "kernelBytes": 100992,
+            "strategyBytes": 9216,
+            "coreTypedArrayBytes": 192768
+          }
+        }
+      },
+      "speedup": null,
+      "maxMetricDifference": null
+    }
+  ],
+  "referenceRevision": "8c797703a7521d6022173593f87a2b85c22e7dae",
+  "sourceHashes": {
+    "riverSolver.js": "68559bc86ff38f1e74a00cfc4b2a352b0be6f07e8ee26497322b9436f043a65c",
+    "riverKernel.js": "5afe6af4530e62e8e7c0adc430daab062ade5b06e99ce1a4b10ceeb6cfc19a34",
+    "riverBudget.js": "ef17934209ca56302087209148b6f7d512b50d2a9efbe5b963ac9cbb772af3bd"
+  }
+}

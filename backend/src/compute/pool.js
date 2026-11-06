@@ -18,14 +18,14 @@ class ComputePool {
     this.queue = []; this.active = null; this.worker = null;
     this.restarting = false; this.closed = false; this.nextId = 0;
   }
-  run(kind, input, { signal, owner = 'anonymous' } = {}) {
+  run(kind, input, { signal, owner = 'anonymous', onProgress } = {}) {
     if (signal?.aborted) return Promise.reject(aborted());
     if (this.closed) return Promise.reject(new ComputeError('Calculation service is stopping.'));
     const outstanding = [...this.queue, ...(this.active ? [this.active] : [])];
     if (this.queue.length >= this.maxQueued || outstanding.filter(job => job.owner === owner).length >= this.maxPerUser)
       return Promise.reject(new ComputeError('Calculation queue is full. Please retry shortly.', 'COMPUTE_BUSY'));
     return new Promise((resolve, reject) => {
-      const job = { id: ++this.nextId, kind, input, owner, resolve, reject, signal };
+      const job = { id: ++this.nextId, kind, input, owner, resolve, reject, signal, onProgress };
       job.cancel = () => this.cancel(job, aborted());
       job.timer = setTimeout(() => this.cancel(job, new ComputeError(
         'Calculation took too long. Try fewer samples or a smaller range.', 'COMPUTE_TIMEOUT', 504,
@@ -64,6 +64,10 @@ class ComputePool {
       this.worker = worker;
       worker.on('message', message => {
         if (worker !== this.worker || !this.active || message.id !== this.active.id) return;
+        if (message.progress) {
+          try { this.active.onProgress?.(message.progress); } catch {}
+          return;
+        }
         const job = this.active; this.active = null;
         const error = message.error
           ? message.error.name === 'ValidationError'

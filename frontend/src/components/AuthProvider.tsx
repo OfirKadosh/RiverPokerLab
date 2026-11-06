@@ -10,32 +10,7 @@ import type { ReactNode } from "react";
 import { apiFetch } from "../lib/api";
 import { feedbackFetch } from "../lib/loading";
 import { LoadingIndicator } from "./LoadingIndicator";
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  phone: string;
-  manuallyApproved?: boolean;
-  emailVerified: boolean;
-  phoneVerified: boolean;
-}
-interface Verification {
-  manual?: boolean;
-  username: string;
-  channel: "email" | "sms";
-  emailHint: string;
-  phoneHint: string;
-}
-interface Session {
-  expiresInMs?: number;
-  expiresAt: string;
-  remember: boolean;
-}
-interface Identity {
-  user: User | null;
-  verification?: Verification;
-  session?: Session;
-}
+import type {AccountUser as User,VerificationState as Verification,AccountSession as Session,AccountIdentity as Identity} from '@river-poker-lab/core';
 interface AuthContextValue extends Identity {
   api: string;
   refresh: () => Promise<void>;
@@ -143,6 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loggingOut,
       }}
     >
+      {identity.preview && (
+        <div className="preview-banner" role="status">
+          LOCAL UI PREVIEW · No sign-in or database · Calculations are real; saving and account actions are disabled.
+        </div>
+      )}
       {checking || (loggingOut && !identity.user) ? (
         <main className="auth-shell">
           <LoadingIndicator label="Checking your session…" />
@@ -524,6 +504,7 @@ export function AccountPanel() {
   return (
     <section className="sidebar-section" aria-label="Account details">
       <h2>{auth.user?.username}</h2>
+      {auth.user?.role === "admin" && <p className="auth-notice">Administrator account</p>}
       {auth.user?.manuallyApproved && (
         <p className="auth-notice">
           Account activated by the administrator. Contact verification is listed separately below.
@@ -532,17 +513,17 @@ export function AccountPanel() {
       <dl className="account-details">
         <dt>Email</dt>
         <dd>
-          {auth.user?.email} ·{" "}
+          {auth.user?.email || "Not provided"} ·{" "}
           {auth.user?.emailVerified ? "Verified" : "Not verified"}
         </dd>
         <dt>Phone</dt>
         <dd>
-          {auth.user?.phone} ·{" "}
+          {auth.user?.phone || "Not provided"} ·{" "}
           {auth.user?.phoneVerified ? "Verified" : "Not verified"}
         </dd>
         <dt>This device</dt>
         <dd>
-          {auth.session?.remember
+          {auth.preview ? "No session · local UI preview" : auth.session?.remember
             ? "Remembered for up to 30 days"
             : "Temporary browser session, maximum 12 hours"}
         </dd>
@@ -559,12 +540,12 @@ export function AccountPanel() {
       </p>
       <button
         className="secondary-button"
-        disabled={auth.loggingOut}
+        disabled={auth.loggingOut || auth.preview}
         onClick={() =>
           void auth.logout().catch((error) => setError(error.message))
         }
       >
-        {auth.loggingOut ? <LoadingIndicator label="Signing out…" compact /> : "Sign out of this device"}
+        {auth.preview ? "Local preview · no session" : auth.loggingOut ? <LoadingIndicator label="Signing out…" compact /> : "Sign out of this device"}
       </button>
       {error && <p role="alert">{error}</p>}
     </section>

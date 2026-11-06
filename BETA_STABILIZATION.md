@@ -2,6 +2,10 @@
 
 This is a complete cumulative update developed on `beta-stabilization-transitions`. The existing personal trial at https://river-poker-lab.onrender.com/ stays on its current `main` revision. This branch has not been merged or deployed and no production database, account, billing or hosting setting was modified.
 
+## Additional admin/preview request
+
+The branch now also includes contact-free admin provisioning and local UI preview without login. See [ADMIN_AND_UI_PREVIEW.md](ADMIN_AND_UI_PREVIEW.md). The aggregate test count is 332; the 325-test results below describe the initial stabilization part. Nothing has been merged/deployed and the production admin still requires private one-time provisioning by the owner.
+
 ## Loading and navigation
 
 - A shared animated spade/ring and a status label indicate real pending work: session checks, sign-in/registration/activation, equity calculations, saving, history, ICM, tournament settings, range previews and lazy views.

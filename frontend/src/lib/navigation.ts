@@ -20,6 +20,8 @@ export const PAGES = [
     label: "Analysis",
     description: "Explore equity, pot payouts and Fold versus Call.",
   },
+  { id: "turn", label: "Turn tree", description: "Solve a bounded heads-up turn-and-river game with every legal runout." },
+  { id: "river", label: "River tree", description: "Explore a restricted heads-up river betting tree and conditional payoffs." },
   {
     id: "tournament",
     label: "Tournament",

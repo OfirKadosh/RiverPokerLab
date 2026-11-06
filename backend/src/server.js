@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config(process.env.APP_ENV_FILE ? { path: process.env.APP_ENV_FILE } : {});
 
+const {API_CONTRACT_VERSION}=require("@river-poker-lab/core");
+const {capabilities}=require("./capabilities");
 const Spot = require("./models/Spot");
 const {
   ValidationError,
@@ -20,11 +22,13 @@ const { validateTournament } = require("./engine/tournament");
 const { createAuth, authConfig } = require("./auth");
 const { frontendDirectory, serveFrontend } = require("./hosting");
 const { computeForRequest, ComputeError, pool } = require("./compute/pool");
-function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest } = {}) {
+const { SolverJobs, JobError } = require("./compute/solverJobs");
+function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
     res.set("Cache-Control", "no-store");
+    res.set("X-River-Contract-Version",String(API_CONTRACT_VERSION));
     res.set("X-Content-Type-Options", "nosniff");
     res.set("Referrer-Policy", "same-origin");
     next();
@@ -34,7 +38,7 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
       origin: (origin, callback) =>
         callback(null, !origin || !!auth.config?.origins.includes(origin)),
       credentials: true,
-      methods: ["GET", "POST", "OPTIONS"],
+      methods: ["GET", "POST", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "X-Requested-With"],
     }),
   );
@@ -45,6 +49,57 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
   app.use(express.json({ limit: "2mb" }));
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
+
+  app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
+
+  app.post("/api/tournament-tree",async(req,res)=>{
+    try{const analysis=await compute(req,res,"tournamentTree",req.body);if(!res.destroyed)res.json({success:true,analysis});}
+    catch(error){if(res.destroyed)return;if(error instanceof ComputeError)res.set("Retry-After","1");res.status(error instanceof ValidationError?400:error instanceof ComputeError?error.status:500).json({success:false,error:error instanceof ValidationError||error instanceof ComputeError?error.message:"Cannot compare tournament actions."});}
+  });
+
+  function jobFailure(res,error){
+    const status=error instanceof ValidationError?400:error instanceof JobError?error.status:500;
+    if(status===503)res.set("Retry-After","1");
+    res.status(status).json({success:false,error:status===500?"Cannot access the calculation service.":error.message});
+  }
+  app.post("/api/river-jobs",(req,res)=>{
+    try{res.status(202).json({success:true,job:jobs.create(req.user.id,req.body?.input,req.body?.requestId)});}
+    catch(error){jobFailure(res,error);}
+  });
+  app.get("/api/river-jobs",(req,res)=>{
+    try{res.json({success:true,jobs:jobs.list(req.user.id)});}catch(error){jobFailure(res,error);}
+  });
+  app.get("/api/river-jobs/:id",(req,res)=>{
+    try{res.json({success:true,job:jobs.get(req.user.id,req.params.id)});}catch(error){jobFailure(res,error);}
+  });
+  app.delete("/api/river-jobs/:id",(req,res)=>{
+    try{res.json({success:true,job:jobs.cancel(req.user.id,req.params.id)});}catch(error){jobFailure(res,error);}
+  });
+
+  // Restricted stage-10 river tree; expensive enumeration stays in the CPU worker.
+  app.post("/api/river-tree", async (req, res) => {
+    try {
+      const tree = await compute(req, res, "riverTree", req.body);
+      if (!res.destroyed) res.json({ success: true, tree });
+    } catch (error) {
+      if (res.destroyed) return;
+      if (error instanceof ComputeError) res.set("Retry-After", "1");
+      res.status(error instanceof ValidationError ? 400 : error instanceof ComputeError ? error.status : 500)
+        .json({ success: false, error: error.message });
+    }
+  });
+
+  app.post("/api/river-solve", async (req, res) => {
+    try {
+      const solution = await compute(req, res, "riverSolve", req.body);
+      if (!res.destroyed) res.json({ success: true, solution });
+    } catch (error) {
+      if (res.destroyed) return;
+      if (error instanceof ComputeError) res.set("Retry-After", "1");
+      res.status(error instanceof ValidationError ? 400 : error instanceof ComputeError ? error.status : 500)
+        .json({ success: false, error: error.message });
+    }
+  });
 
   // Independent tournament valuation; no cards, betting history or database required.
   app.post("/api/icm", async (req, res) => {

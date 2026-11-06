@@ -2,6 +2,42 @@
 
 A MERN application for building Texas Hold'em and four-card Omaha High spots, estimating multi-player showdown equity, and saving spots to MongoDB. The code and interface are in English.
 
+## Second beta release candidate
+
+Branch `release/beta-2` consolidates stages through 13.2 for owner approval. See [BETA_2_RELEASE.md](BETA_2_RELEASE.md) for validation, release notes, deployment and rollback. It has not been deployed. From the repository root, run `npm run setup` after checkout to install the backend/frontend dependencies and local shared core, then `npm run release:check`. Use `npm run preview:dev` for local UI review without Atlas/login. Stage 14 native screens are deferred until after this beta.
+
+## Stage 13.2 development branch
+
+See [STEP_13_2_TOURNAMENT_DECISIONS.md](STEP_13_2_TOURNAMENT_DECISIONS.md). Branch `step-13-2-tournament-decisions` adds exact outcome-weighted ICM action comparison to both Turn tree and River tree: complete field/prizes, explicit fixed responses, own-combo overrides, and separate prize/chip EV columns. This is fixed-policy evaluation, not tournament equilibrium solving. Native screens move from 13.3 to stage 14, after owner review and the second beta. No deployment is performed by this development stage.
+
+## Stage 13.1 development branch
+
+See [STEP_13_1_SHARED_CORE.md](STEP_13_1_SHARED_CORE.md). Branch `step-13-1-shared-core-api` adds a portable private core package for DTOs, request builders, API transport and job lifecycle. The web and backend consume it now; native-style contracts compile without DOM types. New metadata distinguishes Chip EV from the existing ICM prize comparison, and authenticated capability discovery describes actual support. Native screens/token authentication and tournament tree valuation remain subsequent work. This cumulative branch has not been deployed.
+
+## Stage 12.3 development branch
+
+See [STEP_12_3_TURN_RIVER.md](STEP_12_3_TURN_RIVER.md). Branch `step-12-3-turn-river-solver` adds a separate Turn tree workspace: bounded heads-up Hold'em cash turn/river CFR, every legal river, hidden-future-safe best responses, both-street EV and public-card posterior exploration. It includes all previous stages and has not been deployed. After owner review, the next step is the combined beta update described in [RELEASE_REVIEW.md](RELEASE_REVIEW.md).
+
+## Stage 12.2 development branch
+
+See [STEP_12_2_SOLVER_PERFORMANCE.md](STEP_12_2_SOLVER_PERFORMANCE.md). Branch `step-12-2-solver-performance` compiles the river CFR traversal into reusable buffers, preserves the mathematical solution, and adds reproducible before/after benchmarks. Bounded support increases to 4,000 legal joint deals and 60 million estimated work units, with new memory/cell checks, a live work estimate and a larger-range example. This cumulative branch includes background jobs and is for local review without deployment.
+
+## Stage 12.1 development branch
+
+See [STEP_12_1_BACKGROUND_SOLVER.md](STEP_12_1_BACKGROUND_SOLVER.md). Branch `step-12-1-background-solver` adds owner-scoped background river jobs, measured iteration/checkpoint progress, explicit cancellation and a banner that survives navigation. Network retries preserve the same task, and stale results cannot populate changed inputs. Results are temporarily retained in bounded process memory; server restarts can lose them. This complete branch includes stage 11 and is for local review, without a production deployment.
+
+## Stage 11 development branch
+
+See [STEP_11_RIVER_SOLVER.md](STEP_11_RIVER_SOLVER.md). Branch `step-11-river-strategy-solver` adds CFR average strategies for the restricted heads-up Hold'em cash river tree, per-combo frequencies and action EV, a reached-range matrix, exact restricted best-response exploitability and honest convergence/stop reports. It includes stage 10 and all earlier development work. It is not merged or deployed; the live site stays on its current release.
+
+## Stage 10 development branch
+
+See [STEP_10_RIVER_TREE.md](STEP_10_RIVER_TREE.md). The new River tree workspace explores a bounded heads-up Hold'em cash river tree with exact private-range payoffs, configurable bet/raise sizes, refunds and split chips. It does not solve strategy or root action EV. Branch `step-10-river-decision-tree` includes all earlier stabilization/admin/preview work and is not deployed.
+
+## Admin and local screen preview
+
+See [ADMIN_AND_UI_PREVIEW.md](ADMIN_AND_UI_PREVIEW.md) for private one-time `admin` creation and `npm run preview:dev`, which opens all screens locally without sign-in or Atlas. Preview uses real calculations but blocks saving and account changes. Production authentication stays mandatory.
+
 ## Beta stabilization branch
 
 See [BETA_STABILIZATION.md](BETA_STABILIZATION.md) for half-second loading feedback, reduced-motion behavior, bounded worker-thread calculations, Mongoose compatibility and isolated local development. This branch is for review; the live personal trial remains on its previously deployed main revision.
@@ -12,7 +48,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared free Render service, same-or
 
 ## Current capabilities
 
-- Eight navigable workspaces: Spot setup, Hand actions, Ranges, Analysis, Tournament, ICM calculator, History and Account.
+- Nine navigable workspaces: Spot setup, Hand actions, Ranges, Analysis, River tree, Tournament, ICM calculator, History and Account.
 - Registration/sign-in, email or SMS activation, remembered device sessions and private per-user saved history.
 - Session state and drafts retained across navigation, with inactive panels unmounted and optional panels loaded on demand.
 
@@ -100,18 +136,18 @@ The **Existing call amount** disclosure preserves the original request field. It
 
 ## Verification
 
-From `backend`:
+Install both backend and frontend dependencies, then run from the repository root:
 
 ```bash
 npm test
 ```
 
-The 325 automated tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
+The backend and standalone frontend client tests cover card and request validation, API error responses, evaluator regression scenarios, metadata consistency, range grammar, blocker counts, infeasible deals, statistical sampling symmetry, and mocked persistence. They do not connect to MongoDB.
 
 The unchanged legacy smoke test is also available:
 
 ```bash
-node src/engine/test.js
+node backend/src/engine/test.js
 ```
 
 From `frontend`:
@@ -163,7 +199,7 @@ See [STEP_7_ICM.md](STEP_7_ICM.md) for the independent ICM calculator and [ROADM
 
 ## Stage 8
 
-See [STEP_8_ICM_DECISIONS.md](STEP_8_ICM_DECISIONS.md) for outcome-weighted ICM decisions, saved full-field settings, elimination rules, API fields and complete-file replacement instructions. Independent worksheet drafts remain separate; applied decision settings are saved with spots. Trial deployment is on hold until the user reviews stage 9 and explicitly asks to start deployment. Earlier stage guides describe their historical snapshots.
+See [STEP_8_ICM_DECISIONS.md](STEP_8_ICM_DECISIONS.md) for outcome-weighted ICM decisions, saved full-field settings, elimination rules, API fields and complete-file replacement instructions. Independent worksheet drafts remain separate; applied decision settings are saved with spots. The original personal trial is live; later development remains on separate branches for a combined reviewed release. Earlier stage guides describe their historical snapshots.
 
 ## Stage 8.1
 
@@ -171,7 +207,7 @@ The navigation reorganization is delivered before stage 9. Historical stage guid
 
 ## Stage 9
 
-See [STEP_9_WEIGHTED_ACTION_RANGES.md](STEP_9_WEIGHTED_ACTION_RANGES.md) for all four delivered range sub-stages, notation, conditional frequency semantics, UI/API fields, verification and complete-file replacement instructions. Weighted ranges remain Hold'em-only; Omaha uses four specific cards. `npm test` now runs the full backend suite. No trial deployment has been performed.
+See [STEP_9_WEIGHTED_ACTION_RANGES.md](STEP_9_WEIGHTED_ACTION_RANGES.md) for all four delivered range sub-stages, notation, conditional frequency semantics, UI/API fields, verification and complete-file replacement instructions. Weighted ranges remain Hold'em-only; Omaha uses four specific cards. `npm test` now runs the full backend suite and frontend job-client checks. Stage 9 itself did not deploy; the original personal trial was subsequently deployed. This development branch has not been deployed.
 
 ## Accounts before trial deployment
 

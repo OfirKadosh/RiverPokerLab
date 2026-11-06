@@ -148,8 +148,8 @@ function createAuth({
       username: user.username,
       manual: user.verificationDelivery === "manual",
       channel: user.verificationChannel || "email",
-      emailHint: `${user.email[0]}***@${user.email.split("@")[1]}`,
-      phoneHint: `***${user.phone.slice(-4)}`,
+      emailHint: user.email ? `${user.email[0]}***@${user.email.split("@")[1]}` : null,
+      phoneHint: user.phone ? `***${user.phone.slice(-4)}` : null,
     };
   }
   async function requirePending(req) {

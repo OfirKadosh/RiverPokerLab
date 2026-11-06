@@ -1,21 +1,14 @@
-export async function apiFetch(
-  input: RequestInfo | URL,
-  init: RequestInit = {},
-) {
-  const headers = new Headers(init.headers);
-  headers.set("X-Requested-With", "RiverPokerLab");
-  const response = await fetch(input, {
-    ...init,
-    headers,
-    credentials: "include",
-  });
-  const url =
-    typeof input === "string"
-      ? input
-      : input instanceof URL
-        ? input.href
-        : input.url;
-  if (response.status === 401 && !url.includes("/auth/"))
-    window.dispatchEvent(new Event("river-auth-expired"));
-  return response;
+import {createApiClient} from '@river-poker-lab/core';
+const API=(import.meta.env.VITE_API_URL||'/api').replace(/\/$/,'');
+export const apiClient=createApiClient({baseUrl:API,onUnauthorized:()=>window.dispatchEvent(new Event('river-auth-expired'))});
+// Browser-only adapter preserves the existing Response API and cookie/CSRF behavior.
+export async function apiFetch(input:RequestInfo|URL,init:RequestInit={}):Promise<Response>{
+  const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;
+  const base=new URL(API,window.location.href),target=new URL(url,window.location.href);
+  if(target.origin!==base.origin||!target.pathname.startsWith(base.pathname.replace(/\/$/,'')+'/'))throw Error('Use the configured API service.');
+  const relative=target.pathname.slice(base.pathname.replace(/\/$/,'').length)+target.search;
+  const merged=input instanceof Request?new Request(input,init):null;
+  const requestInit=merged?{...init,method:merged.method,headers:merged.headers,signal:merged.signal,
+    ...(merged.body?{body:await merged.arrayBuffer()}:{}),}:init;
+  return await apiClient.raw(relative,requestInit) as Response;
 }
