@@ -36,7 +36,7 @@ function describe(value) {
     'מקום ' + item.place + ': ' + item.name + ' · ' + money(item.amount)).join(' / ');
 }
 
-export function renderResults(view, intro) {
+export function renderResults(view, intro, onSaved) {
   view.append(intro('פלור / תוצאות', 'פרסים ותוצאות', 'סכומי הקופות מחושבים מהכניסות שנרשמו בקופה.'));
   const panel = element('section');
   panel.className = 'setup results-panel';
@@ -97,6 +97,7 @@ export function renderResults(view, intro) {
       await updateTournament(change);
       editorKey = null;
       message.textContent = success;
+      onSaved?.();
     } catch (error) {
       message.textContent = error.message;
     } finally {

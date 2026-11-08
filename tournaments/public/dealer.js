@@ -1,11 +1,11 @@
 import { readClub } from './club.js';
 import { enterScreen, updateDigits } from './motion.js';
 import { liveView } from './live-state.js';
-import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
+import { readTournament, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
 import { assignDealer, changeShift, clockLeft, dealers, disconnectTablet, eliminate,
   issueCode, openTables, pair, pairedTable, swapDealer, updateClock } from './dealer-state.js';
 
-const tokenKey = 'tournaments-dealer-tablet';
+const legacyTokenKey = 'tournaments-dealer-tablet';
 const duration = (milliseconds) => {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
   return [Math.floor(seconds / 60), seconds % 60].map((value) => String(value).padStart(2, '0')).join(':');
@@ -65,7 +65,8 @@ export function renderDealer(view, intro, floor) {
   const dialog = node('dialog', '', 'shot-dialog');
   dialog.setAttribute('aria-label', 'שעון פעולה במסך מלא');
   view.append(message, section, dialog);
-  let token = floor ? null : sessionStorage.getItem(tokenKey);
+  const tokenKey = legacyTokenKey + ':' + tournamentId();
+  let token = floor ? null : sessionStorage.getItem(tokenKey) ?? sessionStorage.getItem(legacyTokenKey);
   let tournament;
   let roster = dealers;
   const dealerName = (id) => roster.find((dealer) => dealer.id === id)?.name ?? 'ללא דילר';
@@ -172,10 +173,16 @@ export function renderDealer(view, intro, floor) {
     const panel = node('article', '', 'card');
     tournamentPhase = node('p', '', 'muted');
     panel.append(node('h2', 'שולחן ' + table.id), node('p', dealerName(table.dealer), 'muted'), tournamentPhase);
-    const seats = node('div', '', 'dealer-seats');
+    const seats = node('div', '', 'dealer-table');
+    const felt = node('div', 'שולחן ' + table.id, 'dealer-felt');
+    const dealer = node('div', 'דילר', 'dealer-chair');
+    seats.append(felt, dealer);
     for (let seat = 1; seat <= table.capacity; seat++) {
       const player = (tournament.players ?? []).find((item) => item.table === table.id && item.seat === seat);
-      const chair = node('div', '', 'card');
+      const chair = node('div', '', 'card player-chair');
+      const angle = Math.PI / 2 + (2 * Math.PI * seat) / (table.capacity + 1);
+      chair.style.left = (50 + Math.cos(angle) * 42) + '%';
+      chair.style.top = (50 + Math.sin(angle) * 39) + '%';
       chair.append(node('strong', 'כיסא ' + seat), node('p', player?.name ?? 'פנוי'));
       if (player) chair.append(action('הדחה', () => {
         if (!window.confirm('לאשר הדחה של ' + player.name + ' מכיסא ' + seat + '?')) return;

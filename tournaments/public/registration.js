@@ -1,6 +1,6 @@
 import { registrationOpen } from './live-state.js';
 import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
-import { addTable, movePlayer, register, seats } from './seating.js';
+import { addTable, closeTable, movePlayer, register, seats } from './seating.js';
 
 const money = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
 const location = (item) => 'שולחן ' + item.table + ' · כיסא ' + item.seat;
@@ -82,6 +82,88 @@ export function renderRegistration(view, intro, floor) {
   const form = find(floor ? '#move-form' : '#entry-form');
   const refreshSeats = seatPicker(form, getTournament, floor ? () => form.elements.player.value : undefined);
 
+  function closeTableDialog(tableId) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'setup close-table-dialog';
+    dialog.setAttribute('aria-label', 'סגירת שולחן ' + tableId);
+    const editor = document.createElement('form');
+    editor.className = 'setup';
+    const heading = document.createElement('h2');
+    heading.textContent = 'סגירת שולחן ' + tableId;
+    const feedback = document.createElement('p');
+    feedback.setAttribute('role', 'status');
+    const fields = document.createElement('div');
+    fields.className = 'setup-fields';
+    const submit = document.createElement('button');
+    submit.textContent = 'אישור העברות וסגירה';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = 'ביטול סגירה';
+    cancel.addEventListener('click', () => dialog.close());
+    const controls = document.createElement('div');
+    controls.className = 'setup-actions';
+    controls.append(submit, cancel);
+    editor.append(heading, feedback, fields, controls);
+    dialog.append(editor);
+    section.append(dialog);
+    dialog.addEventListener('close', () => dialog.remove());
+    dialog.addEventListener('cancel', (event) => { if (cancel.disabled) event.preventDefault(); });
+    function reserveChoices() {
+      const selectors = [...fields.querySelectorAll('select')];
+      for (const select of selectors) {
+        for (const option of select.options) option.disabled = Boolean(option.value &&
+          selectors.some((other) => other !== select && other.value === option.value));
+      }
+    }
+    fields.addEventListener('change', reserveChoices);
+
+    function fill() {
+      const players = (tournament.players ?? []).filter((player) => player.table === tableId);
+      const available = availableTables(tournament).filter((table) => table.id !== tableId)
+        .flatMap((table) => seats(tournament, table).map((seat) =>
+          [table.id + ':' + seat, location({ table: table.id, seat })]));
+      const previous = new Map([...fields.querySelectorAll('select')].map((select) => [select.name, select.value]));
+      fields.replaceChildren();
+      for (const player of players) {
+        const label = document.createElement('label');
+        label.textContent = player.name + ' · כיסא ' + player.seat;
+        const select = document.createElement('select');
+        select.name = player.id;
+        select.required = true;
+        options(select, available, 'בחירת מושב פנוי');
+        select.value = available.some(([id]) => id === previous.get(player.id)) ? previous.get(player.id) : '';
+        label.append(select);
+        fields.append(label);
+      }
+      reserveChoices();
+      submit.disabled = available.length < players.length;
+      feedback.textContent = submit.disabled ? 'אין מספיק מושבים פנויים. בטלו את הסגירה ופתחו שולחן נוסף.' :
+        players.length ? 'יש להושיב את כל השחקנים לפני הסגירה.' : 'השולחן ריק ואפשר לסגור אותו.';
+    }
+
+    editor.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      submit.disabled = true;
+      cancel.disabled = true;
+      const assignments = [...new FormData(editor)].map(([id, target]) => {
+        const [table, seat] = target.split(':').map(Number);
+        return { id, table, seat };
+      });
+      try {
+        await updateTournament((current) => closeTable(current, tableId, assignments));
+        dialog.close();
+        refresh();
+        message.textContent = 'השחקנים הועברו והשולחן נסגר.';
+      } catch (error) {
+        refresh();
+        fill();
+        feedback.textContent = error.message;
+      } finally { cancel.disabled = false; }
+    });
+    fill();
+    dialog.showModal();
+  }
+
   function receipt() {
     const select = find('#receipt-select');
     const entry = (tournament?.entries ?? []).find((item) => item.id === select.value);
@@ -115,7 +197,7 @@ export function renderRegistration(view, intro, floor) {
       for (const table of tournament?.tables ?? []) {
         const item = document.createElement('li');
         item.textContent = 'שולחן ' + table.id + ' · ' + (table.capacity - seats(tournament, table).length) +
-          ' מתוך ' + table.capacity + ' · ' + (table.status === 'ready' ? 'מוכן לפתיחה' : 'פתוח');
+          ' מתוך ' + table.capacity + ' · ' + (table.status === 'ready' ? 'מוכן לפתיחה' : table.status === 'closed' ? 'סגור' : 'פתוח');
         if (table.status === 'ready') {
           const open = document.createElement('button');
           open.type = 'button';
@@ -124,6 +206,13 @@ export function renderRegistration(view, intro, floor) {
             ...current, tables: current.tables.map((row) => row.id === table.id ? { ...row, status: 'open' } : row),
           }), 'השולחן פתוח להושבה.'));
           item.append(' ', open);
+        }
+        if (table.status === 'open' && tournament.status !== 'finished') {
+          const close = document.createElement('button');
+          close.type = 'button';
+          close.textContent = 'סגירת שולחן ' + table.id;
+          close.addEventListener('click', () => closeTableDialog(table.id));
+          item.append(' ', close);
         }
         list.append(item);
       }

@@ -129,3 +129,18 @@ employee by name; individual employee accounts are not implemented here.
 The owner sees the current browser tournament and can explicitly save its
 summary to server history after finishing it. Full tournament state stays in
 the browser. This development server binds to loopback.
+
+## Running parallel tournaments
+
+Use the tournament picker in the floor, cashier, dealer or audience station.
+The selection is per tab, and a station URL with `?t=<id>` pins a tournament.
+Use **New tournament** from the floor to open a separate setup. The local
+store reads the previous single-tournament format and preserves it in the
+new list on the next write. Tabs still need the same browser origin.
+
+New setups include 25 generated blind levels. Select a structure beside the
+default level duration and load it explicitly; changing the default duration
+updates every level. To close a table, choose a distinct free seat at another
+open table for every player. Transfers and closure are saved together.
+After late registration closes, use **Finish tournament** on the live floor
+screen to enter paid places and save the result.

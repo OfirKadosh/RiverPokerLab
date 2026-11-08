@@ -1,8 +1,8 @@
 import { enterScreen, updateDigits } from './motion.js';
 import { connectLevelChime, crossedLevel } from './level-chime.js';
-import { showPrizes } from './results.js';
+import { renderResults, showPrizes } from './results.js';
 import { controlLive, liveView, moveBreak, schedule } from './live-state.js';
-import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
+import { readTournament, tournamentLink, updateTournament, watchTournament } from './tournament-store.js';
 
 function countdown(milliseconds) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -17,7 +17,7 @@ export function renderLive(view, intro, floor) {
   const heading = intro(floor ? 'פלור / ניהול חי' : 'תצוגת קהל',
     floor ? 'ניהול טורניר חי' : 'מסך הטורניר', 'השעון והנתונים מתעדכנים בין לשוניות באותו דפדפן.');
   const panel = document.createElement('section');
-  panel.className = 'live-panel setup';
+  panel.className = floor ? 'live-panel setup live-floor' : 'live-panel setup';
   panel.innerHTML = `
     <article class="display-card live-scoreboard">
       <p class="eyebrow" data-live="phase"></p>
@@ -38,7 +38,8 @@ export function renderLive(view, intro, floor) {
       <button type="button" data-action="pause">השהיה</button>
       <button type="button" data-action="resume">המשך</button>
       <button type="button" data-action="next">מעבר לשלב הבא</button>
-      <a href="#display" target="_blank" rel="noopener" class="action">פתיחת תצוגת קהל</a>
+      <a href="${tournamentLink('display')}" target="_blank" rel="noopener" class="action">פתיחת תצוגת קהל</a>
+      <button type="button" id="finish-live" hidden>סיום טורניר</button>
     </div>
     <form class="card setup-fields" id="adjust-live">
       <label>יתרת זמן בשניות <input name="seconds" type="number" min="1" required></label>
@@ -51,11 +52,14 @@ export function renderLive(view, intro, floor) {
       <button>שמירת הפסקה</button>
     </form>
     <p class="notice" role="status"></p>`);
+  if (floor) panel.insertBefore(panel.querySelector('.live-actions'), panel.querySelector('.live-facts'));
   view.append(heading, panel);
   const find = (selector) => panel.querySelector(selector);
   const chime = connectLevelChime(find('#level-sound'));
   const scoreboard = find('.live-scoreboard');
   let previous;
+  let disposeResults;
+  let finishDialog;
   const message = find('[role=status]');
   const breakForm = find('#move-break');
   const adjust = find('#adjust-live');
@@ -111,6 +115,7 @@ export function renderLive(view, intro, floor) {
       };
       button.disabled = busy || !allowed[button.dataset.action];
     }
+    find('#finish-live').hidden = !tournament?.live || registrationOpen || state === 'finished';
     adjust.querySelector('button').disabled = busy || state === 'ready' || state === 'finished' || !segment;
     adjust.elements.seconds.max = segment ? Math.floor((segment.end - segment.start) / 1000) : 1;
     const upcoming = schedule(tournament).filter((item) => item.type === 'break' && item.start > elapsed);
@@ -154,6 +159,29 @@ export function renderLive(view, intro, floor) {
   }
 
   if (floor) {
+    find('#finish-live').addEventListener('click', () => {
+      finishDialog = document.createElement('dialog');
+      finishDialog.className = 'setup close-table-dialog';
+      finishDialog.setAttribute('aria-label', 'סיום טורניר');
+      const close = document.createElement('button');
+      close.textContent = 'חזרה לניהול חי';
+      close.addEventListener('click', () => finishDialog.close());
+      finishDialog.append(close);
+      const host = document.createElement('div');
+      finishDialog.append(host);
+      panel.append(finishDialog);
+      disposeResults = renderResults(host, (...args) => {
+        const header = intro(...args);
+        header.querySelector('h1').removeAttribute('id');
+        return header;
+      }, refresh);
+      finishDialog.addEventListener('close', () => {
+        disposeResults?.();
+        finishDialog.remove();
+        finishDialog = null;
+      });
+      finishDialog.showModal();
+    });
     for (const button of panel.querySelectorAll('[data-action]')) {
       button.addEventListener('click', () => {
         const action = button.dataset.action;
@@ -193,5 +221,5 @@ export function renderLive(view, intro, floor) {
   refresh();
   const stop = watchTournament(refresh);
   const interval = setInterval(tick, 250);
-  return () => { stop(); clearInterval(interval); chime.dispose(); };
+  return () => { stop(); clearInterval(interval); chime.dispose(); disposeResults?.(); };
 }

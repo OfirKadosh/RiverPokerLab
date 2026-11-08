@@ -1,6 +1,18 @@
-import { readTournament, updateTournament } from './tournament-store.js';
-const blinds = [[100, 200], [200, 400], [300, 600], [400, 800], [500, 1000], [600, 1200], [800, 1600]];
-const defaultMinutes = { regular: 20, turbo: 12 };
+import { readTournament, tournamentLink, updateTournament } from './tournament-store.js';
+const minimumLevels = 25;
+const presets = {
+  fast: { label: 'מהיר מאוד', minutes: 8, factor: 1.55 },
+  turbo: { label: 'מהיר', minutes: 12, factor: 1.42 },
+  regular: { label: 'רגיל', minutes: 20, factor: 1.33 },
+  slow: { label: 'איטי', minutes: 30, factor: 1.25 },
+};
+function presetLevels(preset, count = minimumLevels, previous) {
+  let big = Number(previous?.big ?? 0);
+  return Array.from({ length: count }, () => {
+    big = big ? Math.max(big + 20, Math.round(big * preset.factor / 20) * 20) : 200;
+    return { small: big / 2, big, ante: big, minutes: preset.minutes };
+  });
+}
 const number = (value) => value === '' ? NaN : Number(value);
 const shekels = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
 
@@ -14,9 +26,7 @@ function readSetup() {
   return {
     version: 1, status: 'draft', title: '', game: 'holdem', pace: 'regular',
     stack: '30000', reentries: '0', fee: '300', rake: '0', bounty: '0', prizes: 'regular',
-    lateMode: 'level', lateValue: '6', levels: blinds.map(([small, big]) => ({
-      small, big, ante: big, minutes: defaultMinutes.regular,
-    })), breaks: [{ after: 6, minutes: 10 }],
+    lateMode: 'level', lateValue: '6', structurePreset: 'regular', levels: presetLevels(presets.regular), breaks: [{ after: 6, minutes: 10 }],
   };
 }
 
@@ -126,8 +136,13 @@ export function renderTournamentSetup(view, intro) {
   const structure = group(form, 'מבנה בליינדים והפסקות');
   const levels = make('div', { className: 'setup-list' });
   const breaks = make('div', { className: 'setup-list' });
-  const minutes = field(structure, 'משך שלב ברירת מחדל (דקות)', numeric(model.defaultMinutes ?? defaultMinutes[pace.value], 1, 180));
+  const minutes = field(structure, 'משך שלב ברירת מחדל (דקות)', numeric(model.defaultMinutes ?? presets[model.structurePreset ?? pace.value].minutes, 1, 180));
+  const preset = field(structure, 'מבנה בליינדים', select(
+    Object.entries(presets).map(([key, value]) => [key, value.label]), model.structurePreset ?? pace.value));
   const levelControls = [];
+  minutes.addEventListener('input', () => {
+    if (minutes.validity.valid) for (const level of levelControls) level.minutes.value = minutes.value;
+  });
   const breakControls = [];
 
   function syncLimits() {
@@ -146,7 +161,7 @@ export function renderTournamentSetup(view, intro) {
       ante: numeric(data.ante, 0, 1000000000), minutes: numeric(data.minutes, 1, 180), heading };
     for (const [key, label] of [['small', 'בליינד קטן'], ['big', 'בליינד גדול'], ['ante', 'אנטה'], ['minutes', 'דקות']]) field(row, label, controls[key]);
     row.append(button('הסרת שלב', () => {
-      if (levelControls.length === 1) return;
+      if (levelControls.length <= minimumLevels) return;
       levelControls.splice(levelControls.indexOf(controls), 1);
       row.remove();
       renumber();
@@ -161,7 +176,7 @@ export function renderTournamentSetup(view, intro) {
     levelControls.forEach((row, index) => {
       row.heading.textContent = 'שלב ' + (index + 1);
       const remove = row.heading.parentElement.querySelector('button');
-      remove.disabled = levelControls.length === 1;
+      remove.disabled = levelControls.length <= minimumLevels;
       remove.setAttribute('aria-label', 'הסרת שלב ' + (index + 1));
     });
     syncLimits();
@@ -184,32 +199,37 @@ export function renderTournamentSetup(view, intro) {
   const addLevelButton = button('הוספת שלב', () => {
     if (!minutes.reportValidity()) return;
     const previous = levelControls.at(-1);
-    addLevel({ small: previous.small.value, big: previous.big.value, ante: previous.ante.value, minutes: minutes.value });
+    addLevel(presetLevels({ ...presets[preset.value], minutes: minutes.value }, 1, { big: previous.big.value })[0]);
     levelControls.at(-1).small.focus();
   });
   const addBreakButton = button('הוספת הפסקה', () => {
     addBreak({ after: levelControls.length, minutes: 10 });
     breakControls.at(-1).after.focus();
   });
-  const applyTemplate = button('טעינת תבנית לפי קצב', () => {
-    if (!window.confirm('להחליף את שלבי הבליינדים וההפסקות בתבנית לפי הקצב שנבחר?')) return;
+  const applyTemplate = button('טעינת מבנה בליינדים', () => {
+    if (!window.confirm('להחליף את שלבי הבליינדים וההפסקות במבנה הבליינדים שנבחר?')) return;
     levels.replaceChildren();
     breaks.replaceChildren();
     levelControls.length = 0;
     breakControls.length = 0;
-    minutes.value = defaultMinutes[pace.value];
-    blinds.forEach(([small, big]) => addLevel({ small, big, ante: big, minutes: minutes.value }));
+    minutes.value = presets[preset.value].minutes;
+    presetLevels(presets[preset.value]).forEach(addLevel);
     addBreak({ after: 6, minutes: 10 });
   });
   structure.append(applyTemplate, levels, addLevelButton, breaks, addBreakButton);
   model.levels.forEach(addLevel);
+  if (model.levels.length < minimumLevels) presetLevels(
+    { ...presets[preset.value], minutes: minutes.value }, minimumLevels - model.levels.length, model.levels.at(-1),
+  ).forEach(addLevel);
   model.breaks.forEach(addBreak);
 
   const draft = make('button', { type: 'submit', value: 'draft', textContent: 'שמירת טיוטה' });
   const open = make('button', { type: 'submit', value: 'registration', textContent: 'פתיחה לרישום מקומי', className: 'action' });
   form.append(make('div', { className: 'setup-actions' }, [draft, open]));
+  let saving = false;
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (saving) return;
     const status = event.submitter?.value ?? 'draft';
     if (status === 'registration') {
       for (const input of form.querySelectorAll('input')) input.setCustomValidity('');
@@ -242,9 +262,10 @@ export function renderTournamentSetup(view, intro) {
         version: 1, status, title: title.value.trim(), game: game.value, pace: pace.value,
         stack: stack.value, reentries: reentries.value, fee: fee.value, prizes: prizes.value,
         rake: rakeValue, bounty: bountyValue, lateMode: lateMode.value, lateValue: lateValue.value,
-        defaultMinutes: minutes.value, levels: values(levelControls, ['small', 'big', 'ante', 'minutes']),
+        structurePreset: preset.value, defaultMinutes: minutes.value, levels: values(levelControls, ['small', 'big', 'ante', 'minutes']),
         breaks: values(breakControls, ['after', 'minutes']),
       };
+      saving = true;
       await updateTournament((current) => {
         if (current?.live) throw new Error('הטורניר כבר התחיל. שינוי הפסקות זמין בעמדת הניהול החי.');
         if (current?.status === 'registration' && status === 'draft' && current.entries?.length) {
@@ -255,9 +276,15 @@ export function renderTournamentSetup(view, intro) {
         )) throw new Error('לא ניתן לשנות משחק, ערימה או פיצול דמי כניסה לאחר רישום שחקנים.');
         return { ...current, id: current?.id ?? crypto.randomUUID(), ...settings };
       });
+      if (!form.isConnected) return;
+      const link = tournamentLink('setup');
+      if (location.hash !== link) {
+        window.location.hash = link;
+        return;
+      }
       summary.textContent = status === 'registration' ? 'הרישום פתוח. אפשר לקלוט שחקנים בעמדת הקופה.' : 'הטיוטה נשמרה בדפדפן הזה.';
     } catch (error) {
       summary.textContent = error.message;
-    }
+    } finally { saving = false; }
   });
 }

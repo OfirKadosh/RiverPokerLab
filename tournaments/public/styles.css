@@ -147,3 +147,22 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
   #work-progress::after, #view:empty::before { animation: none; }
 }
 @media print { #work-progress { display: none; } }
+
+.tournament-picker { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-block: 1rem .25rem; }
+.tournament-picker select { max-inline-size: min(70vw, 24rem); min-block-size: 44px; font: inherit; }
+.tournament-picker + .action { margin-inline-start: .65rem; }
+.live-floor { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); align-items: start; }
+.live-floor .live-scoreboard { padding: .85rem; font-size: 1rem; }
+.live-floor .live-scoreboard .clock { font-size: clamp(2.5rem, 5vw, 4rem); }
+.live-floor .live-facts { grid-column: 1 / -1; }
+.live-floor .live-actions { align-content: start; background: var(--surface); padding: 1rem; border: 1px solid var(--border); border-radius: .75rem; }
+.close-table-dialog { inline-size: min(95%, 56rem); max-block-size: 90dvh; overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: .75rem; }
+.close-table-dialog:not([open]) { display: none; }
+.close-table-dialog::backdrop { background: #000a; }
+.dealer-table { position: relative; max-inline-size: 54rem; margin: 1rem auto 0; block-size: clamp(25rem, 58vw, 36rem); }
+.dealer-felt { position: absolute; inset: 17% 14%; display: grid; place-items: center; border: 5px solid #624b36; border-radius: 50%; background: #164033; color: var(--accent); font-weight: 700; }
+.dealer-chair, .player-chair { position: absolute; transform: translate(-50%, -50%); text-align: center; }
+.dealer-chair { left: 50%; top: 89%; background: var(--accent); color: var(--background); border-radius: .6rem; padding: .4rem .7rem; }
+.dealer-table .player-chair { inline-size: clamp(2.65rem, 12vw, 6.25rem); padding: .2rem; font-size: clamp(.65rem, 1.8vw, .9rem); overflow-wrap: anywhere; }
+.dealer-table .player-chair p { margin: 0; max-block-size: 2.5em; overflow: auto; }
+.dealer-table .player-chair button { inline-size: 100%; padding: .12rem; }

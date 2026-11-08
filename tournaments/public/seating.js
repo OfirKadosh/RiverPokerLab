@@ -87,3 +87,32 @@ export function register(tournament, request) {
     players: previous ? players.map((item) => item.id === player.id ? player : item) : [...players, player],
     entries: [...entries, entry] };
 }
+
+export function closeTable(tournament, tableId, assignments, now = Date.now()) {
+  requireTournament(tournament);
+  const table = tournament.tables?.find((item) => item.id === tableId && item.status === 'open');
+  if (!table) fail('השולחן כבר אינו פתוח.');
+  const players = (tournament.players ?? []).filter((player) => player.table === tableId);
+  const byPlayer = new Map(assignments.map((item) => [item.id, item]));
+  if (players.length !== assignments.length || byPlayer.size !== players.length ||
+      players.some((player) => !byPlayer.has(player.id))) {
+    fail('רשימת השחקנים השתנתה. יש לשבץ מחדש את כל השחקנים.');
+  }
+  const taken = new Set();
+  for (const item of assignments) {
+    const key = item.table + ':' + item.seat;
+    if (item.table === tableId || taken.has(key)) fail('יש לבחור מושב אחר ונפרד לכל שחקן.');
+    assignSeat(tournament, item.table, item.seat);
+    taken.add(key);
+  }
+  const shift = tournament.shifts?.[table.dealer];
+  const shifts = shift ? { ...tournament.shifts, [table.dealer]: {
+    ...shift, statusSince: now, history: [...(shift.history ?? []), { at: now, table: null }],
+  } } : tournament.shifts;
+  return { ...tournament, shifts, tables: tournament.tables.map((item) => item.id === tableId ?
+    { ...item, status: 'closed', tablet: null, code: null, dealer: null, clock: null } : item),
+  players: (tournament.players ?? []).map((player) => {
+    const next = byPlayer.get(player.id);
+    return next ? { ...player, table: next.table, seat: next.seat } : player;
+  }) };
+}

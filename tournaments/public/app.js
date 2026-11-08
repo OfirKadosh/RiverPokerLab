@@ -1,3 +1,4 @@
+import { selectTournament, tournamentId, tournamentLink, tournamentOptions, watchTournament } from './tournament-store.js';
 import { readClub, renderAttendance, renderClubAdmin } from './club.js';
 import { enterScreen } from './motion.js';
 import { renderResults } from './results.js';
@@ -117,7 +118,10 @@ function station(role) {
 
 let disposeRoute;
 function render(focus = false) {
-  const hash = window.location.hash.slice(1);
+  const [hash, query] = window.location.hash.slice(1).split('?');
+  const requested = new URLSearchParams(query).get('t');
+  if (requested) selectTournament(requested);
+  selectTournament(tournamentId());
   if (hash === 'content') return;
   disposeRoute?.();
   disposeRoute = undefined;
@@ -128,6 +132,33 @@ function render(focus = false) {
   }
   view.className = route === 'display' ? 'audience' : '';
   view.replaceChildren();
+  if (['floor', 'setup', 'seating', 'live', 'shifts', 'cashier', 'dealer', 'display', 'results', 'staff'].includes(route)) {
+    const picker = document.createElement('label');
+    picker.className = 'tournament-picker';
+    picker.textContent = 'טורניר ';
+    const select = document.createElement('select');
+    picker.append(select);
+    view.append(picker);
+    const sync = () => {
+      const options = tournamentOptions();
+      select.replaceChildren(new Option(options.length ? 'טורניר חדש / ללא בחירה' : 'אין טורנירים שמורים', 'new'),
+        ...options.map((item) => new Option((item.title || 'טיוטה ללא כותרת') + (item.status === 'finished' ? ' · הסתיים' : ''), item.id)));
+      select.value = tournamentId();
+    };
+    sync();
+    select.addEventListener('change', () => {
+      selectTournament(select.value);
+      window.location.hash = tournamentLink(select.value === 'new' && route === 'floor' ? 'setup' : route);
+    });
+    if (route === 'floor' || route === 'setup') {
+      const create = element('a', 'טורניר חדש', 'action');
+      create.href = '#setup?t=new';
+      picker.after(create);
+    }
+    const stopPicker = watchTournament(sync);
+    disposeRoute = stopPicker;
+  }
+  const disposePicker = disposeRoute;
   if (route === 'club') club();
   else if (route === 'display' || route === 'live') disposeRoute = renderLive(view, intro, route === 'live');
   else if (route === 'attendance') renderAttendance(view, intro);
@@ -137,6 +168,10 @@ function render(focus = false) {
   else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');
   else if (route === 'dealer' || route === 'shifts') disposeRoute = renderDealer(view, intro, route === 'shifts');
   else station(route);
+  if (disposePicker && disposeRoute !== disposePicker) {
+    const disposeScreen = disposeRoute;
+    disposeRoute = () => { disposePicker(); disposeScreen?.(); };
+  }
   enterScreen(view);
   if (focus) main.focus();
 }
