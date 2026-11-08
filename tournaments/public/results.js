@@ -1,5 +1,6 @@
+import { editShare, resizeShares } from './prize-editor-state.js';
 import { registrationOpen } from './live-state.js';
-import { allocatePrizes, pools, prizeShares, restoreElimination, saveResults, setPrizeShares } from './results-state.js';
+import { pools, prizeRows, prizeShares, restoreElimination, saveResults, setPrizeShares } from './results-state.js';
 import { readTournament, reconcileFinish, removeTournament, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
 
 const currency = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
@@ -15,14 +16,14 @@ function element(tag, text = '') {
 export function showPrizes(container, tournament, showNames = false) {
   const closed = tournament?.live && !registrationOpen(tournament);
   container.hidden = !closed || !tournament.players?.length;
-  const key = container.hidden ? '' : JSON.stringify([prizeShares(tournament), pools(tournament).prizes, tournament.results]);
+  const rows = container.hidden ? [] : prizeRows(tournament);
+  const key = JSON.stringify(rows);
   if (container.dataset.key === key) return;
   container.dataset.key = key;
   container.replaceChildren();
   if (container.hidden) return;
   container.append(element('h2', 'חלוקת פרסים'));
   const list = element('ol');
-  const rows = tournament.results?.rows ?? allocatePrizes(pools(tournament).prizes, prizeShares(tournament));
   if (!showNames) list.className = rows.length > 12 ? 'prize-tiles prize-tiles-dense' : 'prize-tiles';
   for (const row of rows) {
     if (showNames) {
@@ -30,6 +31,7 @@ export function showPrizes(container, tournament, showNames = false) {
     } else {
       const tile = element('li');
       tile.append(element('span', 'מקום ' + row.place), element('strong', money(row.amount)));
+      if (row.name) tile.append(element('span', row.name));
       list.append(tile);
     }
   }
@@ -134,7 +136,7 @@ export function renderResults(view, intro, onSaved) {
         perform((stored) => restoreElimination(stored, id, text, expected), 'השחקן הוחזר והמושב עודכן.');
       }));
     }
-    if (tournament.results || (closed && !players.length && !tournament.entries?.length)) {
+    if (tournament.results || (!players.length && !tournament.entries?.length)) {
       const archive = Boolean(tournament.results);
       const card = element('section');
       card.className = 'card setup';
@@ -149,7 +151,7 @@ export function renderResults(view, intro, onSaved) {
         try {
           await removeTournament(id, async (stored) => {
             if (!archive) {
-              if (stored.players?.length || stored.entries?.length || stored.results || !stored.live || registrationOpen(stored)) {
+              if (stored.players?.length || stored.entries?.length || stored.results) {
                 throw new Error('מצב הטורניר השתנה. בדקו את המשתתפים וההרשמה.');
               }
               return;
@@ -181,19 +183,60 @@ export function renderResults(view, intro, onSaved) {
     }
     if (!closed || !players.length) return;
     if (!tournament.results) {
-      const percentages = input('50, 30, 20', shares.map((share) => share / 100).join(', '));
-      const reason = input('סיבת שינוי החלוקה');
-      editor.append(form('שינוי מקומות מזכים', [['אחוזים לפי סדר המקומות, מופרדים בפסיקים', percentages],
-        ['סיבה', reason]], 'שמירת חלוקה', () => {
-        const parts = percentages.value.split(',').map((part) => part.trim());
-        if (parts.some((part) => !/^\d{1,3}(\.\d{1,2})?$/.test(part))) {
-          message.textContent = 'יש להזין אחוזים תקינים, עד שתי ספרות אחרי הנקודה.';
-          return;
-        }
-        const values = parts.map((part) => Math.round(Number(part) * 100));
-        const text = reason.value;
-        perform((stored) => setPrizeShares(stored, values, text), 'חלוקת הפרסים עודכנה.');
-      }));
+      let draft = shares;
+      const box = element('form');
+      box.className = 'card setup';
+      const fields = element('div');
+      fields.className = 'setup-fields';
+      const controls = element('div');
+      controls.className = 'setup-actions';
+      const add = element('button', 'הוספת מקום מזכה');
+      const remove = element('button', 'הסרת מקום אחרון');
+      add.type = remove.type = 'button';
+      const feedback = element('p');
+      feedback.setAttribute('role', 'status');
+      const reason = input('סיבה לשינוי (אופציונלי)');
+      reason.required = false;
+      reason.setAttribute('aria-label', 'סיבה לשינוי החלוקה');
+      const save = element('button', 'שמירת חלוקה');
+      controls.append(add, remove, save);
+      box.append(element('h2', 'מקומות מזכים ואחוזים'), fields, controls, reason, feedback);
+      function draw() {
+        fields.replaceChildren();
+        draft.forEach((share, index) => {
+          const label = element('label', 'מקום ' + (index + 1) + ' · אחוז');
+          const amount = element('input');
+          Object.assign(amount, { type: 'number', min: '1', max: '100', step: '0.01', value: String(share / 100), required: true });
+          label.append(amount);
+          amount.addEventListener('change', () => {
+            try {
+              const value = Number(amount.value);
+              if (!amount.validity.valid) throw new Error('יש להזין אחוז בין 1 ל־100, עד שתי ספרות אחרי הנקודה.');
+              draft = editShare(draft, index, Math.round(value * 100));
+              feedback.textContent = 'סך החלוקה: 100%';
+              if (draft.length === fields.children.length) {
+                [...fields.querySelectorAll('input')].forEach((field, i) => { field.value = String(draft[i] / 100); });
+              } else draw();
+            } catch (error) {
+              amount.value = String(draft[index] / 100);
+              feedback.textContent = error.message;
+            }
+          });
+          fields.append(label);
+        });
+        add.disabled = draft.length >= Math.min(30, players.length);
+        remove.disabled = draft.length === 1;
+      }
+      add.addEventListener('click', () => { draft = resizeShares(draft, draft.length + 1); draw(); });
+      remove.addEventListener('click', () => { draft = resizeShares(draft, draft.length - 1); draw(); });
+      box.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const updated = draft;
+        const text = reason.value.trim() || 'עדכון מקומות מזכים';
+        perform((stored) => setPrizeShares(stored, updated, text), 'חלוקת הפרסים עודכנה.');
+      });
+      draw();
+      editor.append(box);
     }
     const expectedResults = JSON.stringify(tournament.results ?? null);
     const ranks = shares.map((_, index) => {

@@ -1,3 +1,5 @@
+import { minimumPlayers, occupiedTables } from './table-occupancy.js';
+
 const minutes = (value) => Number(value) * 60000;
 
 export function schedule(tournament) {
@@ -53,6 +55,13 @@ export function controlLive(tournament, action, now = Date.now(), expectedStart,
   const view = liveView(tournament, now);
   const live = tournament.live;
   if (action === 'start' && !live && view.segment) {
+    const occupied = occupiedTables(tournament);
+    if (occupied.reduce((sum, table) => sum + table.count, 0) < minimumPlayers) {
+      throw new Error('נדרשים לפחות 4 שחקנים מושבים כדי להתחיל טורניר.');
+    }
+    if (occupied.some((table) => table.count < minimumPlayers)) {
+      throw new Error('לפני ההתחלה יש להושיב לפחות 4 שחקנים בכל שולחן מאויש.');
+    }
     return { ...tournament, live: { elapsed: 0, runningSince: now } };
   }
   if (!live || !view.segment) throw new Error('אין שלב פעיל לשינוי.');

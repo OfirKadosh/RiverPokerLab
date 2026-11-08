@@ -1,3 +1,5 @@
+import { balanceAfterElimination } from './seating.js';
+import { waitingTables } from './table-occupancy.js';
 import { finishAutomatically } from './results-state.js';
 
 export const dealers = [
@@ -88,14 +90,16 @@ export function eliminate(tournament, token, playerId, expectedSeat, now = Date.
   const table = requirePair(tournament, token);
   if (tournament.status === 'finished') throw new Error('הטורניר הסתיים.');
   if (!table.dealer) throw new Error('יש לשבץ דילר לפני ביצוע הדחה.');
+  if (waitingTables(tournament).some((item) => item.id === table.id)) throw new Error('השולחן ממתין לאיזון מהפלור.');
   const player = (tournament.players ?? []).find((item) => item.id === playerId);
   if (!player || player.table !== table.id || player.seat !== expectedSeat) {
     throw new Error('המושב השתנה. בחרו מחדש ממפת השולחן.');
   }
   const order = (tournament.eliminationOrder ?? 0) + 1;
-  return finishAutomatically({ ...tournament, eliminationOrder: order, players: tournament.players.map((item) =>
+  const updated = { ...tournament, eliminationOrder: order, players: tournament.players.map((item) =>
     item.id === playerId ? { ...item, table: null, seat: null,
-      elimination: { table: table.id, seat: expectedSeat, at: now, order } } : item) }, now);
+      elimination: { table: table.id, seat: expectedSeat, at: now, order } } : item) };
+  return finishAutomatically(tournament.live ? balanceAfterElimination(updated, table.id, now) : updated, now);
 }
 
 export function clockLeft(clock, now = Date.now()) {
@@ -106,6 +110,7 @@ export function updateClock(tournament, token, action, now = Date.now()) {
   const table = requirePair(tournament, token);
   if (tournament.status === 'finished') throw new Error('הטורניר הסתיים.');
   if (!table.dealer) throw new Error('יש לשבץ דילר לפני הפעלת השעון.');
+  if (waitingTables(tournament).some((item) => item.id === table.id)) throw new Error('השולחן ממתין לאיזון מהפלור.');
   const remaining = clockLeft(table.clock, now);
   if (action === 'pause' && (!table.clock?.deadline || remaining === 0)) return tournament;
   const clock = action === 'pause'

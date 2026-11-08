@@ -211,3 +211,6 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
 .prize-tiles-dense strong { font-size: clamp(.8rem, min(2vw, 2.5dvh), 1.45rem); }
 
 #itm-warning { grid-column: 1 / -1; color: var(--warning); border-color: var(--warning); }
+
+#table-warning { grid-column: 1 / -1; color: var(--warning); border-color: var(--warning); }
+.prize-tiles span { overflow-wrap: anywhere; }

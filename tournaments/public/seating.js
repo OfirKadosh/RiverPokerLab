@@ -1,3 +1,4 @@
+import { minimumPlayers, occupiedTables, waitingTables } from './table-occupancy.js';
 import { registrationOpen } from './live-state.js';
 
 function fail(message) {
@@ -115,4 +116,30 @@ export function closeTable(tournament, tableId, assignments, now = Date.now()) {
     const next = byPlayer.get(player.id);
     return next ? { ...player, table: next.table, seat: next.seat } : player;
   }) };
+}
+
+// Underfilled tables are closed only when all transfers can be committed together.
+export function balanceAfterElimination(tournament, sourceId, now) {
+  let next = tournament;
+  const candidates = [...new Set([sourceId, ...waitingTables(next).map((table) => table.id)])];
+  for (const id of candidates) {
+    const source = next.tables.find((table) => table.id === id && table.status === 'open');
+    if (!source) continue;
+    const players = next.players.filter((player) => player.table === id);
+    const others = occupiedTables(next).filter((table) => table.id !== id);
+    if (players.length >= minimumPlayers || !others.length) continue;
+    const targets = others.filter((table) => table.count >= minimumPlayers || others.length === 1)
+      .map((table) => ({ ...table, available: seats(next, table) }));
+    if (targets.reduce((sum, table) => sum + table.available.length, 0) < players.length) continue;
+    const assignments = players.map((player) => {
+      const target = targets.filter((table) => table.available.length)
+        .sort((a, b) => a.count - b.count || a.id - b.id)[0];
+      target.count++;
+      return { id: player.id, table: target.id, seat: target.available.shift() };
+    });
+    next = closeTable(next, id, assignments, now);
+  }
+  const blocked = new Set(waitingTables(next).map((table) => table.id));
+  return blocked.size ? { ...next, tables: next.tables.map((table) =>
+    blocked.has(table.id) && table.clock ? { ...table, clock: null } : table) } : next;
 }

@@ -1,3 +1,4 @@
+import { waitingTables } from './table-occupancy.js';
 import { enterScreen, updateDigits } from './motion.js';
 import { connectLevelChime, crossedLevel } from './level-chime.js';
 import { itmWarning } from './results-state.js';
@@ -35,6 +36,7 @@ export function renderLive(view, intro, floor) {
   if (!floor) panel.querySelector('.live-scoreboard').insertAdjacentHTML('afterbegin', '<h2 data-live="tournament-title"></h2>');
   if (!floor) panel.insertAdjacentHTML('beforeend', '<article class="card" id="audience-prizes" hidden></article>');
   if (floor) panel.insertAdjacentHTML('beforeend', `
+    <p id="table-warning" class="card" role="alert" hidden></p>
     <p id="itm-warning" class="card" role="alert" hidden></p>
     <div class="setup-actions live-actions">
       <button type="button" class="action" data-action="start">התחלת טורניר</button>
@@ -112,6 +114,12 @@ export function renderLive(view, intro, floor) {
       showPrizes(find('#audience-prizes'), tournament);
       return;
     }
+    const tables = waitingTables(tournament);
+    const tableWarning = find('#table-warning');
+    tableWarning.hidden = !tables.length;
+    const tableText = tables.length ? 'שולחנות ממתינים לאיזון: ' + tables.map((table) =>
+      table.id + ' (' + table.count + ' שחקנים)').join(', ') + '. יש להשלים הושבה או לסגור ולהעביר שחקנים.' : '';
+    if (tableWarning.textContent !== tableText) tableWarning.textContent = tableText;
     const warning = find('#itm-warning');
     const paid = itmWarning(tournament, active);
     warning.hidden = !paid;
@@ -128,7 +136,8 @@ export function renderLive(view, intro, floor) {
       button.disabled = busy || !allowed[button.dataset.action];
     }
     const finish = find('#finish-live');
-    finish.hidden = !tournament?.live || registrationOpen;
+    const empty = tournament && !players.length && !entries.length;
+    finish.hidden = !empty && (!tournament?.live || registrationOpen);
     finish.textContent = state === 'finished' ? 'ארכיון טורניר' : 'סיום טורניר';
     adjust.querySelector('button').disabled = busy || state === 'ready' || state === 'finished' || !segment;
     adjust.elements.seconds.max = segment ? Math.floor((segment.end - segment.start) / 1000) : 1;

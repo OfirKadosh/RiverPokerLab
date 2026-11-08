@@ -77,15 +77,28 @@ export function saveResults(tournament, playerIds, reason, expectedShares, expec
       before: tournament.results?.rows ?? null, after: rows, reason: reason.trim() }) };
 }
 
+function eliminatedInReverse(tournament) {
+  const eliminated = (tournament.players ?? []).filter((player) => player.table == null);
+  if (eliminated.some((player) => !Number.isFinite(player.elimination?.at))) return [];
+  return eliminated.sort((a, b) => a.elimination.order && b.elimination.order ?
+    b.elimination.order - a.elimination.order : b.elimination.at - a.elimination.at);
+}
+
+export function prizeRows(tournament) {
+  if (tournament.results) return tournament.results.rows;
+  const active = (tournament.players ?? []).filter((player) => player.table != null).length;
+  const eliminated = eliminatedInReverse(tournament);
+  return allocatePrizes(pools(tournament).prizes, prizeShares(tournament)).map((row) => ({
+    ...row, name: eliminated[row.place - active - 1]?.name,
+  }));
+}
+
 export function finishAutomatically(tournament, now = Date.now()) {
   if (!tournament?.live || tournament.status !== 'registration' || registrationOpen(tournament, now)) return tournament;
   const players = tournament.players ?? [];
   const active = players.filter((player) => player.table != null);
-  const eliminated = players.filter((player) => player.table == null);
-  if (active.length !== 1 || !eliminated.length ||
-      eliminated.some((player) => !Number.isFinite(player.elimination?.at))) return tournament;
-  eliminated.sort((a, b) => a.elimination.order && b.elimination.order ?
-    b.elimination.order - a.elimination.order : b.elimination.at - a.elimination.at);
+  const eliminated = eliminatedInReverse(tournament);
+  if (active.length !== 1 || !eliminated.length) return tournament;
   const standings = [...active, ...eliminated].map((player, index) => ({
     place: index + 1, playerId: player.id, name: player.name,
   }));
