@@ -72,3 +72,19 @@ registration cannot reopen it. Future breaks can be moved or resized.
 The audience screen is read-only and shares the same timeline, registration
 and player counts across tabs on the same origin. This stage still uses local
 browser storage. Separate devices require server-backed state.
+
+## Prizes and results
+
+After registration closes, the floor and the audience can see the projected
+payouts calculated from recorded entries. The floor can edit the percentages
+(up to 30 paid places and at most the number of registered players). For local
+testing the editable defaults are 100%, 65/35 or 50/30/20 for one, two or at
+least three players. Percentages must sum to 100%. Whole-agora payouts use the
+largest-remainder method with ties broken by finishing place. Bounty is shown
+as a separate pool and is handled physically at the tables.
+
+The floor records one distinct player per paid place and explicitly closes the
+tournament. Subsequent ranking corrections require a reason and keep before
+and after snapshots in the local audit log. Before closing, the floor can undo
+an elimination if the original seat is still available. This workflow records
+results and amounts only; it does not process payouts.

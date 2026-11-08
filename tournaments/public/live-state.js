@@ -25,7 +25,7 @@ export function liveView(tournament, now = Date.now()) {
   const live = tournament?.live;
   const elapsed = live ? live.elapsed + (live.runningSince === null ? 0 : Math.max(0, now - live.runningSince)) : 0;
   const index = segments.findIndex((segment) => segment.end > elapsed);
-  const segment = segments[index];
+  const segment = tournament?.status === 'finished' ? undefined : segments[index];
   const nextLevel = segment && segments.slice(index + 1).find((item) => item.type === 'level');
   const nextBreak = segment && segments.slice(index).find((item) => item.type === 'break');
   const end = segments.at(-1)?.end ?? 0;
@@ -39,7 +39,7 @@ export function liveView(tournament, now = Date.now()) {
   }
   return {
     elapsed, segment, nextLevel, nextBreak, registrationEnd,
-    state: !live ? 'ready' : !segment ? 'complete' : live.runningSince === null ? 'paused' : segment.type,
+    state: tournament?.status === 'finished' ? 'finished' : !live ? 'ready' : !segment ? 'complete' : live.runningSince === null ? 'paused' : segment.type,
     registrationOpen: tournament?.status === 'registration' && (!live || (!live.closed && elapsed < registrationEnd)),
   };
 }
@@ -80,6 +80,7 @@ export function controlLive(tournament, action, now = Date.now(), expectedStart,
 }
 
 export function moveBreak(tournament, index, after, duration, now = Date.now()) {
+  if (tournament?.status === 'finished') throw new Error('הטורניר הסתיים.');
   const segments = schedule(tournament);
   const original = segments.find((item) => item.type === 'break' && item.breakIndex === index);
   const destination = segments.find((item) => item.type === 'level' && item.number === after);

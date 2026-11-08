@@ -1,3 +1,4 @@
+import { renderResults } from './results.js';
 import { renderLive } from './live.js';
 import { renderDealer } from './dealer.js';
 import { renderRegistration } from './registration.js';
@@ -84,7 +85,9 @@ function station(role) {
     setup.href = '#setup';
     const live = element('a', 'ניהול טורניר חי', 'action');
     live.href = '#live';
-    grid.firstElementChild.append(setup, live);
+    const results = element('a', 'פרסים ותוצאות', 'action');
+    results.href = '#results';
+    grid.firstElementChild.append(setup, live, results);
     const seating = element('a', 'ניהול שולחנות והושבה', 'action');
     seating.href = '#seating';
     grid.children[1].append(seating);
@@ -105,15 +108,16 @@ function render(focus = false) {
   if (hash === 'content') return;
   disposeRoute?.();
   disposeRoute = undefined;
-  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || hash === 'results' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
   for (const link of links) {
-    if (link.hash === '#' + (['setup', 'seating', 'shifts', 'live'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
+    if (link.hash === '#' + (['setup', 'seating', 'shifts', 'live', 'results'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
   view.className = route === 'display' ? 'audience' : '';
   view.replaceChildren();
   if (route === 'club') club();
   else if (route === 'display' || route === 'live') disposeRoute = renderLive(view, intro, route === 'live');
+  else if (route === 'results') disposeRoute = renderResults(view, intro);
   else if (route === 'setup') renderTournamentSetup(view, intro);
   else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');
   else if (route === 'dealer' || route === 'shifts') disposeRoute = renderDealer(view, intro, route === 'shifts');

@@ -1,3 +1,4 @@
+import { showPrizes } from './results.js';
 import { controlLive, liveView, moveBreak, schedule } from './live-state.js';
 import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
 
@@ -27,6 +28,7 @@ export function renderLive(view, intro, floor) {
       <article class="card"><h2>הפסקה</h2><p data-live="break"></p></article>
       <article class="card"><h2>שחקנים וכניסות</h2><p data-live="entries"></p><p data-live="stack"></p></article>
     </div>`;
+  if (!floor) panel.insertAdjacentHTML('beforeend', '<article class="card" id="audience-prizes" hidden></article>');
   if (floor) panel.insertAdjacentHTML('beforeend', `
     <div class="setup-actions live-actions">
       <button type="button" class="action" data-action="start">התחלת טורניר</button>
@@ -64,7 +66,7 @@ export function renderLive(view, intro, floor) {
       if (field.textContent !== value) field.textContent = value;
     };
     const phase = segment?.type === 'break' ? 'הפסקה אחרי שלב ' + segment.number : 'שלב ' + segment?.number;
-    set('phase', !tournament ? 'ממתין לטורניר' : state === 'complete' ? 'מבנה הבליינדים הסתיים' :
+    set('phase', !tournament ? 'ממתין לטורניר' : state === 'finished' ? 'הטורניר הסתיים' : state === 'complete' ? 'מבנה הבליינדים הסתיים' :
       state === 'ready' ? 'ממתין להתחלה' : state === 'paused' ? phase + ' · מושהה' : phase);
     set('clock', segment ? countdown(segment.end - elapsed) : '00:00');
     set('blinds', segment?.type === 'break' ? 'בהפסקה' : blinds(segment?.level));
@@ -80,17 +82,20 @@ export function renderLive(view, intro, floor) {
       entries.filter((entry) => entry.kind === 'reentry').length + ' חוזרות');
     set('stack', active && Number(tournament.stack) ? 'ערימה ממוצעת: ' +
       numbers.format(Math.round(entries.length * Number(tournament.stack) / active)) : '');
-    if (!floor) return;
+    if (!floor) {
+      showPrizes(find('#audience-prizes'), tournament);
+      return;
+    }
     for (const button of panel.querySelectorAll('[data-action]')) {
       const allowed = {
         start: state === 'ready' && tournament?.status === 'registration' && segment,
         pause: state === 'level' || state === 'break',
         resume: state === 'paused',
-        next: state !== 'ready' && segment,
+        next: state !== 'ready' && state !== 'finished' && segment,
       };
       button.disabled = busy || !allowed[button.dataset.action];
     }
-    adjust.querySelector('button').disabled = busy || state === 'ready' || !segment;
+    adjust.querySelector('button').disabled = busy || state === 'ready' || state === 'finished' || !segment;
     adjust.elements.seconds.max = segment ? Math.floor((segment.end - segment.start) / 1000) : 1;
     const upcoming = schedule(tournament).filter((item) => item.type === 'break' && item.start > elapsed);
     const options = JSON.stringify(upcoming.map((item) => [item.breakIndex, item.number]));
@@ -103,7 +108,7 @@ export function renderLive(view, intro, floor) {
       breakOptions = options;
     }
     breakForm.elements.after.max = tournament?.levels?.length ?? 1;
-    breakForm.querySelector('button').disabled = busy || !upcoming.length;
+    breakForm.querySelector('button').disabled = busy || state === 'finished' || !upcoming.length;
   }
 
   function refresh() {

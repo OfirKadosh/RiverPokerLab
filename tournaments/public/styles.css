@@ -122,3 +122,7 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
 .live-actions .action { margin: 0; }
 .audience .live-scoreboard .clock { font-size: clamp(3.75rem, min(19vw, 27dvh), 16rem); }
 .audience .live-scoreboard { padding: clamp(.75rem, 3vw, 2rem); }
+
+#result-editor { display: grid; gap: 1rem; }
+#result-log li + li { margin-block-start: .75rem; }
+#audience-prizes ol { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 2.5rem; }

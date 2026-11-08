@@ -84,13 +84,14 @@ export function swapDealer(tournament, token, dealerId, expectedDealer) {
 
 export function eliminate(tournament, token, playerId, expectedSeat) {
   const table = requirePair(tournament, token);
+  if (tournament.status === 'finished') throw new Error('הטורניר הסתיים.');
   if (!table.dealer) throw new Error('יש לשבץ דילר לפני ביצוע הדחה.');
   const player = (tournament.players ?? []).find((item) => item.id === playerId);
   if (!player || player.table !== table.id || player.seat !== expectedSeat) {
     throw new Error('המושב השתנה. בחרו מחדש ממפת השולחן.');
   }
   return { ...tournament, players: tournament.players.map((item) =>
-    item.id === playerId ? { ...item, table: null, seat: null } : item) };
+    item.id === playerId ? { ...item, table: null, seat: null, elimination: { table: table.id, seat: expectedSeat, at: Date.now() } } : item) };
 }
 
 export function clockLeft(clock, now = Date.now()) {
@@ -99,6 +100,7 @@ export function clockLeft(clock, now = Date.now()) {
 
 export function updateClock(tournament, token, action, now = Date.now()) {
   const table = requirePair(tournament, token);
+  if (tournament.status === 'finished') throw new Error('הטורניר הסתיים.');
   if (!table.dealer) throw new Error('יש לשבץ דילר לפני הפעלת השעון.');
   const remaining = clockLeft(table.clock, now);
   if (action === 'pause' && (!table.clock?.deadline || remaining === 0)) return tournament;

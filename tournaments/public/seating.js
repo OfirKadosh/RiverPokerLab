@@ -14,6 +14,7 @@ export function seats(tournament, table, except) {
 
 function requireTournament(tournament) {
   if (!tournament) fail('יש להקים ולשמור טורניר בעמדת הפלור.');
+  if (tournament.status === 'finished') fail('הטורניר הסתיים.');
 }
 
 export function addTable(tournament, capacity, status) {

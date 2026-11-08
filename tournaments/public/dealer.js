@@ -178,7 +178,7 @@ export function renderDealer(view, intro, floor) {
         if (!window.confirm('לאשר הדחה של ' + player.name + ' מכיסא ' + seat + '?')) return;
         const currentToken = token;
         perform((current) => eliminate(current, currentToken, player.id, seat), 'השחקן הודח והמושב התפנה.');
-      }, !table.dealer));
+      }, !table.dealer || tournament.status === 'finished'));
       seats.append(chair);
     }
     panel.append(seats);
@@ -196,17 +196,17 @@ export function renderDealer(view, intro, floor) {
     }
     if (tournamentPhase) {
       const { state, segment } = liveView(tournament, now);
-      const text = state === 'ready' ? 'הטורניר טרם התחיל' : state === 'complete' ? 'מבנה הבליינדים הסתיים' :
+      const text = state === 'ready' ? 'הטורניר טרם התחיל' : state === 'finished' ? 'הטורניר הסתיים' : state === 'complete' ? 'מבנה הבליינדים הסתיים' :
         (segment.type === 'break' ? 'הפסקה אחרי שלב ' : 'שלב ') + segment.number + (state === 'paused' ? ' · מושהה' : '');
       if (tournamentPhase.textContent !== text) tournamentPhase.textContent = text;
     }
     const table = pairedTable(tournament, token);
-    const remaining = clockLeft(table?.clock, now);
+    const remaining = tournament?.status === 'finished' ? 0 : clockLeft(table?.clock, now);
     const running = Boolean(table?.clock?.deadline && remaining);
     for (const { face, toggle } of fullscreenClock ? [...clockNodes, fullscreenClock] : clockNodes) {
       face.textContent = duration(Math.ceil(remaining / 1000) * 1000);
       face.setAttribute('aria-label', running || !remaining ? 'איפוס והפעלת 30 שניות' : 'המשך שעון פעולה');
-      face.disabled = !table?.dealer;
+      face.disabled = !table?.dealer || tournament?.status === 'finished';
       toggle.textContent = running ? 'השהיה' : 'המשך';
       toggle.dataset.action = running ? 'pause' : 'tap';
       toggle.disabled = !table?.dealer || !remaining;
