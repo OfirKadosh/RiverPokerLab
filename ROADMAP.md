@@ -45,3 +45,20 @@ Stage 8 evaluates ICM separately for each complete outcome stack vector, then we
 ## Second beta scope
 
 Stage 13.2 completes the intended development scope before owner review for the second beta. The native shell is moved from 13.3 to stage 14 and does not block this release. See `STEP_13_2_TOURNAMENT_DECISIONS.md` and `RELEASE_REVIEW.md`.
+
+## Version 1.1 — bankroll and practice
+
+Both modules are planned for 1.1 and can be delivered in separate increments.
+
+### Bankroll
+
+- Track cash sessions and tournaments in each member's private account. Capture cash buy-ins and cash-out, or tournament entries/re-entries and prizes.
+- Record deposits and withdrawals separately from play results. Show current balance, net results for the selected period, and a session history with cash and tournament filters.
+- Start with one currency per bankroll and a mobile-friendly entry form.
+
+### Practice
+
+- Let players choose Cash or Tournament and the type of decision to practice. Draw a random spot from validated templates, varying hands, boards, ranges and other supported inputs. Present only legal actions and reveal the solution after the first submitted answer.
+- Begin with supported heads-up cash river decisions and tournament Fold/Call ICM decisions with a complete field and explicit assumptions. Use the existing engine to grade and explain each spot. In cash, show action EV and mix where relevant. In tournaments, explain chip EV and prize EV separately when both are available.
+- Accept multiple actions when their values are within the declared scoring tolerance. Skip or regenerate a spot if the analysis cannot support a reliable grade. Show what made the accepted answers reasonable.
+- Keep private practice progress with correct-answer streaks, consecutive practice days, personal records and milestone achievements. Count the first graded answer once per exercise and a completed exercise once per local practice day. Store progress by account for continuity across devices.
