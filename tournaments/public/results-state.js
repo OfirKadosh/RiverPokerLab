@@ -1,18 +1,26 @@
+import { resizeShares } from './prize-editor-state.js';
 import { registrationOpen } from './live-state.js';
 import { assignSeat } from './seating.js';
 
 export function pools(tournament) {
-  return (tournament?.entries ?? []).reduce((total, entry) => {
+  const actual = (tournament?.entries ?? []).reduce((total, entry) => {
     const rake = Number(entry.rake ?? 0);
     const bounty = Number(entry.bounty ?? 0);
     return { collected: total.collected + entry.fee, rake: total.rake + rake,
       bounty: total.bounty + bounty, prizes: total.prizes + entry.fee - rake - bounty };
   }, { collected: 0, rake: 0, bounty: 0, prizes: 0 });
+  return { ...actual, prizes: Math.max(actual.prizes, tournament?.guarantee ?? 0) };
 }
 
 export function prizeShares(tournament) {
-  return tournament?.prizeShares ?? [[10000], [6500, 3500], [5000, 3000, 2000]][
-    Math.max(0, Math.min(2, (tournament?.players?.length ?? 0) - 1))];
+  if (tournament?.prizeShares) return tournament.prizeShares;
+  const players = tournament?.players?.length ?? 0;
+  const rate = Number(tournament?.paidPercent);
+  const count = [10, 12, 15].includes(rate) ?
+    Math.max(1, Math.min(10000, Math.ceil(players * rate / 100))) : Math.max(1, Math.min(3, players));
+  if (count === 1) return [10000];
+  if (count === 2) return [6500, 3500];
+  return resizeShares([5000, 3000, 2000], count, Math.min(100, Math.floor(10000 / count)));
 }
 
 // Allocate whole agorot by largest fractional remainder, then by finishing place.
@@ -42,21 +50,46 @@ function log(tournament, event) {
 export function setPrizeShares(tournament, shares, reason, now = Date.now()) {
   requireClosed(tournament, now);
   if (tournament.results) throw new Error('חלוקת הפרסים ננעלה עם סיום הטורניר.');
-  if (!shares.length || shares.length > Math.min(30, tournament.players?.length ?? 0) ||
+  if (!shares.length || shares.length > (tournament.players?.length ?? 0) ||
       shares.some((share) => !Number.isInteger(share) || share <= 0) ||
       shares.reduce((sum, share) => sum + share, 0) !== 10000) {
-    throw new Error('יש לבחור עד 30 מקומות מזכים, עד מספר השחקנים, וסך של 100%.');
+    throw new Error('יש לבחור לכל היותר כמספר השחקנים מקומות מזכים, וסך של 100%.');
   }
   requireReason(reason);
-  return { ...tournament, prizeShares: shares, resultLog: log(tournament, {
+  return { ...tournament, prizeShares: shares, prizeAmounts: null, resultLog: log(tournament, {
     type: 'shares', at: now, before: prizeShares(tournament), after: shares, reason: reason.trim(),
   }) };
 }
 
-export function saveResults(tournament, playerIds, reason, expectedShares, expectedResults, now = Date.now()) {
+function scheduledPrizes(tournament) {
+  return tournament.prizeAmounts?.map((amount, index) => ({ place: index + 1, amount })) ??
+    allocatePrizes(pools(tournament).prizes, prizeShares(tournament));
+}
+
+export function setPrizeAmounts(tournament, amounts, reason, expectedPlan, now = Date.now()) {
+  requireClosed(tournament, now);
+  if (tournament.results) throw new Error('חלוקת הפרסים ננעלה עם סיום הטורניר.');
+  if (prizePlan(tournament) !== expectedPlan) throw new Error('חלוקת הפרסים השתנתה. פתחו מחדש את העורך.');
+  const before = prizeRows(tournament);
+  if (amounts.length !== before.length || amounts.some((amount, index) =>
+    !Number.isSafeInteger(amount) || amount < 0 || (before[index].name && amount !== before[index].amount)) ||
+    amounts.reduce((sum, amount) => sum + amount, 0) !== pools(tournament).prizes) {
+    throw new Error('יש לחלק בדיוק את יתרת הקופה. סכומים שכבר שויכו למודחים נשמרים.');
+  }
+  requireReason(reason);
+  return { ...tournament, prizeAmounts: amounts, resultLog: log(tournament, {
+    type: 'amounts', at: now, before, after: before.map((row, index) => ({ ...row, amount: amounts[index] })), reason: reason.trim(),
+  }) };
+}
+
+export function prizePlan(tournament) {
+  return JSON.stringify([prizeShares(tournament), prizeRows(tournament)]);
+}
+
+export function saveResults(tournament, playerIds, reason, expectedShares, expectedResults, now = Date.now(), expectedPlan) {
   requireClosed(tournament, now);
   const shares = prizeShares(tournament);
-  if (shares.join() !== expectedShares.join() ||
+  if ((expectedPlan && prizePlan(tournament) !== expectedPlan) || shares.join() !== expectedShares.join() ||
       JSON.stringify(tournament.results ?? null) !== expectedResults) {
     throw new Error('חלוקת הפרסים או התוצאות השתנו. בדקו את הנתונים ונסו שוב.');
   }
@@ -64,7 +97,7 @@ export function saveResults(tournament, playerIds, reason, expectedShares, expec
   if (playerIds.length !== shares.length || new Set(playerIds).size !== shares.length ||
       playerIds.some((id) => !players.has(id))) throw new Error('יש לבחור שחקן שונה לכל מקום מזכה.');
   if (tournament.results) requireReason(reason);
-  const rows = allocatePrizes(pools(tournament).prizes, shares).map((row, index) => ({
+  const rows = scheduledPrizes(tournament).map((row, index) => ({
     ...row, playerId: playerIds[index], name: players.get(playerIds[index]).name,
   }));
   const previousStandings = tournament.results?.standings;
@@ -88,7 +121,7 @@ export function prizeRows(tournament) {
   if (tournament.results) return tournament.results.rows;
   const active = (tournament.players ?? []).filter((player) => player.table != null).length;
   const eliminated = eliminatedInReverse(tournament);
-  return allocatePrizes(pools(tournament).prizes, prizeShares(tournament)).map((row) => ({
+  return scheduledPrizes(tournament).map((row) => ({
     ...row, name: eliminated[row.place - active - 1]?.name,
   }));
 }

@@ -1,7 +1,7 @@
 import { waitingTables } from './table-occupancy.js';
 import { enterScreen, updateDigits } from './motion.js';
 import { connectLevelChime, crossedLevel } from './level-chime.js';
-import { itmWarning } from './results-state.js';
+import { itmWarning, pools } from './results-state.js';
 import { renderResults, showPrizes } from './results.js';
 import { controlLive, liveView, moveBreak, schedule } from './live-state.js';
 import { readTournament, reconcileFinish, tournamentLink, updateTournament, watchTournament } from './tournament-store.js';
@@ -12,6 +12,7 @@ function countdown(milliseconds) {
 }
 
 const numbers = new Intl.NumberFormat('he-IL');
+const currency = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
 const blinds = (level) => level ? numbers.format(level.small) + ' / ' + numbers.format(level.big) +
   ' · אנטה ' + numbers.format(level.ante) : '—';
 
@@ -26,7 +27,7 @@ export function renderLive(view, intro, floor) {
       <p class="clock" dir="ltr" data-live="clock"></p>
       <p data-live="blinds"></p>
       <p class="muted" data-live="next"></p>
-      <button type="button" id="level-sound" aria-pressed="false">צליל מעבר שלב</button>
+      <div class="scoreboard-footer"><strong data-live="pool"></strong><button type="button" id="level-sound" aria-pressed="false">צליל מעבר שלב</button></div>
     </article>
     <div class="grid live-facts">
       <article class="card"><h2>הרשמה מאוחרת</h2><p><span data-live="registration"></span><bdi data-live="registration-clock"></bdi></p></article>
@@ -105,6 +106,7 @@ export function renderLive(view, intro, floor) {
     const active = players.filter((player) => player.table != null).length;
     set('entries', active + ' פעילים מתוך ' + players.length + ' שחקנים · ' + entries.length + ' כניסות · ' +
       entries.filter((entry) => entry.kind === 'reentry').length + ' חוזרות');
+    set('pool', tournament ? 'קופת הפרסים: ' + currency.format(pools(tournament).prizes / 100) : '');
     set('stack', active && Number(tournament.stack) ? 'ערימה ממוצעת: ' +
       numbers.format(Math.round(entries.length * Number(tournament.stack) / active)) : '');
     reconcileFinish(tournament, refresh, (error) => {

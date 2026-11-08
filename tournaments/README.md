@@ -147,3 +147,15 @@ updates every level. To close a table, choose a distinct free seat at another
 open table for every player. Transfers and closure are saved together.
 After late registration closes, use **Finish tournament** on the live floor
 screen to enter paid places and save the result.
+
+Live blind presets use stepped chip values inspired by the published Wynn
+Poker and WSOP Circuit structure sheets. The app's presets apply color-ups
+after big blinds of 2,000, 10,000, 40,000 and 200,000. The preset changes
+blind progression while retaining the configured level duration.
+
+New tournaments default to 12% of unique players paid, rounded up, with 10%
+and 15% also available. The prize pool is the greater of the guarantee and
+the prize contributions recorded at registration. After late registration,
+the floor can change the payout percentages or record an exact deal from
+the remaining pool. The exact-amount editor preserves payouts already
+assigned to eliminated players.

@@ -1,18 +1,6 @@
+import { blindPresets as presets, nextPresetLevel, presetLevels } from './blind-structures.js';
 import { readTournament, tournamentLink, updateTournament } from './tournament-store.js';
 const minimumLevels = 25;
-const presets = {
-  fast: { label: 'מהיר מאוד', minutes: 8, factor: 1.55 },
-  turbo: { label: 'מהיר', minutes: 12, factor: 1.42 },
-  regular: { label: 'רגיל', minutes: 20, factor: 1.33 },
-  slow: { label: 'איטי', minutes: 30, factor: 1.25 },
-};
-function presetLevels(preset, count = minimumLevels, previous) {
-  let big = Number(previous?.big ?? 0);
-  return Array.from({ length: count }, () => {
-    big = big ? Math.max(big + 20, Math.round(big * preset.factor / 20) * 20) : 200;
-    return { small: big / 2, big, ante: big, minutes: preset.minutes };
-  });
-}
 const number = (value) => value === '' ? NaN : Number(value);
 const shekels = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
 
@@ -25,7 +13,7 @@ function readSetup() {
   }
   return {
     version: 1, status: 'draft', title: '', game: 'holdem', pace: 'regular',
-    stack: '30000', reentries: '0', fee: '300', rake: '0', bounty: '0', prizes: 'regular',
+    paidPercent: '12', guarantee: 0, stack: '30000', reentries: '0', fee: '300', rake: '0', bounty: '0', prizes: 'regular',
     lateMode: 'level', lateValue: '6', structurePreset: 'regular', levels: presetLevels(presets.regular), breaks: [{ after: 6, minutes: 10 }],
   };
 }
@@ -98,6 +86,9 @@ export function renderTournamentSetup(view, intro) {
   ], model.reentries));
 
   const money = group(form, 'דמי כניסה ופרסים');
+  const paidPercent = field(money, 'אחוז שחקנים בפרסים', select(
+    ['10', '12', '15'].map((value) => [value, value + '%']), model.paidPercent ?? '12'));
+  const guarantee = field(money, 'פרסים מובטחים (₪)', numeric((model.guarantee ?? 0) / 100, 0, 10000000, 0.01));
   const fee = field(money, 'דמי כניסה (₪)', numeric(model.fee, 0, 10000, 0.01));
   const prizes = field(money, 'מודל פרסים', select([['regular', 'רגיל'], ['bounty', 'באונטי קבוע']], model.prizes));
   const rake = field(money, 'רייק', make('select'));
@@ -199,7 +190,7 @@ export function renderTournamentSetup(view, intro) {
   const addLevelButton = button('הוספת שלב', () => {
     if (!minutes.reportValidity()) return;
     const previous = levelControls.at(-1);
-    addLevel(presetLevels({ ...presets[preset.value], minutes: minutes.value }, 1, { big: previous.big.value })[0]);
+    addLevel(nextPresetLevel(presets[preset.value], minutes.value, Number(previous.big.value)));
     levelControls.at(-1).small.focus();
   });
   const addBreakButton = button('הוספת הפסקה', () => {
@@ -207,20 +198,21 @@ export function renderTournamentSetup(view, intro) {
     breakControls.at(-1).after.focus();
   });
   const applyTemplate = button('טעינת מבנה בליינדים', () => {
+    if (!minutes.reportValidity()) return;
     if (!window.confirm('להחליף את שלבי הבליינדים וההפסקות במבנה הבליינדים שנבחר?')) return;
     levels.replaceChildren();
     breaks.replaceChildren();
     levelControls.length = 0;
     breakControls.length = 0;
-    minutes.value = presets[preset.value].minutes;
-    presetLevels(presets[preset.value]).forEach(addLevel);
+    presetLevels(presets[preset.value], minutes.value).forEach(addLevel);
     addBreak({ after: 6, minutes: 10 });
   });
   structure.append(applyTemplate, levels, addLevelButton, breaks, addBreakButton);
   model.levels.forEach(addLevel);
-  if (model.levels.length < minimumLevels) presetLevels(
-    { ...presets[preset.value], minutes: minutes.value }, minimumLevels - model.levels.length, model.levels.at(-1),
-  ).forEach(addLevel);
+  while (levelControls.length < minimumLevels) {
+    const previous = levelControls.at(-1);
+    addLevel(nextPresetLevel(presets[preset.value], minutes.value, Number(previous?.big.value ?? 0)));
+  }
   model.breaks.forEach(addBreak);
 
   const draft = make('button', { type: 'submit', value: 'draft', textContent: 'שמירת טיוטה' });
@@ -261,7 +253,7 @@ export function renderTournamentSetup(view, intro) {
       const settings = {
         version: 1, status, title: title.value.trim(), game: game.value, pace: pace.value,
         stack: stack.value, reentries: reentries.value, fee: fee.value, prizes: prizes.value,
-        rake: rakeValue, bounty: bountyValue, lateMode: lateMode.value, lateValue: lateValue.value,
+        paidPercent: paidPercent.value, guarantee: cents(guarantee.value), rake: rakeValue, bounty: bountyValue, lateMode: lateMode.value, lateValue: lateValue.value,
         structurePreset: preset.value, defaultMinutes: minutes.value, levels: values(levelControls, ['small', 'big', 'ante', 'minutes']),
         breaks: values(breakControls, ['after', 'minutes']),
       };

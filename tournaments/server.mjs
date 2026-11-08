@@ -183,6 +183,7 @@ const server = createServer(async (request, response) => {
         if (data?.version !== 1 || data.status !== 'finished' || !Number.isSafeInteger(finishedAt) ||
             finishedAt <= 0 || !Array.isArray(data.entries) || !data.entries.length ||
             !Array.isArray(data.results.rows) || !data.results.rows.length ||
+            !Number.isSafeInteger(data.guarantee ?? 0) || (data.guarantee ?? 0) < 0 ||
             data.entries.some((entry) => ![entry.fee, Number(entry.rake ?? 0), Number(entry.bounty ?? 0)]
               .every((amount) => Number.isSafeInteger(amount) && amount >= 0) ||
               Number(entry.rake ?? 0) + Number(entry.bounty ?? 0) > entry.fee)) {

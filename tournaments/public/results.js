@@ -1,11 +1,11 @@
 import { editShare, resizeShares } from './prize-editor-state.js';
 import { registrationOpen } from './live-state.js';
-import { pools, prizeRows, prizeShares, restoreElimination, saveResults, setPrizeShares } from './results-state.js';
+import { pools, prizePlan, prizeRows, prizeShares, restoreElimination, saveResults, setPrizeAmounts, setPrizeShares } from './results-state.js';
 import { readTournament, reconcileFinish, removeTournament, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
 
 const currency = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
 const money = (cents) => currency.format(cents / 100);
-const labels = { shares: 'חלוקת פרסים', finish: 'סגירת תוצאות', correction: 'תיקון דירוג', restore: 'החזרת שחקן' };
+const labels = { amounts: 'חלוקה לפי סכומים', shares: 'חלוקת פרסים', finish: 'סגירת תוצאות', correction: 'תיקון דירוג', restore: 'החזרת שחקן' };
 
 function element(tag, text = '') {
   const item = document.createElement(tag);
@@ -43,7 +43,7 @@ function describe(value) {
   if (!Array.isArray(value)) return value.table == null ? value.name + ' · מחוץ למשחק' :
     value.name + ' · שולחן ' + value.table + ' כיסא ' + value.seat;
   return value.map((item) => typeof item === 'number' ? item / 100 + '%' :
-    'מקום ' + item.place + ': ' + item.name + ' · ' + money(item.amount)).join(' / ');
+    'מקום ' + item.place + ': ' + (item.name ? item.name + ' · ' : '') + money(item.amount)).join(' / ');
 }
 
 export function renderResults(view, intro, onSaved) {
@@ -182,6 +182,7 @@ export function renderResults(view, intro, onSaved) {
       editor.append(ranking);
     }
     if (!closed || !players.length) return;
+    const expectedPlan = prizePlan(tournament);
     if (!tournament.results) {
       let draft = shares;
       const box = element('form');
@@ -224,7 +225,7 @@ export function renderResults(view, intro, onSaved) {
           });
           fields.append(label);
         });
-        add.disabled = draft.length >= Math.min(30, players.length);
+        add.disabled = draft.length >= Math.min(100, players.length);
         remove.disabled = draft.length === 1;
       }
       add.addEventListener('click', () => { draft = resizeShares(draft, draft.length + 1); draw(); });
@@ -233,10 +234,47 @@ export function renderResults(view, intro, onSaved) {
         event.preventDefault();
         const updated = draft;
         const text = reason.value.trim() || 'עדכון מקומות מזכים';
-        perform((stored) => setPrizeShares(stored, updated, text), 'חלוקת הפרסים עודכנה.');
+        if (tournament.prizeAmounts && !window.confirm('שמירת אחוזים תחליף את חלוקת הסכומים של הדיל. להמשיך?')) return;
+        perform((stored) => {
+          if (prizePlan(stored) !== expectedPlan) throw new Error('חלוקת הפרסים השתנתה. פתחו מחדש את העורך.');
+          return setPrizeShares(stored, updated, text);
+        }, 'חלוקת הפרסים עודכנה.');
       });
       draw();
       editor.append(box);
+      const rows = prizeRows(tournament);
+      const deal = element('form');
+      deal.className = 'card setup';
+      const dealFields = element('div');
+      dealFields.className = 'setup-fields';
+      const help = element('p', 'פרסים שכבר שויכו למודחים נעולים. חלקו את היתרה בין המקומות שעדיין פתוחים.');
+      const balance = element('output');
+      const submit = element('button', 'שמירת סכומי הדיל');
+      const inputs = rows.map((row) => {
+        const label = element('label', 'מקום ' + row.place + (row.name ? ' · ' + row.name : '') + ' · סכום בשקלים');
+        const control = element('input');
+        Object.assign(control, { type: 'number', min: '0', step: '0.01', required: true, disabled: Boolean(row.name),
+          value: (row.amount / 100).toFixed(2) });
+        label.append(control);
+        dealFields.append(label);
+        return control;
+      });
+      const amounts = () => inputs.map((control) => Math.round(Number(control.value) * 100));
+      const total = pools(tournament).prizes;
+      function checkBalance() {
+        const remaining = total - amounts().reduce((sum, amount) => sum + amount, 0);
+        balance.textContent = remaining < 0 ? 'חריגה מהקופה: ' + money(-remaining) : 'יתרה לחלוקה: ' + money(remaining);
+        submit.disabled = remaining !== 0 || inputs.some((control) => !control.validity.valid);
+      }
+      deal.append(element('h2', 'עריכת פרסים לפי סכום · דיל'), help, dealFields, balance, submit);
+      deal.addEventListener('input', checkBalance);
+      deal.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const updated = amounts();
+        perform((stored) => setPrizeAmounts(stored, updated, 'חלוקה לפי סכומי דיל', expectedPlan), 'סכומי הדיל נשמרו.');
+      });
+      checkBalance();
+      editor.append(deal);
     }
     const expectedResults = JSON.stringify(tournament.results ?? null);
     const ranks = shares.map((_, index) => {
@@ -254,7 +292,7 @@ export function renderResults(view, intro, onSaved) {
         const ids = ranks.map(([, select]) => select.value);
         const text = reason?.value ?? '';
         if (!correction && !window.confirm('לסיים את הטורניר ולשמור את הדירוג?')) return;
-        perform((stored) => saveResults(stored, ids, text, shares, expectedResults), 'התוצאות נשמרו.');
+        perform((stored) => saveResults(stored, ids, text, shares, expectedResults, Date.now(), expectedPlan), 'התוצאות נשמרו.');
       }));
   }
 
@@ -264,7 +302,7 @@ export function renderResults(view, intro, onSaved) {
     find('#results-context').textContent = tournament?.results ? 'הטורניר הסתיים.' : closed ?
       'ההרשמה נסגרה. אפשר לקבוע דירוג ופרסים.' : 'חלוקת הפרסים תוצג לאחר סגירת ההרשמה.';
     showPrizes(find('#prize-list'), tournament, true);
-    const key = JSON.stringify([closed, tournament?.players, tournament?.prizeShares, tournament?.results]);
+    const key = JSON.stringify([closed, tournament?.players, tournament?.prizeShares, tournament?.prizeAmounts, tournament?.results]);
     if (editorKey !== key) {
       editorKey = key;
       rebuild(closed);

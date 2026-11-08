@@ -23,9 +23,9 @@ function distribute(weights, sum, lower, upper) {
   return values;
 }
 
-export function resizeShares(shares, count) {
+export function resizeShares(shares, count, floor = minimum) {
   const weights = Array.from({ length: count }, (_, i) => shares[i] ?? Math.max(minimum, Math.floor((shares.at(-1) ?? total) / 2)));
-  return distribute(weights, total, weights.map(() => minimum), weights.map(() => total)).sort((a, b) => b - a);
+  return distribute(weights, total, weights.map(() => floor), weights.map(() => total)).sort((a, b) => b - a);
 }
 
 export function editShare(shares, index, value) {
