@@ -175,7 +175,7 @@ export function renderDealer(view, intro, floor) {
     panel.append(node('h2', 'שולחן ' + table.id), node('p', dealerName(table.dealer), 'muted'), tournamentPhase);
     const seats = node('div', '', 'dealer-table');
     const felt = node('div', 'שולחן ' + table.id, 'dealer-felt');
-    const dealer = node('div', 'דילר', 'dealer-chair');
+    const dealer = node('div', dealerName(table.dealer), 'dealer-chair');
     seats.append(felt, dealer);
     for (let seat = 1; seat <= table.capacity; seat++) {
       const player = (tournament.players ?? []).find((item) => item.table === table.id && item.seat === seat);
@@ -214,8 +214,13 @@ export function renderDealer(view, intro, floor) {
     const remaining = tournament?.status === 'finished' ? 0 : clockLeft(table?.clock, now);
     const running = Boolean(table?.clock?.deadline && remaining);
     for (const { face, toggle } of fullscreenClock ? [...clockNodes, fullscreenClock] : clockNodes) {
-      updateDigits(face, duration(Math.ceil(remaining / 1000) * 1000));
-      face.classList.toggle('clock-urgent', remaining > 0 && remaining <= 5000);
+      const seconds = Math.ceil(remaining / 1000);
+      const urgent = seconds > 0 && seconds <= 5;
+      const wasUrgent = face.classList.contains('clock-urgent');
+      const reset = face.dataset.seconds !== undefined && seconds > Number(face.dataset.seconds);
+      face.classList.toggle('clock-urgent', urgent);
+      updateDigits(face, duration(seconds * 1000), wasUrgent === urgent && !reset);
+      face.dataset.seconds = seconds;
       face.setAttribute('aria-label', running || !remaining ? 'איפוס והפעלת 30 שניות' : 'המשך שעון פעולה');
       face.disabled = !table?.dealer || tournament?.status === 'finished';
       toggle.textContent = running ? 'השהיה' : 'המשך';

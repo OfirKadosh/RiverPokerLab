@@ -11,10 +11,10 @@ export function enterScreen(element) {
   play(element, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], 210);
 }
 
-export function updateDigits(element, value) {
-  if (element.textContent === value) return;
+export function updateDigits(element, value, animate = true) {
+  if (animate && element.textContent === value && element.childElementCount) return;
   const characters = [...value];
-  if (element.childElementCount !== characters.length) {
+  if (!animate || element.childElementCount !== characters.length) {
     element.replaceChildren(...characters.map((character) => {
       const digit = document.createElement('span');
       digit.className = 'clock-digit';

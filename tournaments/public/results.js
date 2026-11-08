@@ -22,8 +22,16 @@ export function showPrizes(container, tournament, showNames = false) {
   if (container.hidden) return;
   container.append(element('h2', 'חלוקת פרסים'));
   const list = element('ol');
-  for (const row of tournament.results?.rows ?? allocatePrizes(pools(tournament).prizes, prizeShares(tournament))) {
-    list.append(element('li', (showNames && row.name ? row.name + ' · ' : '') + money(row.amount)));
+  const rows = tournament.results?.rows ?? allocatePrizes(pools(tournament).prizes, prizeShares(tournament));
+  if (!showNames) list.className = rows.length > 12 ? 'prize-tiles prize-tiles-dense' : 'prize-tiles';
+  for (const row of rows) {
+    if (showNames) {
+      list.append(element('li', (row.name ? row.name + ' · ' : '') + money(row.amount)));
+    } else {
+      const tile = element('li');
+      tile.append(element('span', 'מקום ' + row.place), element('strong', money(row.amount)));
+      list.append(tile);
+    }
   }
   container.append(list);
 }
