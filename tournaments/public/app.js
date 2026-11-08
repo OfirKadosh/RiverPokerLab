@@ -1,3 +1,4 @@
+import { readClub, renderClubAdmin } from './club.js';
 import { enterScreen } from './motion.js';
 import { renderResults } from './results.js';
 import { renderLive } from './live.js';
@@ -5,7 +6,7 @@ import { renderDealer } from './dealer.js';
 import { renderRegistration } from './registration.js';
 import { renderTournamentSetup } from "./tournament-setup.js";
 
-// This anonymous deployment has a fixture-only identity and no mutation API.
+// Static previews use fixture identities. The local club API manages the persistent roster.
 const demoSession = Object.freeze({
   clubName: 'הג׳וקר',
   location: 'ראשון לציון',
@@ -73,7 +74,16 @@ function club() {
     panel.append(link);
     grid.append(panel);
   }
-  view.append(header, grid, element('p', 'נתוני הדוגמה פתוחים לצפייה ללא התחברות.', 'notice'));
+  view.append(header, grid, element('p', 'סביבת בדיקה מקומית ללא התחברות.', 'notice'));
+  readClub().then((club) => {
+    if (!header.isConnected) return;
+    header.querySelector('h1').textContent = club.name;
+    header.querySelector('.muted').textContent = club.location;
+    for (const [index, employee] of demoSession.employees.entries()) {
+      const count = club.employees.filter((person) => person.role === employee.role).length;
+      grid.children[index].querySelector('.muted').textContent = count + ' ברשימת העובדים';
+    }
+  }).catch(() => {});
 }
 
 function station(role) {
@@ -94,7 +104,9 @@ function station(role) {
     grid.children[1].append(seating);
     const shifts = element('a', 'ניהול משמרות וטאבלטים', 'action');
     shifts.href = '#shifts';
-    grid.children[2].append(shifts);
+    const staff = element('a', 'ניהול מועדון ועובדים', 'action');
+    staff.href = '#staff';
+    grid.children[2].append(shifts, staff);
   }
   view.append(
     intro(demoSession.clubName + ' / ' + config.name, config.title, config.description),
@@ -109,15 +121,16 @@ function render(focus = false) {
   if (hash === 'content') return;
   disposeRoute?.();
   disposeRoute = undefined;
-  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || hash === 'results' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || hash === 'results' || hash === 'staff' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
   for (const link of links) {
-    if (link.hash === '#' + (['setup', 'seating', 'shifts', 'live', 'results'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
+    if (link.hash === '#' + (['setup', 'seating', 'shifts', 'live', 'results', 'staff'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
   view.className = route === 'display' ? 'audience' : '';
   view.replaceChildren();
   if (route === 'club') club();
   else if (route === 'display' || route === 'live') disposeRoute = renderLive(view, intro, route === 'live');
+  else if (route === 'staff') renderClubAdmin(view, intro);
   else if (route === 'results') disposeRoute = renderResults(view, intro);
   else if (route === 'setup') renderTournamentSetup(view, intro);
   else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');

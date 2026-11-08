@@ -97,3 +97,17 @@ floor or audience screen, enable the level chime with the sound button.
 Browsers require a user gesture before audio can play, so enable it on the
 one screen that should make sound. The chime marks a naturally elapsed
 blind level, including a level that leads into a break.
+
+## Persistent local club and roster
+
+Run `node server.mjs` from this directory with Node.js 24 or later and open
+`http://127.0.0.1:8080/#staff`. The local server binds to loopback and stores the
+club and staff in `data/club.sqlite`. Set `TOURNAMENTS_DB` to use a different
+database file, and `PORT` to use a different port. The server seeds the local
+club and sample employees once, preserving the existing dealer IDs.
+
+The floor can edit the club and add floor, cashier or dealer employees.
+The shift screen loads dealers from that roster when opened and on focus.
+This development server has no login and is limited to the local machine.
+The existing static preview continues to work with sample employees. Existing
+tournament data, shifts and history still use the browser store.

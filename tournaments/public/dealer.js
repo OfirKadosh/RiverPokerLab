@@ -1,3 +1,4 @@
+import { readClub } from './club.js';
 import { enterScreen, updateDigits } from './motion.js';
 import { liveView } from './live-state.js';
 import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
@@ -5,7 +6,6 @@ import { assignDealer, changeShift, clockLeft, dealers, disconnectTablet, elimin
   issueCode, openTables, pair, pairedTable, swapDealer, updateClock } from './dealer-state.js';
 
 const tokenKey = 'tournaments-dealer-tablet';
-const dealerName = (id) => dealers.find((dealer) => dealer.id === id)?.name ?? 'ללא דילר';
 const duration = (milliseconds) => {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
   return [Math.floor(seconds / 60), seconds % 60].map((value) => String(value).padStart(2, '0')).join(':');
@@ -31,13 +31,13 @@ function eligible(tournament, dealer, tableId) {
     table.id !== tableId && table.dealer === dealer.id);
 }
 
-function dealerPicker(tournament, table, run, label) {
+function dealerPicker(tournament, table, roster, run, label) {
   const form = node('form', '', 'dealer-controls');
   const select = node('select');
   select.setAttribute('aria-label', 'בחירת דילר לשולחן ' + table.id);
   select.add(new Option('בחירת דילר', ''));
   select.required = true;
-  for (const dealer of dealers) {
+  for (const dealer of roster) {
     if (!tournament.shifts?.[dealer.id]) continue;
     const assignment = openTables(tournament).find((item) => item.dealer === dealer.id);
     const suffix = assignment ? ' · שולחן ' + assignment.id : ' · פנוי';
@@ -67,6 +67,8 @@ export function renderDealer(view, intro, floor) {
   view.append(message, section, dialog);
   let token = floor ? null : sessionStorage.getItem(tokenKey);
   let tournament;
+  let roster = dealers;
+  const dealerName = (id) => roster.find((dealer) => dealer.id === id)?.name ?? 'ללא דילר';
   let clockNodes = [];
   let fullscreenClock;
   let tournamentPhase;
@@ -92,7 +94,7 @@ export function renderDealer(view, intro, floor) {
   function renderFloor() {
     section.append(node('h2', 'דילרים'));
     const team = node('div', '', 'grid');
-    for (const dealer of dealers) {
+    for (const dealer of roster) {
       const shift = tournament.shifts?.[dealer.id];
       const assignment = openTables(tournament).find((table) => table.dealer === dealer.id);
       const card = node('article', '', 'card');
@@ -100,7 +102,7 @@ export function renderDealer(view, intro, floor) {
       if (shift) shiftNodes.push({ time, shift });
       card.append(node('h3', dealer.name), node('p', assignment ? 'שולחן ' + assignment.id : shift ? 'פנוי במשמרת' : 'מחוץ למשמרת'),
         time, action(shift ? 'סיום משמרת' : 'תחילת משמרת',
-          () => perform((current) => changeShift(current, dealer.id, !shift), 'המשמרת עודכנה.')));
+          () => perform((current) => changeShift(current, dealer.id, !shift, Date.now(), roster), 'המשמרת עודכנה.')));
       team.append(card);
     }
     section.append(team, node('h2', 'שולחנות וטאבלטים'));
@@ -116,7 +118,7 @@ export function renderDealer(view, intro, floor) {
       controls.append(action('הנפקת קוד', () => perform((current) => issueCode(current, table.id), 'הונפק קוד לשולחן.')));
       if (table.tablet || table.code) controls.append(action('ביטול שיוך וקוד', () =>
         perform((current) => disconnectTablet(current, table.id), 'השיוך והקוד בוטלו.')));
-      card.append(controls, dealerPicker(tournament, table,
+      card.append(controls, dealerPicker(tournament, table, roster,
         (id) => perform((current) => assignDealer(current, table.id, id), 'הדילר שובץ.'), 'שיבוץ דילר'));
       tables.append(card);
     }
@@ -183,7 +185,7 @@ export function renderDealer(view, intro, floor) {
       seats.append(chair);
     }
     panel.append(seats);
-    section.append(panel, dealerPicker(tournament, table,
+    section.append(panel, dealerPicker(tournament, table, roster,
       (id) => perform((current) => swapDealer(current, token, id, table.dealer ?? null), 'הדילר הוחלף.'), 'החלפת דילר'));
     clockControls(section, false);
     if (!dialog.children.length) clockControls(dialog, true);
@@ -236,10 +238,23 @@ export function renderDealer(view, intro, floor) {
   }
 
   refresh();
+  function refreshRoster() {
+    readClub().then((club) => {
+      if (!section.isConnected) return;
+      const updated = club.employees.filter((employee) => employee.role === 'dealer');
+      if (JSON.stringify(updated) !== JSON.stringify(roster)) {
+        roster = updated;
+        refresh();
+      }
+    }).catch(() => {});
+  }
+  refreshRoster();
+  window.addEventListener('focus', refreshRoster);
   const stop = watchTournament(refresh);
   const interval = setInterval(tick, 200);
   return () => {
     stop();
+    window.removeEventListener('focus', refreshRoster);
     clearInterval(interval);
     if (dialog.open) dialog.close();
   };

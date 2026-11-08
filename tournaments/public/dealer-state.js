@@ -42,8 +42,8 @@ export function disconnectTablet(tournament, tableId) {
   return changeTable(tournament, tableId, (table) => ({ ...table, tablet: null, code: null }));
 }
 
-export function changeShift(tournament, dealerId, start, now = Date.now()) {
-  if (!tournament || !dealers.some((dealer) => dealer.id === dealerId)) throw new Error('יש לשמור טורניר ולבחור דילר.');
+export function changeShift(tournament, dealerId, start, now = Date.now(), roster = dealers) {
+  if (!tournament || !roster.some((dealer) => dealer.id === dealerId)) throw new Error('יש לשמור טורניר ולבחור דילר.');
   const shifts = tournament.shifts ?? {};
   if (start === Boolean(shifts[dealerId])) throw new Error('מצב המשמרת כבר השתנה.');
   const next = { ...shifts };
