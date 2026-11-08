@@ -71,3 +71,22 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
 }
 .setup-row h3 { margin: 0; align-self: center; font-size: 1rem; }
 .setup-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+
+.registration .payment { display: flex; align-items: center; gap: .6rem; }
+.registration .payment input { inline-size: 1.4rem; min-block-size: 1.4rem; }
+.registration ul { margin: 0; padding-inline-start: 2.4rem; }
+.registration li + li { margin-block-start: .65rem; }
+.seat-receipt strong { display: block; font-size: clamp(1.5rem, 4vw, 2.4rem); margin-block: .5rem; }
+@media print {
+  body:has(.seat-receipt:not([hidden])) {
+    color-scheme: light;
+    background: white;
+  }
+  body:has(.seat-receipt:not([hidden])) > :not(main),
+  body:has(.seat-receipt:not([hidden])) main > :not(#view),
+  body:has(.seat-receipt:not([hidden])) #view > :not(.registration),
+  body:has(.seat-receipt:not([hidden])) .registration > :not(.seat-receipt),
+  .seat-receipt button { display: none; }
+  body:has(.seat-receipt:not([hidden])) main { padding: 0; }
+  .seat-receipt { color: black; background: white; border: 0; }
+}

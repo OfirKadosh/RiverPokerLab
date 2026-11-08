@@ -1,3 +1,4 @@
+import { renderRegistration } from './registration.js';
 import { renderTournamentSetup } from "./tournament-setup.js";
 
 // This anonymous deployment has a fixture-only identity and no mutation API.
@@ -80,6 +81,9 @@ function station(role) {
     const setup = element('a', 'הקמת טורניר', 'action');
     setup.href = '#setup';
     grid.firstElementChild.append(setup);
+    const seating = element('a', 'ניהול שולחנות והושבה', 'action');
+    seating.href = '#seating';
+    grid.children[1].append(seating);
   }
   view.append(
     intro(demoSession.clubName + ' / ' + config.name, config.title, config.description),
@@ -96,12 +100,15 @@ function display() {
   view.append(intro('תצוגת קהל', 'Joker Friday', 'תצוגה לדוגמה · נתונים קבועים'), sample);
 }
 
+let disposeRoute;
 function render(focus = false) {
   const hash = window.location.hash.slice(1);
   if (hash === 'content') return;
-  const route = hash === 'setup' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  disposeRoute?.();
+  disposeRoute = undefined;
+  const route = hash === 'setup' || hash === 'seating' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
   for (const link of links) {
-    if (link.hash === '#' + (route === 'setup' ? 'floor' : route)) link.setAttribute('aria-current', 'page');
+    if (link.hash === '#' + (['setup', 'seating'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
   view.className = route === 'display' ? 'audience' : '';
@@ -109,6 +116,7 @@ function render(focus = false) {
   if (route === 'club') club();
   else if (route === 'display') display();
   else if (route === 'setup') renderTournamentSetup(view, intro);
+  else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');
   else station(route);
   if (focus) main.focus();
 }

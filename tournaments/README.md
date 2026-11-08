@@ -3,10 +3,23 @@
 Tournaments is a standalone, responsive Hebrew RTL shell. It publishes separately
 from the solver and uses a fixture-only anonymous session for the club, floor,
 cashier, dealer, and read-only audience screens. Station links are navigation,
-not authorization. There is no account access or mutation endpoint. Phase 2 adds a local
-tournament setup, accessible from the floor station. One draft or registration
-configuration is stored per browser origin using localStorage. Opening
-registration records a local status. Player intake belongs to Phase 3.
+not authorization. There is no account access or server mutation endpoint. The floor setup stores
+one local tournament per browser origin. Phase 3 adds the cashier and floor
+seating workflows on the same origin. Writes use Web Locks and require a
+supporting browser on localhost or another secure origin. Tabs share data, but
+separate devices and browser profiles do not.
+
+## Registration and seating
+
+- Open registration in floor setup, then add an open table in the floor seating
+  screen. Additional tables can be marked ready for automatic activation.
+- The default early-opening threshold is seven occupied seats per open table,
+  capped by each table's capacity. The floor can change the threshold.
+- The cashier confirms payment before allocating a seat. Reprinting a slip
+  does not change entries or payments. After a move the slip shows the player's
+  current seat.
+- Re-entry checks the player's elimination and configured cap. Live elimination
+  controls are scheduled for Phase 4.
 
 ## Run
 

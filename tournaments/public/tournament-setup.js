@@ -1,4 +1,4 @@
-const storageKey = 'river-tournaments-setup-v1';
+import { readTournament, updateTournament } from './tournament-store.js';
 const blinds = [[100, 200], [200, 400], [300, 600], [400, 800], [500, 1000], [600, 1200], [800, 1600]];
 const defaultMinutes = { regular: 20, turbo: 12 };
 const number = (value) => value === '' ? NaN : Number(value);
@@ -6,7 +6,7 @@ const shekels = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'I
 
 function readSetup() {
   try {
-    const saved = JSON.parse(localStorage.getItem(storageKey));
+    const saved = readTournament();
     if (saved?.version === 1 && Array.isArray(saved.levels) && Array.isArray(saved.breaks)) return saved;
   } catch {
     // A browser with unavailable storage can still open the setup form.
@@ -208,7 +208,7 @@ export function renderTournamentSetup(view, intro) {
   const draft = make('button', { type: 'submit', value: 'draft', textContent: 'שמירת טיוטה' });
   const open = make('button', { type: 'submit', value: 'registration', textContent: 'פתיחה לרישום מקומי', className: 'action' });
   form.append(make('div', { className: 'setup-actions' }, [draft, open]));
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const status = event.submitter?.value ?? 'draft';
     if (status === 'registration') {
@@ -238,16 +238,25 @@ export function renderTournamentSetup(view, intro) {
     }
     const values = (rows, keys) => rows.map((row) => Object.fromEntries(keys.map((key) => [key, row[key].value])));
     try {
-      localStorage.setItem(storageKey, JSON.stringify({
+      const settings = {
         version: 1, status, title: title.value.trim(), game: game.value, pace: pace.value,
         stack: stack.value, reentries: reentries.value, fee: fee.value, prizes: prizes.value,
         rake: rakeValue, bounty: bountyValue, lateMode: lateMode.value, lateValue: lateValue.value,
         defaultMinutes: minutes.value, levels: values(levelControls, ['small', 'big', 'ante', 'minutes']),
         breaks: values(breakControls, ['after', 'minutes']),
-      }));
-      summary.textContent = status === 'registration' ? 'הרישום נפתח מקומית. קליטת שחקנים תתווסף בשלב 3.' : 'הטיוטה נשמרה בדפדפן הזה.';
-    } catch {
-      summary.textContent = 'השמירה נכשלה. בדקו שהדפדפן מאפשר אחסון מקומי.';
+      };
+      await updateTournament((current) => {
+        if (current?.status === 'registration' && status === 'draft' && current.entries?.length) {
+          throw new Error('יש כבר כניסות רשומות לטורניר. לא ניתן להחזיר אותו לטיוטה.');
+        }
+        if (current?.entries?.length && ['fee', 'rake', 'bounty', 'stack', 'game'].some(
+          (key) => Number.isNaN(Number(settings[key])) ? current[key] !== settings[key] : Number(current[key]) !== Number(settings[key]),
+        )) throw new Error('לא ניתן לשנות משחק, ערימה או פיצול דמי כניסה לאחר רישום שחקנים.');
+        return { ...current, ...settings };
+      });
+      summary.textContent = status === 'registration' ? 'הרישום פתוח. אפשר לקלוט שחקנים בעמדת הקופה.' : 'הטיוטה נשמרה בדפדפן הזה.';
+    } catch (error) {
+      summary.textContent = error.message;
     }
   });
 }
