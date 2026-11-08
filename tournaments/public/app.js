@@ -1,3 +1,5 @@
+import { renderTournamentSetup } from "./tournament-setup.js";
+
 // This anonymous deployment has a fixture-only identity and no mutation API.
 const demoSession = Object.freeze({
   clubName: 'הג׳וקר',
@@ -74,6 +76,11 @@ function station(role) {
   const employee = demoSession.employees.find((item) => item.role === role);
   const grid = element('div', '', 'grid');
   for (const [title, detail] of config.panels) grid.append(card(title, detail));
+  if (role === 'floor') {
+    const setup = element('a', 'הקמת טורניר', 'action');
+    setup.href = '#setup';
+    grid.firstElementChild.append(setup);
+  }
   view.append(
     intro(demoSession.clubName + ' / ' + config.name, config.title, config.description),
     element('p', employee.name + ' · עמדה לדוגמה', 'notice'),
@@ -92,15 +99,16 @@ function display() {
 function render(focus = false) {
   const hash = window.location.hash.slice(1);
   if (hash === 'content') return;
-  const route = links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  const route = hash === 'setup' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
   for (const link of links) {
-    if (link.hash === '#' + route) link.setAttribute('aria-current', 'page');
+    if (link.hash === '#' + (route === 'setup' ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
   view.className = route === 'display' ? 'audience' : '';
   view.replaceChildren();
   if (route === 'club') club();
   else if (route === 'display') display();
+  else if (route === 'setup') renderTournamentSetup(view, intro);
   else station(route);
   if (focus) main.focus();
 }
