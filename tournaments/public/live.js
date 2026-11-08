@@ -31,6 +31,7 @@ export function renderLive(view, intro, floor) {
       <article class="card"><h2>הפסקה</h2><p><span data-live="break"></span><bdi data-live="break-clock"></bdi></p></article>
       <article class="card"><h2>שחקנים וכניסות</h2><p data-live="entries"></p><p data-live="stack"></p></article>
     </div>`;
+  if (!floor) panel.querySelector('.live-scoreboard').insertAdjacentHTML('afterbegin', '<h2 data-live="tournament-title"></h2>');
   if (!floor) panel.insertAdjacentHTML('beforeend', '<article class="card" id="audience-prizes" hidden></article>');
   if (floor) panel.insertAdjacentHTML('beforeend', `
     <div class="setup-actions live-actions">
@@ -141,7 +142,7 @@ export function renderLive(view, intro, floor) {
       tournament = null;
       if (message) message.textContent = 'לא ניתן לקרוא את האחסון המקומי.';
     }
-    if (!floor) heading.querySelector('h1').textContent = tournament?.title || 'מסך הטורניר';
+    if (!floor) find('[data-live=tournament-title]').textContent = tournament?.title ?? '';
     tick();
   }
 
