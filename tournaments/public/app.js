@@ -1,4 +1,4 @@
-import { readClub, renderClubAdmin } from './club.js';
+import { readClub, renderAttendance, renderClubAdmin } from './club.js';
 import { enterScreen } from './motion.js';
 import { renderResults } from './results.js';
 import { renderLive } from './live.js';
@@ -104,7 +104,7 @@ function station(role) {
     grid.children[1].append(seating);
     const shifts = element('a', 'ניהול משמרות וטאבלטים', 'action');
     shifts.href = '#shifts';
-    const staff = element('a', 'ניהול מועדון ועובדים', 'action');
+    const staff = element('a', 'מסך בעלים', 'action');
     staff.href = '#staff';
     grid.children[2].append(shifts, staff);
   }
@@ -121,7 +121,7 @@ function render(focus = false) {
   if (hash === 'content') return;
   disposeRoute?.();
   disposeRoute = undefined;
-  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || hash === 'results' || hash === 'staff' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || hash === 'results' || hash === 'staff' || hash === 'attendance' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
   for (const link of links) {
     if (link.hash === '#' + (['setup', 'seating', 'shifts', 'live', 'results', 'staff'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
@@ -130,6 +130,7 @@ function render(focus = false) {
   view.replaceChildren();
   if (route === 'club') club();
   else if (route === 'display' || route === 'live') disposeRoute = renderLive(view, intro, route === 'live');
+  else if (route === 'attendance') renderAttendance(view, intro);
   else if (route === 'staff') renderClubAdmin(view, intro);
   else if (route === 'results') disposeRoute = renderResults(view, intro);
   else if (route === 'setup') renderTournamentSetup(view, intro);

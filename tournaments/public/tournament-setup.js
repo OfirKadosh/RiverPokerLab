@@ -253,7 +253,7 @@ export function renderTournamentSetup(view, intro) {
         if (current?.entries?.length && ['fee', 'rake', 'bounty', 'stack', 'game'].some(
           (key) => Number.isNaN(Number(settings[key])) ? current[key] !== settings[key] : Number(current[key]) !== Number(settings[key]),
         )) throw new Error('לא ניתן לשנות משחק, ערימה או פיצול דמי כניסה לאחר רישום שחקנים.');
-        return { ...current, ...settings };
+        return { ...current, id: current?.id ?? crypto.randomUUID(), ...settings };
       });
       summary.textContent = status === 'registration' ? 'הרישום פתוח. אפשר לקלוט שחקנים בעמדת הקופה.' : 'הטיוטה נשמרה בדפדפן הזה.';
     } catch (error) {

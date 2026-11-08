@@ -106,8 +106,26 @@ club and staff in `data/club.sqlite`. Set `TOURNAMENTS_DB` to use a different
 database file, and `PORT` to use a different port. The server seeds the local
 club and sample employees once, preserving the existing dealer IDs.
 
-The floor can edit the club and add floor, cashier or dealer employees.
+The owner can edit the club and add floor, cashier or dealer employees.
 The shift screen loads dealers from that roster when opened and on focus.
 This development server has no login and is limited to the local machine.
 The existing static preview continues to work with sample employees. Existing
-tournament data, shifts and history still use the browser store.
+tournament state and dealer table assignments still use the browser store.
+
+## Local owner and attendance
+
+Set `TOURNAMENTS_OWNER_PASSWORD` in the server environment before launching
+`node server.mjs`. Open `/#staff` and sign in with that password. The local
+club has one owner credential, with an eight-hour session that ends on server
+restart. The owner manages the roster and can view monthly attendance totals
+and shift details in Israel time. Removing a worker archives the worker and
+preserves completed shifts. Close any open shift before removing the worker.
+
+Open `/#attendance` at the shared local station to record clock-in and
+clock-out for any active worker. Attendance measures working time separately
+from dealer assignments within a tournament. The local station selects an
+employee by name; individual employee accounts are not implemented here.
+
+The owner sees the current browser tournament and can explicitly save its
+summary to server history after finishing it. Full tournament state stays in
+the browser. This development server binds to loopback.
