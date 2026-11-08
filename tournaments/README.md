@@ -19,7 +19,7 @@ separate devices and browser profiles do not.
   does not change entries or payments. After a move the slip shows the player's
   current seat.
 - Re-entry checks the player's elimination and configured cap. Live elimination
-  controls are scheduled for Phase 4.
+  controls are available in the paired dealer station.
 
 ## Run
 
@@ -37,6 +37,20 @@ Hash-based navigation works with a static host.
   or after a number of active play minutes.
 - The fee is denominated in ILS up to ₪10,000. Rake and fixed bounty options
   use ₪10 increments plus the exact remaining amount. Calculations use cents.
+
+## Dealer station
+
+- Start a dealer shift, assign the dealer to an open table and issue a
+  one-time code from the floor shift screen. Enter the code in a separate tab
+  on the same browser origin. The pairing is scoped to that tab and survives
+  refresh. The floor can revoke it. Codes expire after five minutes.
+- The dealer can swap with an unassigned dealer on shift, confirm an
+  elimination and operate the table's independent 30-second clock.
+- The full-viewport clock uses the same deadline as the table view. A tap
+  resets a running or expired clock, or resumes a paused clock. Leaving the
+  clock view preserves its state.
+- The local role and pairing flows are for testing. Real devices will need
+  shared server state and server-validated permissions.
 
 ## Identity integration
 

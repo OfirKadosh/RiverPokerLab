@@ -1,3 +1,4 @@
+import { renderDealer } from './dealer.js';
 import { renderRegistration } from './registration.js';
 import { renderTournamentSetup } from "./tournament-setup.js";
 
@@ -84,6 +85,9 @@ function station(role) {
     const seating = element('a', 'ניהול שולחנות והושבה', 'action');
     seating.href = '#seating';
     grid.children[1].append(seating);
+    const shifts = element('a', 'ניהול משמרות וטאבלטים', 'action');
+    shifts.href = '#shifts';
+    grid.children[2].append(shifts);
   }
   view.append(
     intro(demoSession.clubName + ' / ' + config.name, config.title, config.description),
@@ -106,9 +110,9 @@ function render(focus = false) {
   if (hash === 'content') return;
   disposeRoute?.();
   disposeRoute = undefined;
-  const route = hash === 'setup' || hash === 'seating' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
   for (const link of links) {
-    if (link.hash === '#' + (['setup', 'seating'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
+    if (link.hash === '#' + (['setup', 'seating', 'shifts'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
   view.className = route === 'display' ? 'audience' : '';
@@ -117,6 +121,7 @@ function render(focus = false) {
   else if (route === 'display') display();
   else if (route === 'setup') renderTournamentSetup(view, intro);
   else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');
+  else if (route === 'dealer' || route === 'shifts') disposeRoute = renderDealer(view, intro, route === 'shifts');
   else station(route);
   if (focus) main.focus();
 }

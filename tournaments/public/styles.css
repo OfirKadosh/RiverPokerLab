@@ -90,3 +90,28 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
   body:has(.seat-receipt:not([hidden])) main { padding: 0; }
   .seat-receipt { color: black; background: white; border: 0; }
 }
+
+.dealer-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .55rem; margin-block-start: .65rem; }
+.dealer-controls select { flex: 1 1 11rem; min-inline-size: 0; }
+.dealer .card h3 { margin-block: 0 .3rem; }
+.dealer .card p { margin-block-end: .45rem; }
+.dealer-seats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .6rem; margin-block-start: 1rem; }
+.dealer-seats .card { overflow-wrap: anywhere; }
+.pair-code { color: var(--accent); }
+.shot-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.shot-controls button {
+  min-block-size: 44px; border: 1px solid var(--border); border-radius: .55rem;
+  color: var(--text); background: var(--surface); font: inherit; padding: .55rem;
+}
+.shot-controls .shot-face {
+  grid-column: 1 / -1; inline-size: 100%; min-block-size: 6rem;
+  color: var(--accent); font-size: clamp(3rem, 10vw, 6rem);
+  font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.shot-dialog {
+  position: fixed; inset: 0; margin: 0; border: 0;
+  inline-size: 100%; max-inline-size: none; block-size: 100dvh; max-block-size: none;
+  background: var(--background); color: var(--text); padding: clamp(.6rem, 3vw, 2rem);
+}
+.shot-dialog .shot-controls { block-size: 100%; grid-template-rows: minmax(0, 1fr) auto; }
+.shot-dialog .shot-face { min-block-size: 0; font-size: clamp(3rem, min(20vw, 33dvh), 17rem); }
