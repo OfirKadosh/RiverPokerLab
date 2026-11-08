@@ -1,3 +1,5 @@
+import { finishAutomatically } from './results-state.js';
+
 const legacyKey = 'river-tournaments-setup-v1';
 const key = 'river-tournaments-list-v2';
 
@@ -68,6 +70,7 @@ export async function updateTournament(change) {
       const current = all[index] ?? null;
       if (id !== 'new' && !current) throw new Error('הטורניר הוסר. בחרו טורניר אחר.');
       const next = change(current);
+      if (next === current) return current;
       next.id = current?.id ?? next.id ?? crypto.randomUUID();
       if (index < 0) all.push(next);
       else all[index] = next;
@@ -89,4 +92,19 @@ export function watchTournament(listener) {
   };
   window.addEventListener('storage', onStorage);
   return () => window.removeEventListener('storage', onStorage);
+}
+
+
+let finishing = false;
+export async function reconcileFinish(tournament, onSaved, onError) {
+  if (finishing || !tournament || tournament.id !== tournamentId() || finishAutomatically(tournament) === tournament) return;
+  finishing = true;
+  try {
+    await updateTournament(finishAutomatically);
+    if (tournament.id === tournamentId()) onSaved();
+  } catch (error) {
+    onError(error);
+  } finally {
+    finishing = false;
+  }
 }

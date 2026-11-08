@@ -1,8 +1,9 @@
 import { enterScreen, updateDigits } from './motion.js';
 import { connectLevelChime, crossedLevel } from './level-chime.js';
+import { itmWarning } from './results-state.js';
 import { renderResults, showPrizes } from './results.js';
 import { controlLive, liveView, moveBreak, schedule } from './live-state.js';
-import { readTournament, tournamentLink, updateTournament, watchTournament } from './tournament-store.js';
+import { readTournament, reconcileFinish, tournamentLink, updateTournament, watchTournament } from './tournament-store.js';
 
 function countdown(milliseconds) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -34,6 +35,7 @@ export function renderLive(view, intro, floor) {
   if (!floor) panel.querySelector('.live-scoreboard').insertAdjacentHTML('afterbegin', '<h2 data-live="tournament-title"></h2>');
   if (!floor) panel.insertAdjacentHTML('beforeend', '<article class="card" id="audience-prizes" hidden></article>');
   if (floor) panel.insertAdjacentHTML('beforeend', `
+    <p id="itm-warning" class="card" role="alert" hidden></p>
     <div class="setup-actions live-actions">
       <button type="button" class="action" data-action="start">התחלת טורניר</button>
       <button type="button" data-action="pause">השהיה</button>
@@ -103,10 +105,19 @@ export function renderLive(view, intro, floor) {
       entries.filter((entry) => entry.kind === 'reentry').length + ' חוזרות');
     set('stack', active && Number(tournament.stack) ? 'ערימה ממוצעת: ' +
       numbers.format(Math.round(entries.length * Number(tournament.stack) / active)) : '');
+    reconcileFinish(tournament, refresh, (error) => {
+      if (message) message.textContent = error.message;
+    });
     if (!floor) {
       showPrizes(find('#audience-prizes'), tournament);
       return;
     }
+    const warning = find('#itm-warning');
+    const paid = itmWarning(tournament, active);
+    warning.hidden = !paid;
+    const warningText = paid ? 'סף ITM משוער: ' + active + ' שחקנים פעילים מול ' + paid +
+      ' מקומות מזכים. ההרשמה המאוחרת עדיין פתוחה והדירוג טרם נקבע.' : '';
+    if (warning.textContent !== warningText) warning.textContent = warningText;
     for (const button of panel.querySelectorAll('[data-action]')) {
       const allowed = {
         start: state === 'ready' && tournament?.status === 'registration' && segment,

@@ -1,7 +1,7 @@
 import { readClub } from './club.js';
 import { enterScreen, updateDigits } from './motion.js';
 import { liveView } from './live-state.js';
-import { readTournament, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
+import { readTournament, reconcileFinish, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
 import { assignDealer, changeShift, clockLeft, dealers, disconnectTablet, eliminate,
   issueCode, openTables, pair, pairedTable, swapDealer, updateClock } from './dealer-state.js';
 
@@ -200,6 +200,7 @@ export function renderDealer(view, intro, floor) {
 
   function tick() {
     const now = Date.now();
+    reconcileFinish(tournament, refresh, (error) => { message.textContent = error.message; });
     for (const { time, shift } of shiftNodes) {
       time.textContent = 'תחילה ' + new Date(shift.startedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) +
         ' · משמרת ' + duration(now - shift.startedAt) + ' · במצב זה ' + duration(now - shift.statusSince);

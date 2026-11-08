@@ -1,3 +1,5 @@
+import { finishAutomatically } from './results-state.js';
+
 export const dealers = [
   { id: 'dana', name: 'דנה ברק' },
   { id: 'lior', name: 'ליאור כהן' },
@@ -82,7 +84,7 @@ export function swapDealer(tournament, token, dealerId, expectedDealer) {
   return assignDealer(tournament, table.id, dealerId);
 }
 
-export function eliminate(tournament, token, playerId, expectedSeat) {
+export function eliminate(tournament, token, playerId, expectedSeat, now = Date.now()) {
   const table = requirePair(tournament, token);
   if (tournament.status === 'finished') throw new Error('הטורניר הסתיים.');
   if (!table.dealer) throw new Error('יש לשבץ דילר לפני ביצוע הדחה.');
@@ -90,8 +92,10 @@ export function eliminate(tournament, token, playerId, expectedSeat) {
   if (!player || player.table !== table.id || player.seat !== expectedSeat) {
     throw new Error('המושב השתנה. בחרו מחדש ממפת השולחן.');
   }
-  return { ...tournament, players: tournament.players.map((item) =>
-    item.id === playerId ? { ...item, table: null, seat: null, elimination: { table: table.id, seat: expectedSeat, at: Date.now() } } : item) };
+  const order = (tournament.eliminationOrder ?? 0) + 1;
+  return finishAutomatically({ ...tournament, eliminationOrder: order, players: tournament.players.map((item) =>
+    item.id === playerId ? { ...item, table: null, seat: null,
+      elimination: { table: table.id, seat: expectedSeat, at: now, order } } : item) }, now);
 }
 
 export function clockLeft(clock, now = Date.now()) {

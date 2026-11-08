@@ -1,6 +1,6 @@
 import { registrationOpen } from './live-state.js';
 import { allocatePrizes, pools, prizeShares, restoreElimination, saveResults, setPrizeShares } from './results-state.js';
-import { readTournament, removeTournament, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
+import { readTournament, reconcileFinish, removeTournament, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
 
 const currency = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
 const money = (cents) => currency.format(cents / 100);
@@ -170,6 +170,15 @@ export function renderResults(view, intro, onSaved) {
       });
       editor.append(card);
     }
+    if (tournament.results?.standings?.length) {
+      const ranking = element('details');
+      ranking.className = 'card';
+      ranking.append(element('summary', 'דירוג מלא'));
+      const list = element('ol');
+      for (const row of tournament.results.standings) list.append(element('li', row.name));
+      ranking.append(list);
+      editor.append(ranking);
+    }
     if (!closed || !players.length) return;
     if (!tournament.results) {
       const percentages = input('50, 30, 20', shares.map((share) => share / 100).join(', '));
@@ -207,6 +216,7 @@ export function renderResults(view, intro, onSaved) {
   }
 
   function tick() {
+    reconcileFinish(tournament, refresh, (error) => { message.textContent = error.message; });
     const closed = Boolean(tournament?.live && !registrationOpen(tournament));
     find('#results-context').textContent = tournament?.results ? 'הטורניר הסתיים.' : closed ?
       'ההרשמה נסגרה. אפשר לקבוע דירוג ופרסים.' : 'חלוקת הפרסים תוצג לאחר סגירת ההרשמה.';

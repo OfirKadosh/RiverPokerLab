@@ -67,9 +67,38 @@ export function saveResults(tournament, playerIds, reason, expectedShares, expec
   const rows = allocatePrizes(pools(tournament).prizes, shares).map((row, index) => ({
     ...row, playerId: playerIds[index], name: players.get(playerIds[index]).name,
   }));
-  return { ...tournament, status: 'finished', results: { finishedAt: tournament.results?.finishedAt ?? now, rows },
+  const previousStandings = tournament.results?.standings;
+  const standings = previousStandings && [
+    ...rows.map(({ playerId, name }) => ({ playerId, name })),
+    ...previousStandings.filter((row) => !playerIds.includes(row.playerId)),
+  ].map((row, index) => ({ ...row, place: index + 1 }));
+  return { ...tournament, status: 'finished', results: { finishedAt: tournament.results?.finishedAt ?? now, rows, standings },
     resultLog: log(tournament, { type: tournament.results ? 'correction' : 'finish', at: now,
       before: tournament.results?.rows ?? null, after: rows, reason: reason.trim() }) };
+}
+
+export function finishAutomatically(tournament, now = Date.now()) {
+  if (!tournament?.live || tournament.status !== 'registration' || registrationOpen(tournament, now)) return tournament;
+  const players = tournament.players ?? [];
+  const active = players.filter((player) => player.table != null);
+  const eliminated = players.filter((player) => player.table == null);
+  if (active.length !== 1 || !eliminated.length ||
+      eliminated.some((player) => !Number.isFinite(player.elimination?.at))) return tournament;
+  eliminated.sort((a, b) => a.elimination.order && b.elimination.order ?
+    b.elimination.order - a.elimination.order : b.elimination.at - a.elimination.at);
+  const standings = [...active, ...eliminated].map((player, index) => ({
+    place: index + 1, playerId: player.id, name: player.name,
+  }));
+  const shares = prizeShares(tournament);
+  const final = saveResults(tournament, standings.slice(0, shares.length).map((row) => row.playerId),
+    'סיום אוטומטי לפי סדר ההדחות', shares, 'null', now);
+  return { ...final, results: { ...final.results, standings } };
+}
+
+export function itmWarning(tournament, active, now = Date.now()) {
+  if (!tournament?.live || !registrationOpen(tournament, now)) return 0;
+  const paid = prizeShares(tournament).length;
+  return active > 0 && active <= paid && (tournament.players ?? []).some((player) => player.elimination) ? paid : 0;
 }
 
 export function restoreElimination(tournament, id, reason, expectedElimination, now = Date.now()) {
