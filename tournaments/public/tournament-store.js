@@ -5,13 +5,25 @@ export function readTournament() {
   return value?.version === 1 ? value : null;
 }
 
-export function updateTournament(change) {
+let pending = 0;
+let loadingTimer;
+
+export async function updateTournament(change) {
   if (!navigator.locks) throw new Error('נדרש דפדפן שתומך בנעילת אחסון מקומי.');
-  return navigator.locks.request(key, () => {
-    const next = change(readTournament());
-    localStorage.setItem(key, JSON.stringify(next));
-    return next;
-  });
+  const indicator = document.querySelector('#work-progress');
+  if (pending++ === 0) loadingTimer = setTimeout(() => { indicator.hidden = false; }, 120);
+  try {
+    return await navigator.locks.request(key, () => {
+      const next = change(readTournament());
+      localStorage.setItem(key, JSON.stringify(next));
+      return next;
+    });
+  } finally {
+    if (--pending === 0) {
+      clearTimeout(loadingTimer);
+      indicator.hidden = true;
+    }
+  }
 }
 
 export function watchTournament(listener) {

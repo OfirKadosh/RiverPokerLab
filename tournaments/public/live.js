@@ -1,3 +1,5 @@
+import { enterScreen, updateDigits } from './motion.js';
+import { connectLevelChime, crossedLevel } from './level-chime.js';
 import { showPrizes } from './results.js';
 import { controlLive, liveView, moveBreak, schedule } from './live-state.js';
 import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
@@ -22,10 +24,11 @@ export function renderLive(view, intro, floor) {
       <p class="clock" dir="ltr" data-live="clock"></p>
       <p data-live="blinds"></p>
       <p class="muted" data-live="next"></p>
+      <button type="button" id="level-sound" aria-pressed="false">צליל מעבר שלב</button>
     </article>
     <div class="grid live-facts">
-      <article class="card"><h2>הרשמה מאוחרת</h2><p data-live="registration"></p></article>
-      <article class="card"><h2>הפסקה</h2><p data-live="break"></p></article>
+      <article class="card"><h2>הרשמה מאוחרת</h2><p><span data-live="registration"></span><bdi data-live="registration-clock"></bdi></p></article>
+      <article class="card"><h2>הפסקה</h2><p><span data-live="break"></span><bdi data-live="break-clock"></bdi></p></article>
       <article class="card"><h2>שחקנים וכניסות</h2><p data-live="entries"></p><p data-live="stack"></p></article>
     </div>`;
   if (!floor) panel.insertAdjacentHTML('beforeend', '<article class="card" id="audience-prizes" hidden></article>');
@@ -50,6 +53,9 @@ export function renderLive(view, intro, floor) {
     <p class="notice" role="status"></p>`);
   view.append(heading, panel);
   const find = (selector) => panel.querySelector(selector);
+  const chime = connectLevelChime(find('#level-sound'));
+  const scoreboard = find('.live-scoreboard');
+  let previous;
   const message = find('[role=status]');
   const breakForm = find('#move-break');
   const adjust = find('#adjust-live');
@@ -68,13 +74,23 @@ export function renderLive(view, intro, floor) {
     const phase = segment?.type === 'break' ? 'הפסקה אחרי שלב ' + segment.number : 'שלב ' + segment?.number;
     set('phase', !tournament ? 'ממתין לטורניר' : state === 'finished' ? 'הטורניר הסתיים' : state === 'complete' ? 'מבנה הבליינדים הסתיים' :
       state === 'ready' ? 'ממתין להתחלה' : state === 'paused' ? phase + ' · מושהה' : phase);
-    set('clock', segment ? countdown(segment.end - elapsed) : '00:00');
+    updateDigits(find('[data-live=clock]'), segment ? countdown(segment.end - elapsed) : '00:00');
+    const anchor = tournament?.live?.runningSince ?? null;
+    if (crossedLevel(previous, current, anchor)) chime.play();
+    if (previous && (previous.view.segment?.start !== segment?.start || previous.view.segment?.type !== segment?.type)) {
+      enterScreen(scoreboard);
+    }
+    previous = { view: current, anchor };
     set('blinds', segment?.type === 'break' ? 'בהפסקה' : blinds(segment?.level));
     set('next', nextLevel ? 'בליינדים בשלב הבא: ' + blinds(nextLevel.level) : '');
-    set('registration', registrationOpen ? (state === 'ready' ? 'פתוחה · הטורניר טרם התחיל' :
-      'נסגרת בעוד ' + countdown(registrationEnd - elapsed)) : 'סגורה');
-    set('break', nextBreak ? nextBreak === segment ? 'חזרה בעוד ' + countdown(segment.end - elapsed) :
-      'אחרי שלב ' + nextBreak.number + ' · בעוד ' + countdown(nextBreak.start - elapsed) : 'אין הפסקה מתוכננת');
+    const countRegistration = registrationOpen && state !== 'ready';
+    set('registration', countRegistration ? 'נסגרת בעוד ' :
+      registrationOpen ? 'פתוחה · הטורניר טרם התחיל' : 'סגורה');
+    updateDigits(find('[data-live=registration-clock]'), countRegistration ? countdown(registrationEnd - elapsed) : '');
+    set('break', nextBreak ? nextBreak === segment ? 'חזרה בעוד ' :
+      'אחרי שלב ' + nextBreak.number + ' · בעוד ' : 'אין הפסקה מתוכננת');
+    updateDigits(find('[data-live=break-clock]'), nextBreak ?
+      countdown((nextBreak === segment ? segment.end : nextBreak.start) - elapsed) : '');
     const players = tournament?.players ?? [];
     const entries = tournament?.entries ?? [];
     const active = players.filter((player) => player.table != null).length;
@@ -177,5 +193,5 @@ export function renderLive(view, intro, floor) {
   refresh();
   const stop = watchTournament(refresh);
   const interval = setInterval(tick, 250);
-  return () => { stop(); clearInterval(interval); };
+  return () => { stop(); clearInterval(interval); chime.dispose(); };
 }

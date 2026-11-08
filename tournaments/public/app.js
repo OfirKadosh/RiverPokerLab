@@ -1,3 +1,4 @@
+import { enterScreen } from './motion.js';
 import { renderResults } from './results.js';
 import { renderLive } from './live.js';
 import { renderDealer } from './dealer.js';
@@ -122,6 +123,7 @@ function render(focus = false) {
   else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');
   else if (route === 'dealer' || route === 'shifts') disposeRoute = renderDealer(view, intro, route === 'shifts');
   else station(route);
+  enterScreen(view);
   if (focus) main.focus();
 }
 

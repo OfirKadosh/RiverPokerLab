@@ -88,3 +88,12 @@ tournament. Subsequent ranking corrections require a reason and keep before
 and after snapshots in the local audit log. Before closing, the floor can undo
 an elimination if the original seat is still available. This workflow records
 results and amounts only; it does not process payouts.
+
+## Motion and sound
+
+Screens and clock digits animate unless the device requests reduced motion.
+The dealer clock uses red digits during the final five seconds. On the live
+floor or audience screen, enable the level chime with the sound button.
+Browsers require a user gesture before audio can play, so enable it on the
+one screen that should make sound. The chime marks a naturally elapsed
+blind level, including a level that leads into a break.

@@ -126,3 +126,24 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
 #result-editor { display: grid; gap: 1rem; }
 #result-log li + li { margin-block-start: .75rem; }
 #audience-prizes ol { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 2.5rem; }
+
+.clock-digit { display: inline-block; }
+.shot-controls .shot-face { transition: color 160ms ease; }
+.shot-controls .shot-face.clock-urgent { color: #ff747d; }
+#level-sound { margin-block-start: .8rem; font-size: .85rem; }
+#level-sound[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+#work-progress {
+  position: fixed; z-index: 10; inset: 0 0 auto; block-size: 3px;
+  overflow: hidden; background: var(--border); pointer-events: none;
+}
+#work-progress::after, #view:empty::before {
+  content: ''; display: block; inline-size: 35%; block-size: 100%;
+  background: var(--accent); animation: work-progress 950ms ease-in-out infinite alternate;
+}
+#view:empty { block-size: 3px; overflow: hidden; margin-block-start: 1rem; }
+@keyframes work-progress { from { transform: translateX(0); } to { transform: translateX(-185%); } }
+@media (prefers-reduced-motion: reduce) {
+  .shot-controls .shot-face { transition: none; }
+  #work-progress::after, #view:empty::before { animation: none; }
+}
+@media print { #work-progress { display: none; } }

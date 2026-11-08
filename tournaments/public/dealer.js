@@ -1,3 +1,4 @@
+import { enterScreen, updateDigits } from './motion.js';
 import { liveView } from './live-state.js';
 import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
 import { assignDealer, changeShift, clockLeft, dealers, disconnectTablet, eliminate,
@@ -153,7 +154,7 @@ export function renderDealer(view, intro, floor) {
     const toggle = action('השהיה', () => changeClock(toggle.dataset.action));
     const navigation = fullscreen
       ? action('חזרה לשולחן', () => dialog.close())
-      : action('מסך מלא', () => { dialog.showModal(); });
+      : action('מסך מלא', () => { dialog.showModal(); enterScreen(dialog); });
     if (fullscreen) fullscreenClock = { face, toggle };
     else clockNodes.push({ face, toggle });
     controls.append(face, toggle, navigation);
@@ -204,7 +205,8 @@ export function renderDealer(view, intro, floor) {
     const remaining = tournament?.status === 'finished' ? 0 : clockLeft(table?.clock, now);
     const running = Boolean(table?.clock?.deadline && remaining);
     for (const { face, toggle } of fullscreenClock ? [...clockNodes, fullscreenClock] : clockNodes) {
-      face.textContent = duration(Math.ceil(remaining / 1000) * 1000);
+      updateDigits(face, duration(Math.ceil(remaining / 1000) * 1000));
+      face.classList.toggle('clock-urgent', remaining > 0 && remaining <= 5000);
       face.setAttribute('aria-label', running || !remaining ? 'איפוס והפעלת 30 שניות' : 'המשך שעון פעולה');
       face.disabled = !table?.dealer || tournament?.status === 'finished';
       toggle.textContent = running ? 'השהיה' : 'המשך';
