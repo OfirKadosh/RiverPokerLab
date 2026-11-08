@@ -115,7 +115,9 @@ export function renderLive(view, intro, floor) {
       };
       button.disabled = busy || !allowed[button.dataset.action];
     }
-    find('#finish-live').hidden = !tournament?.live || registrationOpen || state === 'finished';
+    const finish = find('#finish-live');
+    finish.hidden = !tournament?.live || registrationOpen;
+    finish.textContent = state === 'finished' ? 'ארכיון טורניר' : 'סיום טורניר';
     adjust.querySelector('button').disabled = busy || state === 'ready' || state === 'finished' || !segment;
     adjust.elements.seconds.max = segment ? Math.floor((segment.end - segment.start) / 1000) : 1;
     const upcoming = schedule(tournament).filter((item) => item.type === 'break' && item.start > elapsed);

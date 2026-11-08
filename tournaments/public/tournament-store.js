@@ -14,7 +14,7 @@ export function tournamentOptions() {
 
 export function tournamentId() {
   const selected = sessionStorage.getItem(key);
-  return selected ?? readAll().at(-1)?.id ?? 'new';
+  return selected ?? readAll().findLast((item) => item.status !== 'finished')?.id ?? 'new';
 }
 
 export function selectTournament(id) {
@@ -30,6 +30,29 @@ export function readTournament() {
   return readAll().find((item) => item.id === id) ?? null;
 }
 
+function writeAll(items) {
+  localStorage.setItem(key, JSON.stringify(items));
+  localStorage.removeItem(legacyKey);
+}
+
+export async function removeTournament(id, beforeRemove) {
+  return navigator.locks.request(key, async () => {
+    const all = readAll();
+    const current = all.find((item) => item.id === id);
+    if (!current) throw new Error('הטורניר כבר הוסר.');
+    await beforeRemove(current);
+    writeAll(all.filter((item) => item.id !== id));
+    if (tournamentId() === id) selectTournament('new');
+  });
+}
+
+export async function clearTournaments() {
+  return navigator.locks.request(key, () => {
+    writeAll([]);
+    selectTournament('new');
+  });
+}
+
 let pending = 0;
 let loadingTimer;
 
@@ -43,11 +66,12 @@ export async function updateTournament(change) {
       const all = readAll();
       const index = all.findIndex((item) => item.id === id);
       const current = all[index] ?? null;
+      if (id !== 'new' && !current) throw new Error('הטורניר הוסר. בחרו טורניר אחר.');
       const next = change(current);
       next.id = current?.id ?? next.id ?? crypto.randomUUID();
       if (index < 0) all.push(next);
       else all[index] = next;
-      localStorage.setItem(key, JSON.stringify(all));
+      writeAll(all);
       if (!current && tournamentId() === id) selectTournament(next.id);
       return next;
     });

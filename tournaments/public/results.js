@@ -1,6 +1,6 @@
 import { registrationOpen } from './live-state.js';
 import { allocatePrizes, pools, prizeShares, restoreElimination, saveResults, setPrizeShares } from './results-state.js';
-import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
+import { readTournament, removeTournament, tournamentId, updateTournament, watchTournament } from './tournament-store.js';
 
 const currency = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
 const money = (cents) => currency.format(cents / 100);
@@ -125,6 +125,42 @@ export function renderResults(view, intro, onSaved) {
         const expected = JSON.stringify(eliminated.find((player) => player.id === id)?.elimination);
         perform((stored) => restoreElimination(stored, id, text, expected), 'השחקן הוחזר והמושב עודכן.');
       }));
+    }
+    if (tournament.results || (closed && !players.length && !tournament.entries?.length)) {
+      const archive = Boolean(tournament.results);
+      const card = element('section');
+      card.className = 'card setup';
+      const button = element('button', archive ? 'העברה לארכיון והסרה מהפלור' : 'סגירת טורניר ריק');
+      button.type = 'button';
+      card.append(element('p', archive ? 'אחרי הצגת הפרסים, אפשר להעביר את הטורניר לארכיון הבעלים.' :
+        'אין משתתפים או כניסות. אפשר לסגור את הטורניר בלי לשמור אותו.'), button);
+      button.addEventListener('click', async () => {
+        if (!window.confirm(archive ? 'להעביר את הטורניר לארכיון ולהסיר אותו מהתצוגה?' : 'לסגור את הטורניר בלי לשמור נתונים?')) return;
+        button.disabled = true;
+        const id = tournamentId();
+        try {
+          await removeTournament(id, async (stored) => {
+            if (!archive) {
+              if (stored.players?.length || stored.entries?.length || stored.results || !stored.live || registrationOpen(stored)) {
+                throw new Error('מצב הטורניר השתנה. בדקו את המשתתפים וההרשמה.');
+              }
+              return;
+            }
+            if (stored.status !== 'finished' || !stored.results) throw new Error('יש לסיים את הטורניר תחילה.');
+            const snapshot = { ...stored, tables: (stored.tables ?? []).map(({ code, tablet, ...table }) => table) };
+            const response = await fetch('/api/club/floor-archive', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(snapshot), signal: AbortSignal.timeout(8000),
+            });
+            if (!response.ok) throw new Error('הארכיון לא נשמר. ודאו ששרת Tournaments פועל ונסו שוב.');
+          });
+          if (view.isConnected) location.hash = 'floor?t=new';
+        } catch (error) {
+          message.textContent = error.message;
+          button.disabled = false;
+        }
+      });
+      editor.append(card);
     }
     if (!closed || !players.length) return;
     if (!tournament.results) {

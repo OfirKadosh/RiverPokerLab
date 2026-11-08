@@ -166,3 +166,18 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
 .dealer-table .player-chair { inline-size: clamp(2.65rem, 12vw, 6.25rem); padding: .2rem; font-size: clamp(.65rem, 1.8vw, .9rem); overflow-wrap: anywhere; }
 .dealer-table .player-chair p { margin: 0; max-block-size: 2.5em; overflow: auto; }
 .dealer-table .player-chair button { inline-size: 100%; padding: .12rem; }
+
+.audience-page .container { padding-block-end: 0; }
+.audience-page .live-panel {
+  min-block-size: 100dvh;
+  align-content: center;
+  gap: clamp(.35rem, 1.2dvh, .8rem);
+  padding-block: .4rem;
+}
+.audience .live-scoreboard { padding: clamp(.45rem, 1.5dvh, 1rem); }
+.audience .live-scoreboard .clock { font-size: clamp(2.5rem, min(14vw, 17dvh), 9rem); }
+.audience .live-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
+.audience .live-facts .card, .audience #audience-prizes { padding: clamp(.35rem, 1.2dvh, .8rem); }
+.audience .live-facts h2, .audience #audience-prizes h2 { font-size: clamp(.78rem, 1.7dvh, 1.15rem); }
+.audience .live-facts p, .audience #audience-prizes li { font-size: clamp(.72rem, 1.6dvh, 1rem); }
+.audience #audience-prizes ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(4.6rem, 1fr)); gap: .15rem 1rem; margin-block: .35rem; }

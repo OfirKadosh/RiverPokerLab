@@ -1,5 +1,4 @@
 import { readTournament } from './tournament-store.js';
-import { pools } from './results-state.js';
 
 export async function readClub(path = '', options) {
   const response = await fetch('/api/club' + path, options);
@@ -22,8 +21,8 @@ const duration = (ms) => {
   return Math.floor(minutes / 60) + ':' + String(minutes % 60).padStart(2, '0');
 };
 
-export function renderClubAdmin(view, intro) {
-  view.append(intro('בעלים / מועדון', 'ניהול מועדון ועובדים', 'ניהול צוות, נוכחות ונתוני טורניר מקומי.'));
+export function renderClubAdmin(view, intro, archive = false) {
+  view.append(intro('בעלים / מועדון', archive ? 'ארכיון טורנירים' : 'ניהול מועדון ועובדים', 'ניהול צוות, נוכחות ונתוני טורנירים.'));
   const content = document.createElement('div');
   view.append(content);
   const status = document.createElement('p');
@@ -34,7 +33,8 @@ export function renderClubAdmin(view, intro) {
     if (!content.isConnected) return;
     if (session.authenticated) {
       content.replaceChildren();
-      showClubAdmin(content, () => renderLogin(true));
+      if (archive) showOwnerArchive(content);
+      else showClubAdmin(content, () => renderLogin(true));
     } else renderLogin(session.configured);
   }).catch((error) => { status.textContent = error.message; });
 
@@ -55,7 +55,8 @@ export function renderClubAdmin(view, intro) {
       try {
         await request('/owner', 'POST', { password: form.elements.password.value });
         content.replaceChildren();
-        showClubAdmin(content, () => renderLogin(true));
+        if (archive) showOwnerArchive(content);
+        else showClubAdmin(content, () => renderLogin(true));
       } catch (error) {
         message.textContent = error.message;
         button.disabled = false;
@@ -85,9 +86,7 @@ function showClubAdmin(view, logout) {
         <button>הצגת דוח</button>
       </form><div id="report-output"></div>
     </section>
-    <section class="card"><h2>נתוני הטורניר המקומי</h2><p id="owner-tournament"></p><a href="#results">פרסים ותוצאות</a>
-      <button type="button" id="archive-tournament" hidden>שמירת סיכום טורניר להיסטוריה</button></section>
-    <section class="card"><h2>היסטוריית טורנירים</h2><ul id="owner-archive"></ul></section>
+    <a class="action" href="#archive">פתיחת ארכיון הטורנירים</a>
     <button type="button" id="owner-logout">יציאת בעלים</button>
     <p class="notice" role="status">טוען את נתוני המועדון…</p>`;
   view.append(panel);
@@ -178,48 +177,6 @@ function showClubAdmin(view, logout) {
     } catch (error) { message.textContent = error.message; }
     finally { submit.disabled = false; }
   });
-  const currency = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
-  async function showArchive() {
-    const { tournaments } = await readClub('/tournaments');
-    const list = panel.querySelector('#owner-archive');
-    list.replaceChildren();
-    if (!tournaments.length) list.textContent = 'טרם נשמרו סיכומי טורנירים.';
-    for (const item of tournaments) {
-      const row = document.createElement('li');
-      row.textContent = item.title + ' · ' + clockFormat.format(item.finishedAt) + ' · ' +
-        item.entries + ' כניסות · ' + currency.format(item.prizePool / 100);
-      list.append(row);
-    }
-  }
-  showArchive().catch((error) => { panel.querySelector('#owner-archive').textContent = error.message; });
-  try {
-    const tournament = readTournament();
-    const total = pools(tournament);
-    panel.querySelector('#owner-tournament').textContent = tournament ?
-      tournament.title + ' · ' + (tournament.entries?.length ?? 0) + ' כניסות · קופת פרסים ' + currency.format(total.prizes / 100) :
-      'אין טורניר שמור בדפדפן הזה.';
-    const archive = panel.querySelector('#archive-tournament');
-    if (tournament?.results?.finishedAt) {
-      archive.hidden = false;
-      archive.addEventListener('click', async () => {
-        archive.disabled = true;
-        try {
-          const current = readTournament();
-          if (current?.results?.finishedAt !== tournament.results.finishedAt || current.id !== tournament.id) {
-            throw new Error('הטורניר השתנה. פתחו מחדש את מסך הבעלים.');
-          }
-          await request('/tournaments', 'POST', {
-            id: current.id ?? 'legacy-' + current.results.finishedAt,
-            title: current.title, finishedAt: current.results.finishedAt,
-            entries: current.entries?.length ?? 0, prizePool: pools(current).prizes,
-          });
-          await showArchive();
-          message.textContent = 'סיכום הטורניר נשמר בהיסטוריה.';
-        } catch (error) { message.textContent = error.message; }
-        finally { archive.disabled = false; }
-      });
-    }
-  } catch { panel.querySelector('#owner-tournament').textContent = 'לא ניתן לקרוא את הטורניר המקומי.'; }
   readClub().then((club) => {
     details.elements.name.value = club.name;
     details.elements.location.value = club.location;
@@ -229,6 +186,33 @@ function showClubAdmin(view, logout) {
   }).catch((error) => { message.textContent = error.message; });
 }
 
+
+function showOwnerArchive(view) {
+  const panel = document.createElement('section');
+  panel.className = 'card setup';
+  panel.innerHTML = '<a href="#staff">חזרה למסך הבעלים</a><div role="status">טוען ארכיון…</div>';
+  view.append(panel);
+  const output = panel.querySelector('[role=status]');
+  const currency = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' });
+  readClub('/tournaments').then(({ tournaments }) => {
+    output.textContent = tournaments.length ? '' : 'טרם נשמרו טורנירים בארכיון.';
+    for (const item of tournaments) {
+      const details = document.createElement('details');
+      const title = document.createElement('summary');
+      title.textContent = item.title + ' · ' + clockFormat.format(item.finishedAt) + ' · ' +
+        item.entries + ' כניסות · ' + currency.format(item.prizePool / 100);
+      details.append(title);
+      const results = document.createElement('ol');
+      for (const row of item.results ?? []) {
+        const line = document.createElement('li');
+        line.textContent = row.name + ' · ' + currency.format(row.amount / 100);
+        results.append(line);
+      }
+      details.append(results);
+      panel.append(details);
+    }
+  }).catch((error) => { output.textContent = error.message; });
+}
 
 export function renderAttendance(view, intro) {
   view.append(intro('מועדון / נוכחות', 'שעון נוכחות', 'פתיחה וסיום משמרות לפלור, לקופה ולדילרים.'));

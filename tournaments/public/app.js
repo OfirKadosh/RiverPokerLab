@@ -1,4 +1,4 @@
-import { selectTournament, tournamentId, tournamentLink, tournamentOptions, watchTournament } from './tournament-store.js';
+import { clearTournaments, readTournament, selectTournament, tournamentId, tournamentLink, tournamentOptions, watchTournament } from './tournament-store.js';
 import { readClub, renderAttendance, renderClubAdmin } from './club.js';
 import { enterScreen } from './motion.js';
 import { renderResults } from './results.js';
@@ -99,7 +99,22 @@ function station(role) {
     live.href = '#live';
     const results = element('a', 'פרסים ותוצאות', 'action');
     results.href = '#results';
-    grid.firstElementChild.append(setup, live, results);
+    const clear = element('button', 'ניקוי נתוני טורנירים', 'action');
+    const feedback = element('p', '', 'notice');
+    feedback.setAttribute('role', 'status');
+    clear.addEventListener('click', async () => {
+      if (!window.confirm('למחוק את כל הטורנירים והמשתתפים מהדפדפן? עובדים, משמרות וארכיון הבעלים יישארו.')) return;
+      clear.disabled = true;
+      try {
+        await clearTournaments();
+        render();
+        view.querySelector('[role=status]').textContent = 'נתוני הטורנירים המקומיים נוקו.';
+      } catch (error) {
+        feedback.textContent = error.message;
+        clear.disabled = false;
+      }
+    });
+    grid.firstElementChild.append(setup, live, results, clear, feedback);
     const seating = element('a', 'ניהול שולחנות והושבה', 'action');
     seating.href = '#seating';
     grid.children[1].append(seating);
@@ -125,7 +140,15 @@ function render(focus = false) {
   if (hash === 'content') return;
   disposeRoute?.();
   disposeRoute = undefined;
-  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || hash === 'results' || hash === 'staff' || hash === 'attendance' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || hash === 'results' || hash === 'staff' || hash === 'archive' || hash === 'attendance' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  if (route === 'setup') {
+    const current = readTournament();
+    if (!current || current.status === 'finished') {
+      selectTournament('new');
+      history.replaceState(null, '', '#setup?t=new');
+    }
+  }
+  document.body.classList.toggle('audience-page', route === 'display');
   for (const link of links) {
     if (link.hash === '#' + (['setup', 'seating', 'shifts', 'live', 'results', 'staff'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
@@ -143,7 +166,7 @@ function render(focus = false) {
       const options = tournamentOptions();
       select.replaceChildren(new Option(options.length ? 'טורניר חדש / ללא בחירה' : 'אין טורנירים שמורים', 'new'),
         ...options.map((item) => new Option((item.title || 'טיוטה ללא כותרת') + (item.status === 'finished' ? ' · הסתיים' : ''), item.id)));
-      select.value = tournamentId();
+      select.value = options.some((item) => item.id === tournamentId()) ? tournamentId() : 'new';
     };
     sync();
     select.addEventListener('change', () => {
@@ -162,7 +185,7 @@ function render(focus = false) {
   if (route === 'club') club();
   else if (route === 'display' || route === 'live') disposeRoute = renderLive(view, intro, route === 'live');
   else if (route === 'attendance') renderAttendance(view, intro);
-  else if (route === 'staff') renderClubAdmin(view, intro);
+  else if (route === 'staff' || route === 'archive') renderClubAdmin(view, intro, route === 'archive');
   else if (route === 'results') disposeRoute = renderResults(view, intro);
   else if (route === 'setup') renderTournamentSetup(view, intro);
   else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');

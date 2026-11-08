@@ -126,9 +126,12 @@ clock-out for any active worker. Attendance measures working time separately
 from dealer assignments within a tournament. The local station selects an
 employee by name; individual employee accounts are not implemented here.
 
-The owner sees the current browser tournament and can explicitly save its
-summary to server history after finishing it. Full tournament state stays in
-the browser. This development server binds to loopback.
+After displaying prizes, the floor can archive a completed tournament from
+the results screen. The local Node server writes a snapshot to SQLite before
+the browser removes its working copy. Owners can view it at `/#archive`.
+Empty tournaments can be closed without archiving. The floor reset clears
+all browser tournament data and leaves the roster, attendance and owner
+archive intact. This development server binds to loopback.
 
 ## Running parallel tournaments
 

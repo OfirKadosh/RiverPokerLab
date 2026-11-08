@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { pools } from './public/results-state.js';
 import { dealers } from './public/dealer-state.js';
 
 const databasePath = resolve(process.env.TOURNAMENTS_DB ?? fileURLToPath(new URL('./data/club.sqlite', import.meta.url)));
@@ -36,6 +37,9 @@ db.exec(`
   );
   CREATE UNIQUE INDEX IF NOT EXISTS attendance_one_open ON attendance(employee_id) WHERE ended_at IS NULL;
 `);
+if (!db.prepare('PRAGMA table_info(tournament_archive)').all().some((column) => column.name === 'snapshot')) {
+  db.exec('ALTER TABLE tournament_archive ADD COLUMN snapshot TEXT');
+}
 const clubId = 'local-club';
 const employeeInsert = db.prepare('INSERT INTO employees (id, club_id, name, role, created_at) VALUES (?, ?, ?, ?, ?)');
 db.exec('BEGIN IMMEDIATE');
@@ -120,14 +124,14 @@ function text(value, max = 100) {
   return value.trim();
 }
 
-async function body(request) {
+async function body(request, limit = 4096) {
   if (request.headers['content-type']?.split(';')[0] !== 'application/json') {
     throw new Error('נדרש JSON.');
   }
   let data = '';
   for await (const chunk of request) {
     data += chunk;
-    if (Buffer.byteLength(data) > 4096) {
+    if (Buffer.byteLength(data) > limit) {
       request.resume();
       throw new Error('הבקשה ארוכה מדי.');
     }
@@ -172,11 +176,39 @@ const server = createServer(async (request, response) => {
       const ownerRoute = path === '/api/club/report' || path === '/api/club/tournaments' || path.startsWith('/api/club/employees') ||
         (path === '/api/club' && method === 'PATCH');
       if (ownerRoute && !isOwner(request)) return json(response, 401, { error: 'נדרשת כניסת בעלים.' });
+      // The loopback floor can archive; reading the archive requires an owner session.
+      if (path === '/api/club/floor-archive' && method === 'POST') {
+        const data = await body(request, 8 * 1024 * 1024);
+        const finishedAt = data?.results?.finishedAt;
+        if (data?.version !== 1 || data.status !== 'finished' || !Number.isSafeInteger(finishedAt) ||
+            finishedAt <= 0 || !Array.isArray(data.entries) || !data.entries.length ||
+            !Array.isArray(data.results.rows) || !data.results.rows.length ||
+            data.entries.some((entry) => ![entry.fee, Number(entry.rake ?? 0), Number(entry.bounty ?? 0)]
+              .every((amount) => Number.isSafeInteger(amount) && amount >= 0) ||
+              Number(entry.rake ?? 0) + Number(entry.bounty ?? 0) > entry.fee)) {
+          return json(response, 400, { error: 'נדרש טורניר שהסתיים עם תוצאות וכניסות תקינות.' });
+        }
+        const { prizes } = pools(data);
+        if (data.results.rows.some((row) => typeof row.name !== 'string' ||
+            !Number.isSafeInteger(row.amount) || row.amount < 0) ||
+            data.results.rows.reduce((sum, row) => sum + row.amount, 0) !== prizes) {
+          return json(response, 400, { error: 'סכום הפרסים אינו תואם לקופה.' });
+        }
+        const snapshot = { ...data, tables: (data.tables ?? []).map(({ code, tablet, ...table }) => table) };
+        db.prepare(`
+          INSERT INTO tournament_archive (club_id, tournament_id, title, finished_at, entries, prize_pool, snapshot)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (club_id, tournament_id) DO UPDATE SET
+            title = excluded.title, finished_at = excluded.finished_at, entries = excluded.entries,
+            prize_pool = excluded.prize_pool, snapshot = excluded.snapshot
+        `).run(clubId, text(data.id), text(data.title), finishedAt, data.entries.length, prizes, JSON.stringify(snapshot));
+        return json(response, 200, { archived: true });
+      }
       if (path === '/api/club/tournaments' && method === 'GET') {
         return json(response, 200, { tournaments: db.prepare(`
-          SELECT title, finished_at AS finishedAt, entries, prize_pool AS prizePool
+          SELECT title, finished_at AS finishedAt, entries, prize_pool AS prizePool, snapshot
           FROM tournament_archive WHERE club_id = ? ORDER BY finished_at DESC
-        `).all(clubId) });
+        `).all(clubId).map(({ snapshot, ...row }) => ({ ...row, results: snapshot ? JSON.parse(snapshot).results.rows : [] })) });
       }
       if (path === '/api/club/tournaments' && method === 'POST') {
         const data = await body(request);
@@ -186,7 +218,7 @@ const server = createServer(async (request, response) => {
           return json(response, 400, { error: 'נדרש סיכום תקין של טורניר שהסתיים.' });
         }
         db.prepare(`
-          INSERT INTO tournament_archive VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO tournament_archive (club_id, tournament_id, title, finished_at, entries, prize_pool) VALUES (?, ?, ?, ?, ?, ?)
           ON CONFLICT (club_id, tournament_id) DO UPDATE SET
             title = excluded.title, finished_at = excluded.finished_at, entries = excluded.entries, prize_pool = excluded.prize_pool
         `).run(clubId, text(data.id), text(data.title), finishedAt, entries, prizePool);
