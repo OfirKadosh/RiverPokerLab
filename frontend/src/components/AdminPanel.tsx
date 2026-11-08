@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import type { AccountUser } from "@river-poker-lab/core";
+import type { AccountAccess, AccountUser } from "@river-poker-lab/core";
 import { apiClient } from "../lib/api";
 
 interface ManagedAccount extends Pick<AccountUser, "id" | "username" | "email" | "restricted"> {
   approved: boolean;
   protected: boolean;
   canApprove: boolean;
+  canGrantAccess: boolean;
+  access?: AccountAccess;
   verification: { code: string | null; expiresAt: string | null } | null;
 }
-type Action = "approve" | "restrict" | "unrestrict" | "delete";
+type Action = "approve" | "grant-access" | "restrict" | "unrestrict" | "delete";
 
 export function AdminPanel() {
   const [accounts, setAccounts] = useState<ManagedAccount[]>([]);
@@ -70,6 +72,7 @@ export function AdminPanel() {
       setConfirmation("");
       const messages = {
         approve: "Account approved. The user can now sign in.",
+        "grant-access": "30 days of access granted from today.",
         restrict: "Solver access restricted.",
         unrestrict: "Solver access restored.",
         delete: "Account deleted.",
@@ -108,9 +111,12 @@ export function AdminPanel() {
             <p>{account.email || "No email"}</p>
             <p className="field-help">
               {account.protected && "Protected account · "}
-              {account.approved ? "Approved" : "Pending activation"}
+              {account.access?.expired ? "Access expired" : account.access?.source === "trial" ? "Free trial" : account.approved ? "Approved" : "Pending activation"}
               {account.restricted && " · Restricted"}
             </p>
+            {account.access && <p className="field-help">
+              Access ends {new Date(account.access.expiresAt).toLocaleString()}
+            </p>}
             {code ? (
               <div className="admin-code">
                 <strong aria-label="Activation code">{code}</strong>
@@ -128,6 +134,8 @@ export function AdminPanel() {
                   "No active code is available to copy. The user can request a new code."}
               </p>
             )}
+            {account.canGrantAccess && <button className="primary-button" disabled={working}
+              onClick={() => void act(account, "grant-access")}>Grant 30 days</button>}
             {!account.protected && <div className="admin-actions">
               {!account.approved && <button className="primary-button" disabled={working || !canApprove}
                 onClick={() => void act(account, "approve")}>Approve user</button>}

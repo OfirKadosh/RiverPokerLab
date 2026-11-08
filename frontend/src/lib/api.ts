@@ -9,7 +9,7 @@ export const apiClient = createApiClient({
     const response = await fetch(url, init);
     if (response.status === 409 || response.status === 403) {
       void response.clone().json().then(data => {
-        if (data.code === "ACCOUNT_CHANGED" || data.code === "ACCOUNT_RESTRICTED")
+        if (data.code === "ACCOUNT_CHANGED" || data.code === "ACCOUNT_RESTRICTED" || data.code === "ACCESS_EXPIRED")
           window.dispatchEvent(new Event("river-auth-refresh"));
       }).catch(() => {});
     }

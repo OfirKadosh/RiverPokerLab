@@ -210,16 +210,23 @@ export interface AccountSession {
   expiresAt: string;
   remember: boolean;
 }
+export interface AccountAccess {
+  source: "trial" | "admin" | "legacy";
+  expiresAt: string;
+  expiresInMs: number;
+  expired: boolean;
+}
 export interface AccountIdentity {
   preview?: boolean;
   accountSwitch?: { mode: "link" | "switch" | "return" };
   user: AccountUser | null;
+  access?: AccountAccess;
   verification?: VerificationState;
   session?: AccountSession;
 }
 
 export interface LoginRequest {identifier:string;password:string;remember:boolean}
-export interface RegistrationRequest {email:string;username:string;phone:string;password:string;channel:"email"|"sms"}
+export interface RegistrationRequest {email:string;username:string;phone:string;password:string;channel?:"email"|"sms"}
 
 export interface IcmSnapshot {model:string;method:string;playerCount:number;totalChips:number;totalPrize:number;payouts:number[];results:{playerIndex:number;name:string;stack:number;chipShare:number;prizeEquity:number;prizeShare:number;proportionalPrize:number;differenceFromProportional:number;finishProbabilities:number[]}[]}
 

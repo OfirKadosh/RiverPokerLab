@@ -1,6 +1,7 @@
 const User = require("../models/User"),
   Session = require("../models/AuthSession"),
   Rate = require("../models/AuthRateLimit");
+const { grantedAccess } = require("./access");
 class MongoAuthStore {
   async createUser(data) {
     return (await User.create(data)).toObject();
@@ -27,10 +28,20 @@ class MongoAuthStore {
   }
   listAccounts(after, limit) {
     return User.find(after ? { _id: { $lt: after } } : {})
-      .select("username usernameKey role email accountApprovedAt emailVerifiedAt phoneVerifiedAt restrictedAt verificationDelivery verificationSentAt verificationExpiresAt verificationAttempts verificationHash verificationNonce +verificationCiphertext")
+      .select("username usernameKey role email accountApprovedAt emailVerifiedAt phoneVerifiedAt restrictedAt trialStartedAt accessUntil accessSource verificationDelivery verificationSentAt verificationExpiresAt verificationAttempts verificationHash verificationNonce +verificationCiphertext")
       .sort({ _id: -1 }).limit(limit).lean();
   }
-  async manageAccount(id, action, now) {
+  async manageAccount(id, action, now, timeLimitedAccess) {
+    if (action === "grant-access") {
+      const { accessUntil, accessSource } = grantedAccess(now);
+      return !!(await User.updateOne({
+        _id: id, role: { $ne: "admin" },
+        $or: [
+          { trialStartedAt: { $type: "date" } }, { accountApprovedAt: { $type: "date" } },
+          { emailVerifiedAt: { $type: "date" } }, { phoneVerifiedAt: { $type: "date" } },
+        ],
+      }, { $max: { accessUntil }, $set: { accessSource } })).matchedCount;
+    }
     const target = { _id: id, role: { $ne: "admin" }, usernameKey: { $ne: "ofir" } };
     if (action === "delete") return !!(await User.deleteOne(target)).deletedCount;
     if (action === "restrict" || action === "unrestrict") {
@@ -44,7 +55,7 @@ class MongoAuthStore {
       verificationSentAt: { $lte: new Date(+now - 600000) },
       $or: [{ verificationExpiresAt: null }, { verificationExpiresAt: { $lte: now } }],
     }, {
-      $set: { accountApprovedAt: now },
+      $set: { accountApprovedAt: now, ...(timeLimitedAccess && grantedAccess(now)) },
       $unset: { verificationHash: 1, verificationNonce: 1, verificationExpiresAt: 1, verificationCiphertext: 1 },
     })).modifiedCount;
   }

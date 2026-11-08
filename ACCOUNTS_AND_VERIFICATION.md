@@ -145,3 +145,13 @@ Primary references used for the implementation:
 - [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 - [Resend send-email API](https://resend.com/docs/api-reference/emails/send-email).
 - [Twilio Messages API](https://www.twilio.com/docs/messaging/api/message-resource).
+
+## Version 1.0 trial and access window
+
+Enable `AUTH_TIME_LIMITED_ACCESS=true` in the authenticated backend environment to test this release branch. With the flag disabled, new registrations use the existing activation flow. Existing explicit access deadlines remain enforced.
+
+- Open registration creates a signed-in account with seven days of solver access from registration. The trial does not verify email or phone. Duplicate registration and signing in again do not renew it.
+- In **Admin**, **Grant 30 days** gives an eligible member access for 30 days from the grant, without shortening any later deadline already recorded. Repeat clicks do not stack extra months. Approving a legacy pending activation also grants 30 days.
+- Expiry blocks protected requests at the server. Users can sign in, view the expiry date and check for renewed access. Manual restrictions override time-based access.
+- When enabled, an existing approved user without an explicit access window has 30 days from the stored approval or contact verification timestamp. Review existing testers before enabling the policy on production and grant access where appropriate.
+- The administrator records access after confirming payment independently. The feature does not take payment or verify a transaction.

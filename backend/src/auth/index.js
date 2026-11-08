@@ -3,6 +3,7 @@ const { randomInt } = require("node:crypto");
 const { MongoAuthStore } = require("./store");
 const { managementRoutes, OWNER } = require("./management");
 const { sealCode } = require("./manualCode");
+const { TRIAL_DAYS, trialAccess, accessStatus } = require("./access");
 const { createDelivery } = require("./delivery");
 const {
   AuthError,
@@ -41,6 +42,7 @@ function authConfig(env = process.env) {
     secret,
     origins,
     secure: production,
+    timeLimitedAccess: env.AUTH_TIME_LIMITED_ACCESS === "true",
     cookieName: production ? "__Host-river_session" : "river_session",
   };
 }
@@ -145,11 +147,13 @@ function createAuth({
     return { expiresAt, remember, expiresInMs: duration };
   }
   const verified = (user) => !!(user?.accountApprovedAt || user?.emailVerifiedAt || user?.phoneVerifiedAt);
+  const canSignIn = user => verified(user) || !!user?.trialStartedAt;
   function identity(user, record) {
     const linked = !!record.switchOwnerId;
     return {
       success: true,
       user: publicUser(user),
+      access: accessStatus(user, now(), config.timeLimitedAccess),
       accountSwitch: user.restrictedAt ? undefined : linked
         ? { mode: user.role === "admin" ? "return" : "switch" }
         : user.role !== "admin" && user.usernameKey === OWNER ? { mode: "link" } : undefined,
@@ -170,7 +174,7 @@ function createAuth({
     if (!record || record.purpose !== "authenticated")
       throw new AuthError(401, "Sign in to continue.");
     const user = await store.getUser(record.userId);
-    if (!verified(user)) throw new AuthError(401, "Sign in with a verified account.");
+    if (!canSignIn(user)) throw new AuthError(401, "Sign in with a verified account.");
     if (checkHeader) checkAccountHeader(req, record);
     return { user, record };
   }
@@ -207,7 +211,7 @@ function createAuth({
     if (!record || record.purpose !== "pending")
       throw new AuthError(401, "Sign in again before verifying your account.");
     const user = await store.getUser(record.userId);
-    if (!user || verified(user))
+    if (!user || canSignIn(user))
       throw new AuthError(401, "Sign in again to continue.");
     return user;
   }
@@ -313,6 +317,7 @@ function createAuth({
       development: !problem && delivery.config.development,
       manualChannels: problem ? [] : delivery.config.manualChannels || [],
       configured: !problem,
+      trialDays: !problem && config.timeLimitedAccess ? TRIAL_DAYS : undefined,
     }),
   );
   router.get("/me", async (req, res) => {
@@ -331,7 +336,7 @@ function createAuth({
           user: null,
           verification: verificationInfo(user),
         });
-      if (!verified(user)) {
+      if (!canSignIn(user)) {
         clear(res);
         return res.json({ success: true, user: null });
       }
@@ -347,16 +352,23 @@ function createAuth({
   });
   route("/register", async (req, res) => {
     await limit("register-ip", req.ip, 5, 3600000);
-    const input = registration(req.body);
-    if (!delivery.config.channels.includes(input.channel))
+    const selfServe = config.timeLimitedAccess === true;
+    const input = registration(req.body, { skipVerificationChannel: selfServe });
+    if (!selfServe && !delivery.config.channels.includes(input.channel))
       throw new AuthError(400, "This verification channel is unavailable.");
+    const passwordHash = await hashPassword(input.password);
     const user = await store.createUser({
       email: input.email,
       username: input.username,
       usernameKey: input.usernameKey,
       phone: input.phone,
-      passwordHash: await hashPassword(input.password),
+      passwordHash,
+      ...(selfServe && trialAccess(now())),
     });
+    if (selfServe) {
+      const record = await issue(req, res, user, "authenticated");
+      return res.status(201).json(identity(user, record));
+    }
     await issue(req, res, user, "pending");
     const verification = await send(user, input.channel, req);
     res.status(201).json({ success: true, verification });
@@ -383,7 +395,7 @@ function createAuth({
     const matched = await checkPassword(req.body.password, user?.passwordHash);
     if (!user || !matched)
       throw new AuthError(401, "Invalid username/email or password.");
-    if (!verified(user)) {
+    if (!canSignIn(user)) {
       await issue(req, res, user, "pending");
       return res.status(403).json({
         success: false,
@@ -456,6 +468,8 @@ function createAuth({
         ready();
         const { user } = await requireAccount(req);
         if (user.restrictedAt) throw new AuthError(403, "This account is restricted.", "ACCOUNT_RESTRICTED");
+        if (accessStatus(user, now(), config.timeLimitedAccess)?.expired)
+          throw new AuthError(403, "Your access has expired. Contact the administrator to renew.", "ACCESS_EXPIRED");
         req.user = publicUser(user);
         next();
       } catch (error) {

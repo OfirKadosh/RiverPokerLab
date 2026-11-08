@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { apiFetch, setApiAccount } from "../lib/api";
 import { feedbackFetch } from "../lib/loading";
 import { LoadingIndicator } from "./LoadingIndicator";
+import { AccountSwitch } from "./AccountSwitch";
 import type {AccountUser as User,VerificationState as Verification,AccountSession as Session,AccountIdentity as Identity} from '@river-poker-lab/core';
 interface AuthContextValue extends Identity {
   api: string;
@@ -84,6 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => void refresh(), Math.min(delay, 2147483000));
     return () => clearTimeout(timer);
   }, [identity.session, refresh]);
+  useEffect(() => {
+    const access = identity.access;
+    if (!access || access.expired) return;
+    const timer = setTimeout(() => void refresh(), Math.min(Math.max(1000, access.expiresInMs), 2147483000));
+    return () => clearTimeout(timer);
+  }, [identity.access, refresh]);
   async function logout() {
     invalidate();
     setLoggingOut(true);
@@ -128,11 +135,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <main className="auth-shell">
           <LoadingIndicator label="Checking your session…" />
         </main>
-      ) : identity.user?.restricted ? (
+      ) : identity.user && (identity.user.restricted || identity.access?.expired) ? (
         <main className="auth-shell">
           <section className="auth-card">
-            <h1>Account restricted</h1>
-            <p>Solver access is paused for this account. Contact the administrator.</p>
+            <h1>{identity.user.restricted ? "Account restricted" : "Access expired"}</h1>
+            <p>{identity.user.restricted
+              ? "Solver access is paused. Contact the administrator."
+              : "Contact the administrator to arrange payment and renew access. Your saved spots will be available after renewal."}</p>
+            <div className="admin-actions">
+              <button className="secondary-button" onClick={() => void refresh()}>Check access</button>
+              <AccountSwitch />
+            </div>
             <AccountPanel />
           </section>
         </main>
@@ -171,6 +184,7 @@ function AuthScreen({
   const [channels, setChannels] = useState<string[]>([]),
     [development, setDevelopment] = useState(false),
     [manualChannels, setManualChannels] = useState<string[]>([]),
+    [trialDays, setTrialDays] = useState<number>(),
     [channel, setChannel] = useState<string>(
       initialVerification?.channel || "email",
     );
@@ -190,6 +204,7 @@ function AuthScreen({
       .then((r) => r.json())
       .then((data) => {
         setChannels(data.channels || []);
+        setTrialDays(data.trialDays);
         setDevelopment(!!data.development);
         setManualChannels(data.manualChannels || []);
         setChannel((current) =>
@@ -220,7 +235,7 @@ function AuthScreen({
       }
       if (!r.ok || !data.success)
         throw Error(data.error || "Account request failed.");
-      if (path === "login") auth.signedIn(data);
+      if (path === "login" || (path === "register" && data.user)) auth.signedIn(data);
       else if (path === "verification/confirm") {
         setVerification(undefined);
         setMode("login");
@@ -419,7 +434,7 @@ function AuthScreen({
                     onChange={(event) => setPhone(event.target.value)}
                   />
                 </label>
-                <label className="field-label">
+                {!trialDays && <label className="field-label">
                   VERIFY VIA
                   <select
                     aria-label="Registration verification channel"
@@ -432,8 +447,8 @@ function AuthScreen({
                       </option>
                     ))}
                   </select>
-                </label>
-                {!channels.length && (
+                </label>}
+                {!trialDays && !channels.length && (
                   <p className="validation-note">
                     Verification delivery is not configured. Contact the
                     administrator.
@@ -471,7 +486,7 @@ function AuthScreen({
             )}
             <button
               className="primary-button full-width"
-              disabled={busy || (mode === "register" && !channels.length)}
+              disabled={busy || (mode === "register" && !trialDays && !channels.length)}
             >
               {busy
                 ? <LoadingIndicator label="Please wait…" compact />
@@ -491,7 +506,10 @@ function AuthScreen({
             {notice}
           </p>
         )}
-        {manualChannels.includes(channel) && mode === "register" && (
+        {trialDays && mode === "register" && (
+          <p className="field-help">Create an account to start your {trialDays}-day free trial immediately.</p>
+        )}
+        {!trialDays && manualChannels.includes(channel) && mode === "register" && (
           <p className="field-help">
             Beta accounts are activated manually. After registering, ask the
             administrator for your code. Contact details remain unverified.
@@ -520,6 +538,12 @@ export function AccountPanel() {
         </p>
       )}
       <dl className="account-details">
+        {auth.access && <>
+          <dt>Solver access</dt>
+          <dd>{auth.access.expired ? "Expired" : auth.access.source === "trial" ? "Free trial" : "Active"}</dd>
+          <dt>Access ends</dt>
+          <dd>{new Date(auth.access.expiresAt).toLocaleString()}</dd>
+        </>}
         <dt>Email</dt>
         <dd>
           {auth.user?.email || "Not provided"} ·{" "}

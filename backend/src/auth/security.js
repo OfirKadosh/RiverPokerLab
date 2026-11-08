@@ -31,7 +31,7 @@ class AuthError extends Error {
     this.code = code;
   }
 }
-function registration(body) {
+function registration(body, { skipVerificationChannel = false } = {}) {
   if (!body || typeof body !== "object" || Array.isArray(body))
     throw new AuthError(400, "Registration input must be an object.");
   const email =
@@ -57,7 +57,7 @@ function registration(body) {
       "Use an international phone number, for example +972501234567.",
     );
   passwordInput(body.password);
-  if (!["email", "sms"].includes(body.channel))
+  if (!skipVerificationChannel && !["email", "sms"].includes(body.channel))
     throw new AuthError(400, "Choose email or SMS verification.");
   return {
     email,

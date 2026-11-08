@@ -1,11 +1,14 @@
 const { AuthError, checkPassword } = require("./security");
 const { readCode } = require("./manualCode");
+const { accessStatus } = require("./access");
 
 const OWNER = "ofir";
 const ADMIN = "admin";
 const TEN_MINUTES = 600000;
 const approved = user => !!(user?.accountApprovedAt || user?.emailVerifiedAt || user?.phoneVerifiedAt);
 const protectedAccount = user => user.role === "admin" || user.usernameKey === OWNER;
+
+const canGrantAccess = user => user.role !== "admin" && (approved(user) || !!user.trialStartedAt);
 
 function approvalAvailable(user, now) {
   if (approved(user) || user.verificationDelivery !== "manual" || !user.verificationSentAt) return false;
@@ -22,7 +25,7 @@ function managementRoutes({ route, requireAccount, issueSwitch, identity, store,
         store.getUser(record.switchOwnerId), store.getUser(record.switchAdminId),
       ]);
       if (owner?.usernameKey !== OWNER || owner.role === "admin" || owner.restrictedAt ||
-          !approved(owner) || admin?.usernameKey !== ADMIN || admin.role !== "admin" ||
+          !(approved(owner) || owner.trialStartedAt) || admin?.usernameKey !== ADMIN || admin.role !== "admin" ||
           !approved(admin) || admin.restrictedAt)
         throw new AuthError(403, "Account switching is unavailable.");
     } else {
@@ -68,9 +71,11 @@ function managementRoutes({ route, requireAccount, issueSwitch, identity, store,
         email: user.email || null,
         restricted: !!user.restrictedAt,
         protected: protectedAccount(user),
-        approved: approved(user),
+        approved: approved(user) || !!user.trialStartedAt,
+        canGrantAccess: config.timeLimitedAccess === true && canGrantAccess(user),
+        access: accessStatus(user, instant, config.timeLimitedAccess),
         canApprove: !protectedAccount(user) && approvalAvailable(user, instant),
-        verification: !approved(user) && user.verificationDelivery === "manual" ? {
+        verification: !approved(user) && !user.trialStartedAt && user.verificationDelivery === "manual" ? {
           code: readCode(config.secret, user, instant),
           expiresAt: user.verificationExpiresAt || new Date(+user.verificationSentAt + TEN_MINUTES),
         } : null,
@@ -82,17 +87,19 @@ function managementRoutes({ route, requireAccount, issueSwitch, identity, store,
     const actor = await requireAdmin(req);
     const { userId, action } = req.body || {};
     if (typeof userId !== "string" || !/^[a-f0-9]{24}$/i.test(userId) ||
-        !["approve", "restrict", "unrestrict", "delete"].includes(action))
+        !["approve", "grant-access", "restrict", "unrestrict", "delete"].includes(action))
       throw new AuthError(400, "Choose a valid account and action.");
     const target = await store.getUser(userId);
     if (!target) throw new AuthError(404, "Account not found.");
-    if (protectedAccount(target)) throw new AuthError(403, "This account is protected.");
+    const grant = action === "grant-access";
+    if (grant ? !config.timeLimitedAccess || !canGrantAccess(target) : protectedAccount(target))
+      throw new AuthError(403, "This action is unavailable for this account.");
     const instant = now();
     if (action === "approve" && !approvalAvailable(target, instant))
       throw new AuthError(409, "Manual approval is available after the verification window expires.");
     if (action === "delete" && req.body.confirmUsername !== target.username)
       throw new AuthError(400, "Confirm the exact username to delete this account.");
-    if (!await store.manageAccount(userId, action, instant))
+    if (!await store.manageAccount(userId, action, instant, config.timeLimitedAccess))
       throw new AuthError(409, "The account changed. Refresh and try again.");
     console.info(JSON.stringify({
       event: "admin_account_action", actorId: String(actor._id), userId, action,

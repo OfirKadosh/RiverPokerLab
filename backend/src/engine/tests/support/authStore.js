@@ -1,3 +1,4 @@
+const { grantedAccess } = require("../../../auth/access");
 const { randomBytes } = require("node:crypto");
 const clone = (value) =>
   value === undefined ? undefined : structuredClone(value);
@@ -56,9 +57,18 @@ class MemoryAuthStore {
     return [...this.users.values()].filter(user => !after || user._id < after)
       .sort((a, b) => b._id.localeCompare(a._id)).slice(0, limit).map(clone);
   }
-  async manageAccount(id, action, now) {
+  async manageAccount(id, action, now, timeLimitedAccess) {
     const user = this.users.get(id);
-    if (!user || user.role === "admin" || user.usernameKey === "ofir") return false;
+    if (!user || user.role === "admin") return false;
+    if (action === "grant-access") {
+      if (!user.trialStartedAt && !user.accountApprovedAt && !user.emailVerifiedAt && !user.phoneVerifiedAt)
+        return false;
+      const grant = grantedAccess(now);
+      if (!(user.accessUntil > grant.accessUntil)) user.accessUntil = grant.accessUntil;
+      user.accessSource = grant.accessSource;
+      return true;
+    }
+    if (user.usernameKey === "ofir") return false;
     if (action === "delete") return this.users.delete(id);
     if (action === "restrict") user.restrictedAt = now;
     if (action === "unrestrict") delete user.restrictedAt;
@@ -67,6 +77,7 @@ class MemoryAuthStore {
           user.verificationDelivery !== "manual" ||
           !(+user.verificationSentAt + 600000 <= +now) || user.verificationExpiresAt > now) return false;
       user.accountApprovedAt = now;
+      if (timeLimitedAccess) Object.assign(user, grantedAccess(now));
       await this.cancelVerification(id, user.verificationHash);
     }
     return true;

@@ -605,3 +605,112 @@ test("Manual codes stay admin-only and expire at ten minutes before approval, re
     await f.close();
   }
 });
+
+test("Self-service registration gives one seven-day trial and the server enforces its exact expiry", async () => {
+  const f = await fixture();
+  try {
+    f.config.timeLimitedAccess = true;
+    f.delivery.config.channels = [];
+    const registration = {
+      email: "trial@example.invalid", username: "TrialPlayer", phone: "+15550000101", password,
+      accessUntil: "2099-01-01", role: "admin",
+    };
+    const signup = await f.request("auth/register", registration);
+    assert.equal(signup.status, 201);
+    assert.equal(signup.data.user.role, "user");
+    assert.equal(signup.data.user.emailVerified, false);
+    assert.equal(signup.data.user.phoneVerified, false);
+    assert.equal(signup.data.verification, undefined);
+    assert.equal(signup.data.access.source, "trial");
+    assert.equal(signup.data.access.expiresInMs, 7 * 86400000);
+    assert.equal(f.messages.length, 0);
+    assert.equal((await f.request("capabilities", undefined, signup.cookie)).status, 200);
+    assert.equal((await f.request("auth/register", registration)).status, 409);
+    f.advance(7 * 86400000 - 1);
+    const login = await f.login("TrialPlayer");
+    assert.equal(login.data.access.expiresAt, signup.data.access.expiresAt);
+    assert.equal((await f.request("capabilities", undefined, login.cookie)).status, 200);
+    f.advance(1);
+    assert.equal((await f.request("capabilities", undefined, login.cookie)).data.code, "ACCESS_EXPIRED");
+    assert.equal((await f.request("auth/me", undefined, login.cookie)).data.access.expired, true);
+    const expiredLogin = await f.login("TrialPlayer");
+    assert.equal(expiredLogin.status, 200);
+    assert.equal(expiredLogin.data.access.expired, true);
+    assert.equal((await f.request("auth/admin/account-action", {
+      action: "grant-access", userId: signup.data.user.id,
+    }, expiredLogin.cookie)).status, 403);
+  } finally {
+    await f.close();
+  }
+});
+
+test("An admin grant restores access for 30 days, preserves manual restrictions and does not stack duplicate grants", async () => {
+  const f = await fixture();
+  try {
+    f.config.timeLimitedAccess = true;
+    const signup = await f.register();
+    assert.equal(signup.data.access.source, "trial");
+    f.advance(7 * 86400000);
+    const member = await f.login("Alice", true);
+    assert.equal(member.data.access.expired, true);
+    await f.store.createUser({
+      username: "admin", usernameKey: "admin", role: "admin",
+      accountApprovedAt: new Date(), passwordHash: await hashPassword(password),
+    });
+    const admin = await f.login("admin", true);
+    assert.equal(admin.data.access, undefined);
+    const userId = member.data.user.id;
+    const action = name => f.request("auth/admin/account-action", { userId, action: name }, admin.cookie);
+    assert.equal((await action("restrict")).status, 200);
+    assert.equal((await action("grant-access")).status, 200);
+    const first = await f.request("auth/me", undefined, member.cookie);
+    assert.equal(first.data.access.source, "admin");
+    assert.equal(first.data.access.expiresInMs, 30 * 86400000);
+    assert.equal(first.data.user.restricted, true);
+    assert.equal((await f.request("capabilities", undefined, member.cookie)).data.code, "ACCOUNT_RESTRICTED");
+    assert.equal((await action("grant-access")).status, 200);
+    assert.equal((await f.request("auth/me", undefined, member.cookie)).data.access.expiresAt, first.data.access.expiresAt);
+    assert.equal((await action("unrestrict")).status, 200);
+    assert.equal((await f.request("capabilities", undefined, member.cookie)).status, 200);
+    f.advance(30 * 86400000);
+    const renewed = await f.login("Alice");
+    assert.equal(renewed.data.access.expired, true);
+    assert.equal((await f.request("capabilities", undefined, renewed.cookie)).data.code, "ACCESS_EXPIRED");
+  } finally {
+    await f.close();
+  }
+});
+
+test("Legacy approved users get a dated window and pending manual approvals receive a 30-day grant", async () => {
+  const f = await fixture();
+  try {
+    f.delivery.config.manualChannels = ["email"];
+    const pending = await f.register();
+    const passwordHash = await hashPassword(password);
+    await f.store.createUser({
+      username: "Legacy", usernameKey: "legacy", email: "legacy@example.invalid",
+      phone: "+15550000104", passwordHash, accountApprovedAt: new Date("2026-10-01T10:00:00Z"),
+    });
+    await f.store.createUser({
+      username: "admin", usernameKey: "admin", role: "admin", passwordHash, accountApprovedAt: new Date(),
+    });
+    f.config.timeLimitedAccess = true;
+    const legacy = await f.login("Legacy");
+    assert.equal(legacy.data.access.source, "legacy");
+    assert.equal(legacy.data.access.expired, true);
+    const admin = await f.login("admin");
+    const accounts = await f.request("auth/admin/accounts", {}, admin.cookie);
+    const userId = accounts.data.accounts.find(account => account.username === "Alice").id;
+    const action = name => f.request("auth/admin/account-action", { userId, action: name }, admin.cookie);
+    assert.equal((await action("grant-access")).status, 403);
+    assert.equal((await action("approve")).status, 409);
+    f.advance(600000);
+    assert.equal((await action("approve")).status, 200);
+    assert.equal((await f.verify(pending.cookie)).status, 401);
+    const login = await f.login("Alice");
+    assert.equal(login.data.access.expiresInMs, 30 * 86400000);
+    assert.equal(login.data.user.manuallyApproved, true);
+  } finally {
+    await f.close();
+  }
+});
