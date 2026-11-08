@@ -119,6 +119,7 @@ function publicUser(user) {
     role: user.role === "admin" ? "admin" : "user",
     email: user.email || null,
     phone: user.phone || null,
+    restricted: !!user.restrictedAt,
     manuallyApproved: !!user.accountApprovedAt,
     emailVerified: !!user.emailVerifiedAt,
     phoneVerified: !!user.phoneVerifiedAt,

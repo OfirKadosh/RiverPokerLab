@@ -1,6 +1,8 @@
 const express = require("express");
 const { randomInt } = require("node:crypto");
 const { MongoAuthStore } = require("./store");
+const { managementRoutes, OWNER } = require("./management");
+const { sealCode } = require("./manualCode");
 const { createDelivery } = require("./delivery");
 const {
   AuthError,
@@ -143,6 +145,54 @@ function createAuth({
     return { expiresAt, remember, expiresInMs: duration };
   }
   const verified = (user) => !!(user?.accountApprovedAt || user?.emailVerifiedAt || user?.phoneVerifiedAt);
+  function identity(user, record) {
+    const linked = !!record.switchOwnerId;
+    return {
+      success: true,
+      user: publicUser(user),
+      accountSwitch: user.restrictedAt ? undefined : linked
+        ? { mode: user.role === "admin" ? "return" : "switch" }
+        : user.role !== "admin" && user.usernameKey === OWNER ? { mode: "link" } : undefined,
+      session: {
+        expiresAt: record.expiresAt,
+        remember: record.remember,
+        expiresInMs: Math.max(0, +record.expiresAt - +now()),
+      },
+    };
+  }
+  function checkAccountHeader(req, record) {
+    const expected = req.get("X-River-Account");
+    if ((expected || record.switchOwnerId) && expected !== String(record.userId))
+      throw new AuthError(409, "The active account changed. Refresh the page.", "ACCOUNT_CHANGED");
+  }
+  async function requireAccount(req, checkHeader = true) {
+    const record = await session(req);
+    if (!record || record.purpose !== "authenticated")
+      throw new AuthError(401, "Sign in to continue.");
+    const user = await store.getUser(record.userId);
+    if (!verified(user)) throw new AuthError(401, "Sign in with a verified account.");
+    if (checkHeader) checkAccountHeader(req, record);
+    return { user, record };
+  }
+  async function issueSwitch(req, res, record, target, owner, admin) {
+    const raw = token();
+    const instant = now();
+    const expiresAt = new Date(Math.min(+record.expiresAt, +instant + 12 * 60 * 60000));
+    if (!await store.consumeSession(tokenHash(rawCookie(req)), instant))
+      throw new AuthError(409, "The session changed. Refresh the page.");
+    const next = {
+      _id: tokenHash(raw),
+      userId: String(target._id),
+      purpose: "authenticated",
+      remember: record.remember,
+      expiresAt,
+      switchOwnerId: String(owner._id),
+      switchAdminId: String(admin._id),
+    };
+    await store.createSession(next);
+    cookie(res, raw, next.remember, +expiresAt - +instant);
+    return next;
+  }
   function verificationInfo(user) {
     return {
       username: user.username,
@@ -157,8 +207,8 @@ function createAuth({
     if (!record || record.purpose !== "pending")
       throw new AuthError(401, "Sign in again before verifying your account.");
     const user = await store.getUser(record.userId);
-    if (!user)
-      throw new AuthError(401, "Sign in again before verifying your account.");
+    if (!user || verified(user))
+      throw new AuthError(401, "Sign in again to continue.");
     return user;
   }
   async function limit(scope, key, maximum, windowMs) {
@@ -182,11 +232,13 @@ function createAuth({
       nonce = token(),
       hash = codeHash(config.secret, String(user._id), nonce, code),
       instant = now();
+    const manual = delivery.config.manualChannels?.includes(channel);
     const updated = await store.reserveVerification(
       user._id,
       {
         verificationChannel: channel,
-        verificationDelivery: delivery.config.manualChannels?.includes(channel) ? "manual" : "contact",
+        verificationDelivery: manual ? "manual" : "contact",
+        ...(manual && { verificationCiphertext: sealCode(config.secret, user._id, nonce, code) }),
         verificationHash: hash,
         verificationNonce: nonce,
         verificationExpiresAt: new Date(+instant + 10 * 60 * 1000),
@@ -283,15 +335,7 @@ function createAuth({
         clear(res);
         return res.json({ success: true, user: null });
       }
-      res.json({
-        success: true,
-        user: publicUser(user),
-        session: {
-          expiresAt: record.expiresAt,
-          remember: record.remember,
-          expiresInMs: Math.max(0, +record.expiresAt - +now()),
-        },
-      });
+      res.json(identity(user, record));
     } catch (error) {
       res.status(error.status || 503).json({
         success: false,
@@ -355,7 +399,7 @@ function createAuth({
       "authenticated",
       req.body.remember === true,
     );
-    res.json({ success: true, user: publicUser(user), session: record });
+    res.json(identity(user, record));
   });
   route("/verification/send", async (req, res) => {
     const user = await requirePending(req);
@@ -410,27 +454,20 @@ function createAuth({
     csrf(req, res, async () => {
       try {
         ready();
-        const record = await session(req);
-        if (!record || record.purpose !== "authenticated")
-          return res
-            .status(401)
-            .json({ success: false, error: "Sign in to continue." });
-        const user = await store.getUser(record.userId);
-        if (!verified(user))
-          return res.status(401).json({
-            success: false,
-            error: "Sign in with a verified account.",
-          });
+        const { user } = await requireAccount(req);
+        if (user.restrictedAt) throw new AuthError(403, "This account is restricted.", "ACCOUNT_RESTRICTED");
         req.user = publicUser(user);
         next();
       } catch (error) {
-        res.status(503).json({
+        res.status(error instanceof AuthError ? error.status : 503).json({
           success: false,
-          error: "Account service is temporarily unavailable.",
+          error: error instanceof AuthError ? error.message : "Account service is temporarily unavailable.",
+          ...(error instanceof AuthError && error.code ? { code: error.code } : {}),
         });
       }
     });
   }
+  if (!problem) managementRoutes({ route, requireAccount, issueSwitch, identity, store, config, now, limit });
   return { router, middleware, config, originAllowed };
 }
 module.exports = { createAuth, authConfig };

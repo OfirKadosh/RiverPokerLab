@@ -8,6 +8,8 @@ const schema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user", immutable: true },
     passwordHash: { type: String, required: true },
     accountApprovedAt: Date,
+    restrictedAt: Date,
+    verificationCiphertext: { type: String, select: false },
     verificationDelivery: { type: String, enum: ["manual", "contact"] },
     emailVerifiedAt: Date,
     phoneVerifiedAt: Date,

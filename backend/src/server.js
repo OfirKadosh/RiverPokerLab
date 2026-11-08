@@ -39,7 +39,7 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
         callback(null, !origin || !!auth.config?.origins.includes(origin)),
       credentials: true,
       methods: ["GET", "POST", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "X-Requested-With"],
+      allowedHeaders: ["Content-Type", "X-Requested-With", "X-River-Account"],
     }),
   );
   app.get("/healthz", (req, res) => {

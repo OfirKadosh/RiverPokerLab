@@ -2649,3 +2649,77 @@ select:disabled {
 @keyframes icm-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { .icm-spinner { animation:none; border-top-color:#cceaa4; } }
 @media (max-width:480px) { .icm-weight-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .icm-outside-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
+
+.admin-toolbar,
+.admin-actions,
+.admin-code {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.admin-toolbar {
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.admin-accounts {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 0.9rem;
+}
+
+.admin-account {
+  min-width: 0;
+  border: 1px solid #43534c;
+  border-radius: 14px;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-code {
+  margin: 0.75rem 0;
+}
+
+.admin-code strong {
+  font: 700 1.25rem ui-monospace, monospace;
+  letter-spacing: 0.09em;
+  user-select: all;
+}
+
+.admin-delete {
+  color: #ffb8ae;
+}
+
+.admin-delete-form {
+  margin-top: 1rem;
+}
+
+.account-switch {
+  white-space: nowrap;
+}
+
+.account-switch-dialog {
+  color: #edf5ed;
+  background: #192720;
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: 90dvh;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.account-switch-dialog::backdrop {
+  background: #0009;
+}
+
+@media (max-width: 520px) {
+  .admin-account {
+    padding: 0.75rem;
+  }
+
+  .account-switch {
+    padding: 0.55rem;
+    font-size: 0.75rem;
+  }
+}

@@ -48,6 +48,29 @@ class MemoryAuthStore {
   async deleteSession(hash) {
     this.sessions.delete(hash);
   }
+  async consumeSession(hash, now) {
+    const row = this.sessions.get(hash);
+    return !!row && row.expiresAt > now && this.sessions.delete(hash);
+  }
+  async listAccounts(after, limit) {
+    return [...this.users.values()].filter(user => !after || user._id < after)
+      .sort((a, b) => b._id.localeCompare(a._id)).slice(0, limit).map(clone);
+  }
+  async manageAccount(id, action, now) {
+    const user = this.users.get(id);
+    if (!user || user.role === "admin" || user.usernameKey === "ofir") return false;
+    if (action === "delete") return this.users.delete(id);
+    if (action === "restrict") user.restrictedAt = now;
+    if (action === "unrestrict") delete user.restrictedAt;
+    if (action === "approve") {
+      if (user.accountApprovedAt || user.emailVerifiedAt || user.phoneVerifiedAt ||
+          user.verificationDelivery !== "manual" ||
+          !(+user.verificationSentAt + 600000 <= +now) || user.verificationExpiresAt > now) return false;
+      user.accountApprovedAt = now;
+      await this.cancelVerification(id, user.verificationHash);
+    }
+    return true;
+  }
   async rate(key) {
     const count = (this.rates.get(key) || 0) + 1;
     this.rates.set(key, count);
@@ -55,9 +78,10 @@ class MemoryAuthStore {
   }
   async reserveVerification(id, data, before) {
     const user = this.users.get(String(id));
-    if (!user || (user.verificationSentAt && user.verificationSentAt > before))
+    if (!user || user.accountApprovedAt || user.emailVerifiedAt || user.phoneVerifiedAt || (user.verificationSentAt && user.verificationSentAt > before))
       return null;
     Object.assign(user, clone(data));
+    if (!data.verificationCiphertext) delete user.verificationCiphertext;
     return clone(user);
   }
   async attemptVerification(id, now) {
@@ -88,6 +112,7 @@ class MemoryAuthStore {
     delete user.verificationHash;
     delete user.verificationNonce;
     delete user.verificationExpiresAt;
+    delete user.verificationCiphertext;
     return clone(user);
   }
   async cancelVerification(id, hash) {
@@ -96,6 +121,7 @@ class MemoryAuthStore {
       delete user.verificationHash;
       delete user.verificationNonce;
       delete user.verificationExpiresAt;
+    delete user.verificationCiphertext;
     }
   }
 }

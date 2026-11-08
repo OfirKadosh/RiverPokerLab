@@ -38,6 +38,7 @@ export const PAGES = [
     label: "History",
     description: "Open a saved spot and continue working.",
   },
+  { id: "admin", label: "Admin", description: "Review verification requests and manage access." },
   {
     id: "account",
     label: "Account",

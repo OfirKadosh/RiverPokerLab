@@ -194,6 +194,7 @@ export interface AccountUser {
   email: string | null;
   phone: string | null;
   manuallyApproved?: boolean;
+  restricted?: boolean;
   emailVerified: boolean;
   phoneVerified: boolean;
 }
@@ -211,6 +212,7 @@ export interface AccountSession {
 }
 export interface AccountIdentity {
   preview?: boolean;
+  accountSwitch?: { mode: "link" | "switch" | "return" };
   user: AccountUser | null;
   verification?: VerificationState;
   session?: AccountSession;

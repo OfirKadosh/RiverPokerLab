@@ -91,7 +91,7 @@ In development the cookie is `river_session`. Production uses `__Host-river_sess
 
 ## Verification and request controls
 
-Codes contain eight cryptographically random digits, expire after 10 minutes, and allow at most five valid-format attempts per challenge. Only the newest challenge can be confirmed. Confirmation consumes it atomically, including concurrent submissions. Resending replaces the hash, resets that challenge's attempts and requires at least 60 seconds between sends. MongoDB stores an HMAC tied to the user and a random nonce, not the raw code.
+Codes contain eight cryptographically random digits, expire after 10 minutes, and allow at most five valid-format attempts per challenge. Only the newest challenge can be confirmed. Confirmation consumes it atomically, including concurrent submissions. Resending replaces the hash, resets that challenge's attempts and requires at least 60 seconds between sends. MongoDB stores an HMAC tied to the user and a random nonce. For manual delivery it also stores an encrypted copy for the administrator. The Admin API returns this copy only while the challenge is active.
 
 Rate limits are persisted in MongoDB fixed-window buckets: registration 5/IP/hour; login 30/IP/15 minutes and 10/normalized identifier/15 minutes; code sends 5/user/hour and 10/IP/hour; code confirmation 30/IP/15 minutes plus the five-attempt challenge limit. A failed/cooldown send can still consume the attempt quota. Limits continue across server restarts and shared app instances using the same database.
 

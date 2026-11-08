@@ -45,7 +45,7 @@ function createDelivery(env = process.env, fetcher = fetch, logger = console) {
       if (config[channel] === "manual") {
         logger.info(JSON.stringify({
           event: "manual_account_activation",
-          userId, username, channel, code, expiresInMinutes: 10,
+          userId, username, channel, expiresInMinutes: 10,
         }));
         return;
       }

@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { apiFetch } from "../lib/api";
+import { apiFetch, setApiAccount } from "../lib/api";
 import { feedbackFetch } from "../lib/loading";
 import { LoadingIndicator } from "./LoadingIndicator";
 import type {AccountUser as User,VerificationState as Verification,AccountSession as Session,AccountIdentity as Identity} from '@river-poker-lab/core';
@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!r.ok || !data.success)
         throw Error(data.error || "Cannot check your session.");
       if (version !== revision.current || controller.signal.aborted) return;
+      setApiAccount(data.user?.id);
       setIdentity(data);
       setError(null);
     } catch (error) {
@@ -62,17 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     void refresh();
-    const expired = () => {
-      invalidate();
-      setIdentity({ user: null });
-      setError(null);
-    };
+    const expired = () => void refresh();
     const focus = () => void refresh();
     window.addEventListener("river-auth-expired", expired);
     window.addEventListener("focus", focus);
+    window.addEventListener("river-auth-refresh", focus);
     return () => {
       window.removeEventListener("river-auth-expired", expired);
       window.removeEventListener("focus", focus);
+      window.removeEventListener("river-auth-refresh", focus);
     };
   }, [refresh]);
   useEffect(() => {
@@ -96,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (!r.ok) throw Error("Sign out failed. Try again.");
       invalidate();
+      setApiAccount();
       setIdentity({ user: null });
       window.location.hash = "/spot";
       setError(null);
@@ -111,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refresh,
         signedIn: (data) => {
           invalidate();
+          setApiAccount(data.user?.id);
           setIdentity(data);
           setError(null);
         },
@@ -126,6 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {checking || (loggingOut && !identity.user) ? (
         <main className="auth-shell">
           <LoadingIndicator label="Checking your session…" />
+        </main>
+      ) : identity.user?.restricted ? (
+        <main className="auth-shell">
+          <section className="auth-card">
+            <h1>Account restricted</h1>
+            <p>Solver access is paused for this account. Contact the administrator.</p>
+            <AccountPanel />
+          </section>
         </main>
       ) : identity.user ? (
         <div key={identity.user.id}>{children}</div>
@@ -292,7 +301,7 @@ function AuthScreen({
             {verification?.manual && (
               <p className="auth-notice" role="status">
                 Ask the administrator for the activation code for this username.
-                No email or SMS was sent. Request a new code if it expires.
+                No email or SMS was sent. If the administrator approved your account directly, go back and sign in.
               </p>
             )}
             <label className="field-label">

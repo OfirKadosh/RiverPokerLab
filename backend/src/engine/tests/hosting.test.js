@@ -101,18 +101,27 @@ test('Hosted manual activation supports secure login, saving and private history
     assert.equal(registered.status, 201); assert.equal(registered.data.verification.manual, true);
     const pending = registered.cookie, log = f.logs[0];
     assert.equal(log.event, 'manual_account_activation'); assert.equal(log.username, 'ManualTester');
-    assert.match(log.code, /^\d{8}$/); assert.equal(log.to, undefined);
-    assert.ok(!JSON.stringify(registered.data).includes(log.code));
+    assert.equal(log.code, undefined); assert.equal(log.to, undefined);
+    await f.store.createUser({
+      username: 'admin', usernameKey: 'admin', role: 'admin',
+      passwordHash: await hashPassword(password), accountApprovedAt: new Date(),
+    });
+    const admin = await f.request('/api/auth/login', { body: { identifier: 'admin', password } });
+    assert.equal(admin.status, 200);
+    const dashboard = await f.request('/api/auth/admin/accounts', { body: {}, cookie: admin.cookie });
+    const code = dashboard.data.accounts.find(account => account.username === 'ManualTester').verification.code;
+    assert.match(code, /^\d{8}$/);
+    assert.ok(!JSON.stringify(registered.data).includes(code));
     assert.equal((await f.request('/api/auth/me', { cookie: pending })).data.verification.manual, true);
     assert.equal((await f.request('/api/spots', { cookie: pending })).status, 401);
     assert.equal((await f.request('/api/auth/verification/send', { cookie: pending, body: { channel: 'email' } })).status, 429);
-    const bad = log.code === '00000000' ? '11111111' : '00000000';
+    const bad = code === '00000000' ? '11111111' : '00000000';
     assert.equal((await f.request('/api/auth/verification/confirm', { cookie: pending, body: { code: bad } })).status, 400);
     // Switching providers must not relabel an already-issued manual challenge as contact proof.
     f.delivery.config.manualChannels = [];
-    const confirmed = await f.request('/api/auth/verification/confirm', { cookie: pending, body: { code: log.code } });
+    const confirmed = await f.request('/api/auth/verification/confirm', { cookie: pending, body: { code } });
     assert.equal(confirmed.status, 200);
-    assert.equal((await f.request('/api/auth/verification/confirm', { cookie: pending, body: { code: log.code } })).status, 401);
+    assert.equal((await f.request('/api/auth/verification/confirm', { cookie: pending, body: { code } })).status, 401);
     const login = await f.request('/api/auth/login', { body: { identifier: 'manualtester', password, remember: true } });
     assert.equal(login.status, 200); assert.equal(login.data.user.manuallyApproved, true);
     assert.equal(login.data.user.emailVerified, false); assert.equal(login.data.user.phoneVerified, false);

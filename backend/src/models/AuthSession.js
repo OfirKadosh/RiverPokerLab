@@ -8,6 +8,8 @@ const schema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    switchOwnerId: mongoose.Schema.Types.ObjectId,
+    switchAdminId: mongoose.Schema.Types.ObjectId,
     purpose: {
       type: String,
       enum: ["pending", "authenticated"],

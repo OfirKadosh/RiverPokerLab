@@ -10,7 +10,7 @@ The consolidated candidate is `release/beta-2`. See [BETA_2_RELEASE.md](BETA_2_R
 
 One Node/Express web service serves both the built React client and `/api`. The browser uses relative `/api` requests, so secure session cookies work on one HTTPS origin. Existing hash navigation remains unchanged. MongoDB Atlas stores users, sessions, rate-limit counters and explicitly saved spots; the web service does not need a persistent disk.
 
-Registration stays open. A new account cannot use calculators or history until activated. In the initial manual mode the administrator hands the registrant a code from private server logs. This introduces a manual activation step for each new account, without an invitation list or automated email/SMS. Once activated, every account has the full beta functionality and its own saved history. Payments and usage entitlements are not implemented.
+Registration stays open. A new account cannot use calculators or history until activated. In the initial manual mode the administrator shares a code from the protected Admin screen. This introduces a manual activation step for each new account, without an invitation list or automated email/SMS. Once activated, every account has the full beta functionality and its own saved history. Payments and usage entitlements are not implemented.
 
 ## Prepared Render settings
 
@@ -33,7 +33,7 @@ Render supplies `PORT` and `RENDER_EXTERNAL_URL`. The server listens on `0.0.0.0
 
 `TRUST_PROXY_HOPS=1` is configured for one trusted hosting proxy in front of the process. If the hosting topology changes, recheck this value. Production account/API operations require HTTPS and keep Secure, HttpOnly, SameSite=Lax cookies and CSRF/origin checks. The public `/healthz` returns only `ok` or `unavailable` and reports 503 if MongoDB disconnects. Startup waits for MongoDB and required indexes before accepting traffic.
 
-## Manual activation from private logs
+## Manual activation from the Admin screen
 
 The hosted manual provider is separate from development delivery:
 
@@ -48,13 +48,14 @@ SERVE_FRONTEND=true
 
 1. A tester registers with email, username, international phone and password.
 2. The page says to ask the administrator for an activation code; it does not claim that an email was sent.
-3. In the service's private runtime logs, find the JSON event `manual_account_activation` for the requested username and user ID. It contains the eight-digit code and its ten-minute validity. Codes never appear in an API response, client console or database plaintext.
-4. Confirm which tester you are approving, then share that account's code with them yourself. Treat log access as access to pending activation codes; do not share full runtime logs with testers.
-5. The tester enters the code and signs in. Pending sessions last twenty minutes. Expired codes can be replaced through Resend verification code, subject to the existing sixty-second cooldown and rate limits.
+3. Sign in as `admin` and open **Admin**. From the ordinary `Ofir` account, **Switch to admin** links the two identities after one entry of the administrator password. The link expires with the session, at most 12 hours after linking. Subsequent switches rotate the session cookie and retain separate account histories.
+4. Find the tester's username and email. Copy the eight-digit code and share it privately with the intended tester. The code is available for ten minutes. An older, still-active challenge created before the Admin screen may need a resend before it can be copied.
+5. The tester enters the code and signs in. After the ten-minute window, **Approve user** becomes available. The tester can then sign in directly. A new code replaces the challenge and restarts the ten-minute window.
+6. **Restrict access** blocks protected API requests immediately. **Restore access** re-enables access for approved accounts. **Delete account** requires the exact username, removes the login and releases its registration identifiers. Existing saved spots are retained under the deleted account ID and cannot be inherited by a new account. `Ofir` and administrator accounts are protected from these actions.
 
 Manual activation sets `accountApprovedAt`; it does **not** set `emailVerifiedAt` or `phoneVerifiedAt`. The Account page explains the administrator approval and displays both contact statuses accurately. The delivery method is saved with each challenge, so switching providers does not convert an old manual challenge into proof of email ownership. Existing genuine email/SMS approvals keep working. Contact details must not be used for automated account recovery unless actually verified. Password recovery is not implemented.
 
-Eight-digit randomness, hashed storage, expiration, five attempts, one-use atomic consumption, persistent throttling and private history ownership remain enforced. The default remains disabled: logging activation codes on a hosted server requires both the `manual` provider and the explicit opt-in flag. Development delivery is still rejected in Production.
+Eight-digit randomness, hashed storage, expiration, five attempts, one-use atomic consumption, persistent throttling and private history ownership remain enforced. The default remains disabled: manual activation on a hosted server requires both the `manual` provider and the explicit opt-in flag. Admin-only code access uses authenticated encryption with the existing auth secret. Logs record the request without the code. Development delivery is still rejected in Production.
 
 ## Actual deployment checklist (not performed yet)
 

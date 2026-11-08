@@ -22,6 +22,32 @@ class MongoAuthStore {
   async deleteSession(hash) {
     await Session.deleteOne({ _id: hash });
   }
+  async consumeSession(hash, now) {
+    return !!(await Session.findOneAndDelete({ _id: hash, expiresAt: { $gt: now } }));
+  }
+  listAccounts(after, limit) {
+    return User.find(after ? { _id: { $lt: after } } : {})
+      .select("username usernameKey role email accountApprovedAt emailVerifiedAt phoneVerifiedAt restrictedAt verificationDelivery verificationSentAt verificationExpiresAt verificationAttempts verificationHash verificationNonce +verificationCiphertext")
+      .sort({ _id: -1 }).limit(limit).lean();
+  }
+  async manageAccount(id, action, now) {
+    const target = { _id: id, role: { $ne: "admin" }, usernameKey: { $ne: "ofir" } };
+    if (action === "delete") return !!(await User.deleteOne(target)).deletedCount;
+    if (action === "restrict" || action === "unrestrict") {
+      const update = action === "restrict" ? { $set: { restrictedAt: now } } : { $unset: { restrictedAt: 1 } };
+      return !!(await User.updateOne(target, update)).matchedCount;
+    }
+    return !!(await User.updateOne({
+      ...target,
+      accountApprovedAt: null, emailVerifiedAt: null, phoneVerifiedAt: null,
+      verificationDelivery: "manual",
+      verificationSentAt: { $lte: new Date(+now - 600000) },
+      $or: [{ verificationExpiresAt: null }, { verificationExpiresAt: { $lte: now } }],
+    }, {
+      $set: { accountApprovedAt: now },
+      $unset: { verificationHash: 1, verificationNonce: 1, verificationExpiresAt: 1, verificationCiphertext: 1 },
+    })).modifiedCount;
+  }
   async rate(key, expiresAt) {
     let row;
     try {
@@ -44,12 +70,13 @@ class MongoAuthStore {
     return User.findOneAndUpdate(
       {
         _id: id,
+        accountApprovedAt: null, emailVerifiedAt: null, phoneVerifiedAt: null,
         $or: [
           { verificationSentAt: { $exists: false } },
           { verificationSentAt: { $lte: before } },
         ],
       },
-      { $set: data },
+      { $set: data, ...(!data.verificationCiphertext && { $unset: { verificationCiphertext: 1 } }) },
       { returnDocument: "after" },
     ).lean();
   }
@@ -84,6 +111,7 @@ class MongoAuthStore {
           verificationHash: 1,
           verificationNonce: 1,
           verificationExpiresAt: 1,
+          verificationCiphertext: 1,
         },
       },
       { returnDocument: "after" },
@@ -97,6 +125,7 @@ class MongoAuthStore {
           verificationHash: 1,
           verificationNonce: 1,
           verificationExpiresAt: 1,
+          verificationCiphertext: 1,
         },
       },
     );

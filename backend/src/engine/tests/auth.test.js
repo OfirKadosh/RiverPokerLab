@@ -517,3 +517,91 @@ test("Production cookies use Secure and __Host prefix, and insecure requests are
     await f.close();
   }
 });
+
+test("Ofir proves admin credentials once, rotates cookies, and switches back to an isolated normal account", async () => {
+  const f = await fixture();
+  try {
+    const passwordHash = await hashPassword(password);
+    const owner = await f.store.createUser({
+      username: "Ofir", usernameKey: "ofir", email: "ofir@example.invalid",
+      phone: "+15550000001", passwordHash, accountApprovedAt: new Date(),
+    });
+    const admin = await f.store.createUser({
+      username: "admin", usernameKey: "admin", role: "admin",
+      passwordHash, accountApprovedAt: new Date(),
+    });
+    const login = await f.login("Ofir", true);
+    assert.equal(login.data.accountSwitch.mode, "link");
+    assert.equal((await f.request("auth/admin/accounts", {}, login.cookie)).status, 403);
+    assert.equal((await f.request("auth/switch-account", {}, login.cookie)).status, 400);
+    assert.equal((await f.request("auth/switch-account", { adminPassword: "incorrect" }, login.cookie)).status, 403);
+    const linked = await f.request("auth/switch-account", { adminPassword: password }, login.cookie);
+    assert.equal(linked.status, 200);
+    assert.equal(linked.data.user.id, admin._id);
+    assert.equal(linked.data.accountSwitch.mode, "return");
+    assert.ok(linked.data.session.expiresInMs <= 12 * 60 * 60000);
+    assert.equal((await f.request("auth/admin/accounts", {}, login.cookie)).status, 401);
+    assert.equal((await f.request("auth/admin/accounts", {}, linked.cookie, { "X-River-Account": owner._id })).status, 409);
+    const adminHeader = { "X-River-Account": admin._id };
+    assert.equal((await f.request("auth/admin/accounts", {}, linked.cookie, adminHeader)).status, 200);
+    const back = await f.request("auth/switch-account", {}, linked.cookie, adminHeader);
+    assert.equal(back.data.user.id, owner._id);
+    assert.equal(back.data.accountSwitch.mode, "switch");
+    const ownerHeader = { "X-River-Account": owner._id };
+    assert.equal((await f.request("auth/admin/accounts", {}, back.cookie, ownerHeader)).status, 403);
+    const races = await Promise.all([
+      f.request("auth/switch-account", {}, back.cookie, ownerHeader),
+      f.request("auth/switch-account", {}, back.cookie, ownerHeader),
+    ]);
+    assert.equal(races.filter(result => result.status === 200).length, 1);
+    assert.ok(races.every(result => [200, 401, 409].includes(result.status)));
+    const secondAdmin = races.find(result => result.status === 200);
+    f.advance(12 * 60 * 60000);
+    assert.equal((await f.request("auth/admin/accounts", {}, secondAdmin.cookie, adminHeader)).status, 401);
+  } finally {
+    await f.close();
+  }
+});
+
+test("Manual codes stay admin-only and expire at ten minutes before approval, restriction and deletion", async () => {
+  const f = await fixture();
+  try {
+    f.delivery.config.manualChannels = ["email"];
+    const passwordHash = await hashPassword(password);
+    const admin = await f.store.createUser({
+      username: "admin", usernameKey: "admin", role: "admin", passwordHash, accountApprovedAt: new Date(),
+    });
+    const adminLogin = await f.login("admin");
+    const pending = await f.register();
+    const list = () => f.request("auth/admin/accounts", {}, adminLogin.cookie);
+    const action = (userId, action, confirmUsername) => f.request("auth/admin/account-action", {
+      userId, action, confirmUsername,
+    }, adminLogin.cookie);
+    assert.equal((await f.request("auth/admin/accounts", {}, pending.cookie)).status, 401);
+    let account = (await list()).data.accounts.find(a => a.username === "Alice");
+    assert.equal(account.verification.code, f.messages.at(-1).code);
+    assert.equal(account.canApprove, false);
+    assert.equal((await action(account.id, "approve")).status, 409);
+    const row = await f.store.getUser(account.id);
+    assert.notEqual(row.verificationCiphertext, account.verification.code);
+    f.advance(600000);
+    account = (await list()).data.accounts.find(a => a.username === "Alice");
+    assert.equal(account.verification.code, null);
+    assert.equal(account.canApprove, true);
+    assert.equal((await action(account.id, "approve")).status, 200);
+    const login = await f.login("Alice");
+    assert.equal(login.data.user.manuallyApproved, true);
+    assert.equal(login.data.user.emailVerified, false);
+    assert.equal((await f.request("auth/switch-account", { adminPassword: password }, login.cookie)).status, 403);
+    assert.equal((await action(account.id, "restrict")).status, 200);
+    assert.equal((await f.request("capabilities", undefined, login.cookie)).data.code, "ACCOUNT_RESTRICTED");
+    assert.equal((await action(account.id, "unrestrict")).status, 200);
+    assert.equal((await f.request("capabilities", undefined, login.cookie)).status, 200);
+    assert.equal((await action(admin._id, "delete", "admin")).status, 403);
+    assert.equal((await action(account.id, "delete", "wrong")).status, 400);
+    assert.equal((await action(account.id, "delete", "Alice")).status, 200);
+    assert.equal((await f.request("capabilities", undefined, login.cookie)).status, 401);
+  } finally {
+    await f.close();
+  }
+});

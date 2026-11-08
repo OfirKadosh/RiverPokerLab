@@ -2,8 +2,8 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 function adapter(transport){
   const source=fs.readFileSync(path.join(__dirname,'../src/lib/api.ts'),'utf8').replace('import.meta.env.VITE_API_URL',JSON.stringify('/api'));
   const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText;
-  const module={exports:{}},events=[];const original=global.fetch;global.fetch=transport;
-  try{vm.runInNewContext(code,{module,exports:module.exports,require,URL,Request,Headers,Event,window:{location:{href:'https://app.example.test/'},dispatchEvent:event=>events.push(event.type)}},{filename:'api-adapter.js'});}finally{global.fetch=original;}
+  const module={exports:{}},events=[];
+  vm.runInNewContext(code,{module,exports:module.exports,require,URL,Request,Headers,Event,fetch:transport,window:{location:{href:'https://app.example.test/'},dispatchEvent:event=>events.push(event.type)}},{filename:'api-adapter.js'});
   return {...module.exports,events};
 }
 test('Browser adapter preserves Request bodies, headers, overrides and cookie credentials',async()=>{

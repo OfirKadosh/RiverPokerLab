@@ -26,6 +26,8 @@ import type {
   Seat,
 } from "./lib/poker";
 import { AccountPanel, useAuth } from "./components/AuthProvider";
+import { AccountSwitch } from "./components/AccountSwitch";
+import { AdminPanel } from "./components/AdminPanel";
 import "./App.css";
 
 import { useRiverJob } from "./hooks/useRiverJob";
@@ -683,12 +685,13 @@ function App() {
           <a className="account-link" href="#/account">
             {auth.user?.username}
           </a>
+          <AccountSwitch />
           <span className="workspace-tag">EQUITY WORKSPACE</span>
           <span className="build-badge">BETA</span>
         </div>
       </header>
       <nav ref={navigationRef} className="main-navigation" aria-label="Main navigation">
-        {PAGES.map((item) => (
+        {PAGES.filter(item => item.id !== "admin" || auth.user?.role === "admin").map((item) => (
           <a
             key={item.id}
             href={`#/${item.id}`}
@@ -1306,6 +1309,9 @@ function App() {
             {page === "turn" && <TurnTreePanel icmState={turnIcm} setIcmState={setTurnIcm} api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active} />}
             {page === "river" && <RiverTreePanel icmState={riverIcm} setIcmState={setRiverIcm} blocked={turnJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "account" && <AccountPanel />}
+            {page === "admin" && (auth.user?.role === "admin"
+              ? <AdminPanel />
+              : <p className="validation-note">Administrator access is required.</p>)}
             {page === "history" && (
               <section className="sidebar-section history-section">
                 <div className="section-heading">
