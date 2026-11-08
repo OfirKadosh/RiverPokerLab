@@ -1,3 +1,4 @@
+import { registrationOpen } from './live-state.js';
 import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
 import { addTable, movePlayer, register, seats } from './seating.js';
 
@@ -93,6 +94,13 @@ export function renderRegistration(view, intro, floor) {
     find('#receipt-seat').textContent = player?.table ? location(seat) : 'מושב בעת הרישום: ' + location(seat);
   }
 
+  function updateRegistrationState() {
+    if (floor) return;
+    const open = registrationOpen(tournament);
+    form.querySelector('button').disabled = pending || !open;
+    if (tournament?.live && !open) message.textContent = 'ההרשמה נסגרה.';
+  }
+
   function refresh() {
     try {
       tournament = readTournament();
@@ -138,7 +146,7 @@ export function renderRegistration(view, intro, floor) {
         input.disabled = label.hidden;
         input.required = !label.hidden;
       }
-      form.querySelector('button').disabled = pending || tournament?.status !== 'registration';
+      updateRegistrationState();
       const fee = tournament ? Math.round(Number(tournament.fee) * 100) : '';
       if (form.elements.paid.dataset.fee !== String(fee)) form.elements.paid.checked = false;
       form.elements.paid.dataset.fee = fee;
@@ -213,12 +221,14 @@ export function renderRegistration(view, intro, floor) {
         });
       } finally {
         pending = false;
-        submit.disabled = tournament?.status !== 'registration';
+        submit.disabled = !registrationOpen(tournament);
       }
     });
   }
   refresh();
   if (!tournament) message.textContent = 'יש להקים ולשמור טורניר בעמדת הפלור.';
   else if (!floor && tournament.status !== 'registration') message.textContent = 'יש לפתוח את הטורניר לרישום בעמדת הפלור.';
-  return watchTournament(refresh);
+  const stop = watchTournament(refresh);
+  const tick = floor ? null : setInterval(updateRegistrationState, 250);
+  return () => { stop(); clearInterval(tick); };
 }

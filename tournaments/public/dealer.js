@@ -1,3 +1,4 @@
+import { liveView } from './live-state.js';
 import { readTournament, updateTournament, watchTournament } from './tournament-store.js';
 import { assignDealer, changeShift, clockLeft, dealers, disconnectTablet, eliminate,
   issueCode, openTables, pair, pairedTable, swapDealer, updateClock } from './dealer-state.js';
@@ -67,6 +68,7 @@ export function renderDealer(view, intro, floor) {
   let tournament;
   let clockNodes = [];
   let fullscreenClock;
+  let tournamentPhase;
   let shiftNodes = [];
   let busy = false;
 
@@ -165,7 +167,8 @@ export function renderDealer(view, intro, floor) {
 
   function renderTable(table) {
     const panel = node('article', '', 'card');
-    panel.append(node('h2', 'שולחן ' + table.id), node('p', dealerName(table.dealer), 'muted'));
+    tournamentPhase = node('p', '', 'muted');
+    panel.append(node('h2', 'שולחן ' + table.id), node('p', dealerName(table.dealer), 'muted'), tournamentPhase);
     const seats = node('div', '', 'dealer-seats');
     for (let seat = 1; seat <= table.capacity; seat++) {
       const player = (tournament.players ?? []).find((item) => item.table === table.id && item.seat === seat);
@@ -191,6 +194,12 @@ export function renderDealer(view, intro, floor) {
       time.textContent = 'תחילה ' + new Date(shift.startedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) +
         ' · משמרת ' + duration(now - shift.startedAt) + ' · במצב זה ' + duration(now - shift.statusSince);
     }
+    if (tournamentPhase) {
+      const { state, segment } = liveView(tournament, now);
+      const text = state === 'ready' ? 'הטורניר טרם התחיל' : state === 'complete' ? 'מבנה הבליינדים הסתיים' :
+        (segment.type === 'break' ? 'הפסקה אחרי שלב ' : 'שלב ') + segment.number + (state === 'paused' ? ' · מושהה' : '');
+      if (tournamentPhase.textContent !== text) tournamentPhase.textContent = text;
+    }
     const table = pairedTable(tournament, token);
     const remaining = clockLeft(table?.clock, now);
     const running = Boolean(table?.clock?.deadline && remaining);
@@ -206,6 +215,7 @@ export function renderDealer(view, intro, floor) {
 
   function refresh() {
     clockNodes = [];
+    tournamentPhase = null;
     shiftNodes = [];
     section.replaceChildren();
     try {

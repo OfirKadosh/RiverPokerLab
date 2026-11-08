@@ -1,3 +1,4 @@
+import { renderLive } from './live.js';
 import { renderDealer } from './dealer.js';
 import { renderRegistration } from './registration.js';
 import { renderTournamentSetup } from "./tournament-setup.js";
@@ -81,7 +82,9 @@ function station(role) {
   if (role === 'floor') {
     const setup = element('a', 'הקמת טורניר', 'action');
     setup.href = '#setup';
-    grid.firstElementChild.append(setup);
+    const live = element('a', 'ניהול טורניר חי', 'action');
+    live.href = '#live';
+    grid.firstElementChild.append(setup, live);
     const seating = element('a', 'ניהול שולחנות והושבה', 'action');
     seating.href = '#seating';
     grid.children[1].append(seating);
@@ -96,29 +99,21 @@ function station(role) {
   );
 }
 
-function display() {
-  const sample = element('article', '', 'display-card');
-  const clock = element('p', '07:42', 'clock');
-  clock.dir = 'ltr';
-  sample.append(element('p', 'שלב 5', 'eyebrow'), clock, element('p', 'בליינדים 500 / 1,000'));
-  view.append(intro('תצוגת קהל', 'Joker Friday', 'תצוגה לדוגמה · נתונים קבועים'), sample);
-}
-
 let disposeRoute;
 function render(focus = false) {
   const hash = window.location.hash.slice(1);
   if (hash === 'content') return;
   disposeRoute?.();
   disposeRoute = undefined;
-  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
+  const route = hash === 'setup' || hash === 'seating' || hash === 'shifts' || hash === 'live' || links.some((link) => link.hash === '#' + hash) ? hash : 'club';
   for (const link of links) {
-    if (link.hash === '#' + (['setup', 'seating', 'shifts'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
+    if (link.hash === '#' + (['setup', 'seating', 'shifts', 'live'].includes(route) ? 'floor' : route)) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
   view.className = route === 'display' ? 'audience' : '';
   view.replaceChildren();
   if (route === 'club') club();
-  else if (route === 'display') display();
+  else if (route === 'display' || route === 'live') disposeRoute = renderLive(view, intro, route === 'live');
   else if (route === 'setup') renderTournamentSetup(view, intro);
   else if (route === 'cashier' || route === 'seating') disposeRoute = renderRegistration(view, intro, route === 'seating');
   else if (route === 'dealer' || route === 'shifts') disposeRoute = renderDealer(view, intro, route === 'shifts');

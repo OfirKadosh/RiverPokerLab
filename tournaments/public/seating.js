@@ -1,3 +1,5 @@
+import { registrationOpen } from './live-state.js';
+
 function fail(message) {
   throw new Error(message);
 }
@@ -39,7 +41,7 @@ export function movePlayer(tournament, id, table, seat) {
 
 export function register(tournament, request) {
   requireTournament(tournament);
-  if (tournament.status !== 'registration') fail('ההרשמה סגורה.');
+  if (!registrationOpen(tournament)) fail('ההרשמה סגורה.');
   if (!request.paid) fail('יש לאשר קבלת תשלום.');
   const entries = tournament.entries ?? [];
   if (entries.some((entry) => entry.id === request.id)) return tournament;

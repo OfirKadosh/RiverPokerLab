@@ -246,6 +246,7 @@ export function renderTournamentSetup(view, intro) {
         breaks: values(breakControls, ['after', 'minutes']),
       };
       await updateTournament((current) => {
+        if (current?.live) throw new Error('הטורניר כבר התחיל. שינוי הפסקות זמין בעמדת הניהול החי.');
         if (current?.status === 'registration' && status === 'draft' && current.entries?.length) {
           throw new Error('יש כבר כניסות רשומות לטורניר. לא ניתן להחזיר אותו לטיוטה.');
         }

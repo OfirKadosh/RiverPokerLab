@@ -59,3 +59,16 @@ server-validated club membership before enabling writes. Link the intended Ofir
 account by its verified stable account ID, and check each action against
 membership, role, and tournament or table scope on the server. The fixture
 session must never grant access to real users or club data.
+
+## Live tournament
+
+Open registration in floor setup, then start from the live floor screen.
+The shared timeline stores an elapsed offset and a clock anchor, so a reload
+or a sleeping tab catches up without replaying ticks. Late registration can
+close at the start, at a level boundary or after active play minutes. Breaks
+and pauses do not consume active play time. A correction after closing
+registration cannot reopen it. Future breaks can be moved or resized.
+
+The audience screen is read-only and shares the same timeline, registration
+and player counts across tabs on the same origin. This stage still uses local
+browser storage. Separate devices require server-backed state.

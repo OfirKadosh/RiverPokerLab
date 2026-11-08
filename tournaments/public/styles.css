@@ -115,3 +115,10 @@ h2 { font-size: 1.2rem; margin-block-end: .4rem; }
 }
 .shot-dialog .shot-controls { block-size: 100%; grid-template-rows: minmax(0, 1fr) auto; }
 .shot-dialog .shot-face { min-block-size: 0; font-size: clamp(3rem, min(20vw, 33dvh), 17rem); }
+
+.live-scoreboard { text-align: center; }
+.live-scoreboard .clock { line-height: 1; margin-block: .2em; }
+.live-facts p + p { margin-block-start: .4rem; }
+.live-actions .action { margin: 0; }
+.audience .live-scoreboard .clock { font-size: clamp(3.75rem, min(19vw, 27dvh), 16rem); }
+.audience .live-scoreboard { padding: clamp(.75rem, 3vw, 2rem); }
