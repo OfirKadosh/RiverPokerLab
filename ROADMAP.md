@@ -46,32 +46,30 @@ Stage 8 evaluates ICM separately for each complete outcome stack vector, then we
 
 Stage 13.2 completes the intended development scope before owner review for the second beta. The native shell is moved from 13.3 to stage 14 and does not block this release. See `STEP_13_2_TOURNAMENT_DECISIONS.md` and `RELEASE_REVIEW.md`.
 
-## Version 1.1 — bankroll and practice
+## Version 1.1 — bankroll
 
-Both modules are planned for 1.1 and can be delivered in separate increments.
+The bankroll release follows the stable 1.0 solver release. Development continues on `release/v1-1-bankroll-practice`.
 
-### Bankroll
+| Step | Deliverable | State |
+| --- | --- | --- |
+| 1. Bankroll ledger | Account-scoped opening balance, cash sessions, tournaments, deposits and withdrawals. Includes a responsive entry form and list with edit and delete actions. | Implemented for branch review |
+| 2. Bankroll dashboard | Date and game filters, recent sessions and a balance chart. Filters apply to period results; the current balance always covers the full ledger. | Planned |
+| 3. Release validation | Check totals, reloads, account isolation and mobile layouts through authenticated sessions. Review with beta users after the stable 1.0 release. | Planned |
 
-- Track cash sessions and tournaments in each member's private account. Capture cash buy-ins and cash-out, or tournament entries/re-entries and prizes.
-- Record deposits and withdrawals separately from play results. Show current balance, net results for the selected period, and a session history with cash and tournament filters.
-- Start with one currency per bankroll and a mobile-friendly entry form.
+The current balance is opening balance plus net transfers plus poker profit. Enter the total paid for a cash session or tournament, including all rebuys or re-entries. Tournament prizes and cash-outs are recorded separately. Transfers affect the balance but do not count as poker profit.
 
-### Practice
+Each bankroll uses one currency (ILS, USD, EUR or GBP) and supports up to 2,000 entries. The opening balance can be corrected after setup. Amounts are stored in integer minor units. UI preview shows a read-only sample ledger.
+
+## Version 1.2 — practice
 
 - Let players choose Cash or Tournament and the type of decision to practice. Draw a random spot from validated templates, varying hands, boards, ranges and other supported inputs. Present only legal actions and reveal the solution after the first submitted answer.
 - Begin with supported heads-up cash river decisions and tournament Fold/Call ICM decisions with a complete field and explicit assumptions. Use the existing engine to grade and explain each spot. In cash, show action EV and mix where relevant. In tournaments, explain chip EV and prize EV separately when both are available.
 - Accept multiple actions when their values are within the declared scoring tolerance. Skip or regenerate a spot if the analysis cannot support a reliable grade. Show what made the accepted answers reasonable.
 - Keep private practice progress with correct-answer streaks, consecutive practice days, personal records and milestone achievements. Count the first graded answer once per exercise and a completed exercise once per local practice day. Store progress by account for continuity across devices.
 
-### Development sequence
-
-| Step | Deliverable | Acceptance check |
-| --- | --- | --- |
-| 1. Bankroll ledger | Add private, owner-scoped storage and create, edit, list and delete flows for an opening balance, cash sessions, tournaments, deposits and withdrawals. Store amounts in integer minor units and use one currency per bankroll. | Opening balance plus deposits minus withdrawals plus play results equals the current balance. Cash and tournament results account for all buy-ins or re-entries. Editing or deleting an entry updates the totals. Another account cannot read or modify the ledger. |
-| 2. Bankroll dashboard | Build the mobile dashboard from the Bankroll mockup. Add the entry form, recent sessions, date and game filters, and a balance chart. | Balance, net transfers and poker profit are independently labeled. Cash and tournament filters apply to session results, while current balance remains the account total. The dashboard works on narrow phones and desktop. |
-| 3. Practice questions | Add a Practice workspace with Cash and Tournament modes. Build a random generator from validated templates. Start with heads-up cash river spots and tournament Fold/Call ICM decisions. Present the board, hand, relevant stacks, pot and actions, plus range or payout assumptions needed for the decision. | Every question has legal cards and actions, sufficient information and a supported solution. The client receives the question before the answer is revealed. |
-| 4. Grading and explanations | Solve through the existing engine and worker limits. Grade the first answer on the server and present the EV comparison, relevant mixes and a short explanation. Define a scoring tolerance per mode and retry or skip spots that cannot be graded reliably. | Equivalent actions receive credit within the declared tolerance. Tournament feedback distinguishes chip EV from prize EV. Repeated submission returns the same recorded answer. |
-| 5. Personal progress | Save correct-answer streaks, consecutive practice days, personal bests and milestones by account. Count a day after one completed exercise using the user's practice time zone. | The same answer or day cannot increment a streak twice. A wrong answer resets the correct-answer streak. A skipped day resets the day streak. Progress persists across devices. |
-| 6. Release validation | Test both modules through real account sessions and review with beta users. Check mobile layouts, persisted data, cross-account isolation, bankroll totals, solver answers and progress at day boundaries. | Resolve blocking findings and prepare a 1.1 release candidate after the 1.0 release. |
-
-Begin with the bankroll ledger and its accounting checks. That establishes the amounts and records the dashboard will use. The Practice workspace can proceed as a separate increment once the question and grading contracts are defined.
+| Step | Deliverable |
+| --- | --- |
+| 1. Practice questions | Generate supported spots for Cash and Tournament modes, with legal cards and actions. Reveal the solution after the first submission. |
+| 2. Grading and explanations | Grade on the server with the existing solver and ICM engine. Accept equivalent actions within a declared tolerance. |
+| 3. Personal progress | Persist correct-answer streaks, practice days, personal bests and achievements. Count first answers and local practice days once. |
+| 4. Release validation | Verify grading, date boundaries, account isolation and mobile layouts. |

@@ -6,6 +6,7 @@ require("dotenv").config(process.env.APP_ENV_FILE ? { path: process.env.APP_ENV_
 const {API_CONTRACT_VERSION}=require("@river-poker-lab/core");
 const {capabilities}=require("./capabilities");
 const Spot = require("./models/Spot");
+const { bankrollRoutes } = require("./bankroll/routes");
 const {
   ValidationError,
   validateCalculateInput,
@@ -23,7 +24,7 @@ const { createAuth, authConfig } = require("./auth");
 const { frontendDirectory, serveFrontend } = require("./hosting");
 const { computeForRequest, ComputeError, pool } = require("./compute/pool");
 const { SolverJobs, JobError } = require("./compute/solverJobs");
-function createApp({ auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
+function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -38,7 +39,7 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
       origin: (origin, callback) =>
         callback(null, !origin || !!auth.config?.origins.includes(origin)),
       credentials: true,
-      methods: ["GET", "POST", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "X-Requested-With", "X-River-Account"],
     }),
   );
@@ -49,6 +50,7 @@ function createApp({ auth = createAuth(), frontendDir = null, databaseReady = ()
   app.use(express.json({ limit: "2mb" }));
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
+  app.use("/api/bankroll", bankrollRoutes(bankrollStore));
 
   app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
 

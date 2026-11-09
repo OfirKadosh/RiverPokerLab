@@ -1,0 +1,29 @@
+.bankroll { display: grid; gap: 16px; }
+.bankroll fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.bankroll-summary, .bankroll-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.bankroll-summary { margin: 12px 0; }
+.bankroll-summary div, .bankroll-entries li {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.bankroll-summary dt, .bankroll-entry time { color: var(--muted); font-size: 13px; }
+.bankroll-summary dd { margin: 5px 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.bankroll-actions, .bankroll-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bankroll-entry { justify-content: space-between; }
+.bankroll-entry time { display: block; }
+.bankroll-actions { margin-top: 10px; }
+.bankroll-form { scroll-margin-top: calc(var(--navigation-height, 64px) + 16px); }
+.bankroll-note { margin: 6px 0; overflow-wrap: anywhere; }
+.bankroll-entries { display: grid; gap: 10px; padding: 0; list-style: none; }
+.bankroll-gain { color: #c7eb9d; }
+.bankroll-loss { color: #ffb7ad; }
+.bankroll input, .bankroll select { min-width: 0; }
+@media (max-width: 480px) {
+  .bankroll-fields { grid-template-columns: 1fr; }
+}

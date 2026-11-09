@@ -1,4 +1,22 @@
 const mongoose = require("mongoose");
+const { CURRENCIES, KINDS } = require("../bankroll/ledger");
+
+const bankrollEntry = new mongoose.Schema({
+  id: String,
+  kind: { type: String, enum: KINDS },
+  date: String,
+  note: String,
+  amount: Number,
+  buyIn: Number,
+  cashOut: Number,
+}, { _id: false });
+
+const bankroll = new mongoose.Schema({
+  currency: { type: String, enum: CURRENCIES },
+  openingBalance: Number,
+  entries: { type: [bankrollEntry], default: undefined },
+}, { _id: false });
+
 const schema = new mongoose.Schema(
   {
     email: { type: String, required: function () { return this.role !== "admin"; }, unique: true },
@@ -7,6 +25,7 @@ const schema = new mongoose.Schema(
     phone: { type: String, required: function () { return this.role !== "admin"; }, unique: true },
     role: { type: String, enum: ["user", "admin"], default: "user", immutable: true },
     passwordHash: { type: String, required: true },
+    bankroll: { type: bankroll, select: false },
     accountApprovedAt: Date,
     restrictedAt: Date,
     trialStartedAt: Date,

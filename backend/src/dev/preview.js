@@ -23,7 +23,7 @@ function createPreviewApp(env = process.env) {
   app.get('/api/spots', (req,res) => res.json({success:true,spots:[],preview:true}));
   app.use((req,res,next) => {
     const localJob = req.path === '/api/river-jobs' && ['POST','GET'].includes(req.method) || /^\/api\/river-jobs\/[a-zA-Z0-9-]+$/.test(req.path) && ['GET','DELETE'].includes(req.method);
-    const permitted = localJob || req.method === 'GET' && ['/api/auth/me','/api/auth/config','/api/capabilities'].includes(req.path) ||
+    const permitted = localJob || req.method === 'GET' && ['/api/auth/me','/api/auth/config','/api/capabilities','/api/bankroll'].includes(req.path) ||
       req.method === 'POST' && ['/api/calculate','/api/icm','/api/analyze-decision','/api/ranges/preview','/api/river-tree','/api/river-solve','/api/tournament-tree'].includes(req.path);
     if (!permitted || (req.path === '/api/calculate' && req.body?.saveSpot !== undefined && req.body.saveSpot !== false))
       return res.status(403).json({success:false,error:'Saving and account actions are disabled in UI preview. Use authenticated development for persistence.'});
@@ -32,7 +32,15 @@ function createPreviewApp(env = process.env) {
   const router = express.Router();
   router.get('/me', (req,res) => res.json({success:true,user:USER,preview:true}));
   router.get('/config', (req,res) => res.json({success:true,configured:true,channels:[],development:false,preview:true}));
-  app.use(createApp({auth:{preview:true,router,config:{origins:[]},middleware(req,res,next) {req.user=USER;next();}}}));
+  const bankrollStore = { get: () => ({
+    currency: "ILS", openingBalance: 100000,
+    entries: [
+      { id: "preview-cash", kind: "cash", date: "2026-10-31", buyIn: 20000, cashOut: 27500, note: "Cash session" },
+      { id: "preview-tournament", kind: "tournament", date: "2026-10-30", buyIn: 12000, cashOut: 0, note: "Two entries" },
+      { id: "preview-deposit", kind: "deposit", date: "2026-10-29", amount: 50000, note: "" },
+    ],
+  }) };
+  app.use(createApp({bankrollStore,auth:{preview:true,router,config:{origins:[]},middleware(req,res,next) {req.user=USER;next();}}}));
   return app;
 }
 module.exports = { createPreviewApp };

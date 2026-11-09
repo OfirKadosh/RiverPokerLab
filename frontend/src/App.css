@@ -2630,7 +2630,10 @@ select:disabled {
 
 .turn-runouts{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-top:12px}
 .turn-runouts>div{display:flex;flex-direction:column;align-items:center;gap:5px}.turn-runouts small{font-size:.65rem;color:var(--muted)}
-@media(min-width:1001px){.main-navigation{grid-template-columns:repeat(10,minmax(0,1fr))}}
+@media(min-width:1001px){
+  .main-navigation{grid-template-columns:repeat(11,minmax(0,1fr))}
+  .main-navigation:has(a[href="#/admin"]){grid-template-columns:repeat(12,minmax(0,1fr))}
+}
 @media(min-width:761px) and (max-width:1000px){.main-navigation{grid-template-columns:repeat(5,minmax(0,1fr))}.table-workspace{top:132px;max-height:calc(100dvh - 148px)}}
 @media(max-width:760px){.main-navigation{grid-template-columns:repeat(3,minmax(0,1fr))}.turn-runouts{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
