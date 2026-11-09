@@ -89,7 +89,7 @@ export function BankrollDashboard({ filters, onFilters, period, money }: {
     </p>
     {!period ? <p className="validation-note" role="alert">Choose dates from 1900 to 2099 and put the start date first.</p> : <>
       <dl className="bankroll-summary bankroll-period-summary" aria-label="Period results">
-        <div><dt>Period poker profit</dt><dd>{money(period.pokerProfit)}</dd></div>
+        <div><dt>Period poker profit</dt><dd className={period.pokerProfit > 0 ? "bankroll-gain" : period.pokerProfit < 0 ? "bankroll-loss" : undefined}>{money(period.pokerProfit)}</dd></div>
         <div><dt>Period net transfers</dt><dd>{money(period.netTransfers)}</dd></div>
         <div><dt>Poker sessions</dt><dd>{period.sessions}</dd></div>
       </dl>

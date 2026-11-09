@@ -209,7 +209,7 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
         {!ledger ? openingForm : <>
           <dl className="bankroll-summary" aria-label="All-time totals">
             <div><dt>Current balance</dt><dd>{money(ledger.balance)}</dd></div>
-            <div><dt>All-time poker profit</dt><dd>{money(ledger.pokerProfit)}</dd></div>
+            <div><dt>All-time poker profit</dt><dd className={ledger.pokerProfit > 0 ? "bankroll-gain" : ledger.pokerProfit < 0 ? "bankroll-loss" : undefined}>{money(ledger.pokerProfit)}</dd></div>
             <div><dt>All-time net transfers</dt><dd>{money(ledger.netTransfers)}</dd></div>
             <div><dt>Opening balance</dt><dd>{money(ledger.openingBalance)}</dd></div>
           </dl>
