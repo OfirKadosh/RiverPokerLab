@@ -185,6 +185,7 @@ function AuthScreen({
     [development, setDevelopment] = useState(false),
     [manualChannels, setManualChannels] = useState<string[]>([]),
     [trialDays, setTrialDays] = useState<number>(),
+    [registrationOpen, setRegistrationOpen] = useState(false),
     [channel, setChannel] = useState<string>(
       initialVerification?.channel || "email",
     );
@@ -205,6 +206,7 @@ function AuthScreen({
       .then((data) => {
         setChannels(data.channels || []);
         setTrialDays(data.trialDays);
+        setRegistrationOpen(data.registrationClosed !== true);
         setDevelopment(!!data.development);
         setManualChannels(data.manualChannels || []);
         setChannel((current) =>
@@ -275,7 +277,7 @@ function AuthScreen({
           Your saved spots belong to your account. New accounts start with an
           empty history.
         </p>
-        {mode !== "verify" && (
+        {mode !== "verify" && registrationOpen && (
           <div className="auth-tabs">
             <button
               aria-pressed={mode === "login"}

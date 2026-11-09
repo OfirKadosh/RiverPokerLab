@@ -43,6 +43,7 @@ function authConfig(env = process.env) {
     origins,
     secure: production,
     timeLimitedAccess: env.AUTH_TIME_LIMITED_ACCESS === "true",
+    registrationClosed: env.RPL_STAGING === "true",
     cookieName: production ? "__Host-river_session" : "river_session",
   };
 }
@@ -317,6 +318,7 @@ function createAuth({
       development: !problem && delivery.config.development,
       manualChannels: problem ? [] : delivery.config.manualChannels || [],
       configured: !problem,
+      registrationClosed: config?.registrationClosed === true,
       trialDays: !problem && config.timeLimitedAccess ? TRIAL_DAYS : undefined,
     }),
   );
@@ -351,6 +353,7 @@ function createAuth({
     }
   });
   route("/register", async (req, res) => {
+    if (config.registrationClosed) throw new AuthError(403, "Registration is closed in this environment.");
     await limit("register-ip", req.ip, 5, 3600000);
     const selfServe = config.timeLimitedAccess === true;
     const input = registration(req.body, { skipVerificationChannel: selfServe });

@@ -22,9 +22,10 @@ const { validateTournament } = require("./engine/tournament");
 
 const { createAuth, authConfig } = require("./auth");
 const { frontendDirectory, serveFrontend } = require("./hosting");
+const { stagingConfig, stagingGate, seedStagingUsers } = require("./staging");
 const { computeForRequest, ComputeError, pool } = require("./compute/pool");
 const { SolverJobs, JobError } = require("./compute/solverJobs");
-function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
+function createApp({ bankrollStore, gate, auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -34,6 +35,11 @@ function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, dat
     res.set("Referrer-Policy", "same-origin");
     next();
   });
+  app.get("/healthz", (req, res) => {
+    const ready = databaseReady();
+    res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
+  });
+  if (gate) app.use(gate);
   app.use(
     cors({
       origin: (origin, callback) =>
@@ -43,10 +49,6 @@ function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, dat
       allowedHeaders: ["Content-Type", "X-Requested-With", "X-River-Account"],
     }),
   );
-  app.get("/healthz", (req, res) => {
-    const ready = databaseReady();
-    res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
-  });
   app.use(express.json({ limit: "2mb" }));
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
@@ -359,7 +361,11 @@ function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, dat
 
   return app;
 }
-const app = createApp({ frontendDir: require.main === module ? frontendDirectory() : null });
+const staging = require.main === module ? stagingConfig() : null;
+const app = createApp({
+  frontendDir: require.main === module ? frontendDirectory() : null,
+  gate: staging ? stagingGate(staging.gate) : undefined,
+});
 // Importing the app for tests must not connect to the production database.
 if (require.main === module) {
   (async () => {
@@ -368,7 +374,7 @@ if (require.main === module) {
       const delivery = require("./auth/delivery").createDelivery();
       if (
         process.env.NODE_ENV === "production" &&
-        !delivery.config.channels.length
+        !staging && !delivery.config.channels.length
       )
         throw Error("Configure at least one production verification channel.");
       const hops = Number(process.env.TRUST_PROXY_HOPS || 0);
@@ -388,6 +394,7 @@ if (require.main === module) {
         require("./models/AuthSession").init(),
         require("./models/AuthRateLimit").init(),
       ]);
+      if (staging) await seedStagingUsers(staging.passwords);
       const PORT = process.env.PORT || 5000;
       const server = app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
       let stopping = false;
