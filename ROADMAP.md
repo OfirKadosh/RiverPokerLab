@@ -53,7 +53,7 @@ The bankroll release follows the stable 1.0 solver release. Development continue
 | Step | Deliverable | State |
 | --- | --- | --- |
 | 1. Bankroll ledger | Account-scoped opening balance, cash sessions, tournaments, deposits and withdrawals. Includes a responsive entry form and list with edit and delete actions. | Implemented for branch review |
-| 2. Bankroll dashboard | Date and game filters, recent sessions and a balance chart. Filters apply to period results; the current balance always covers the full ledger. | Planned |
+| 2. Bankroll dashboard (1.1.1) | Inclusive date filters, cash and tournament results, newest-first ledger with load more, and a daily closing balance chart. The chart includes every entry type and carries the opening balance into the selected period. | Implemented for branch review |
 | 3. Release validation | Check totals, reloads, account isolation and mobile layouts through authenticated sessions. Review with beta users after the stable 1.0 release. | Planned |
 
 The current balance is opening balance plus net transfers plus poker profit. Enter the total paid for a cash session or tournament, including all rebuys or re-entries. Tournament prizes and cash-outs are recorded separately. Transfers affect the balance but do not count as poker profit.

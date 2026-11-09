@@ -1,30 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiClient } from "../lib/api";
 import { LoadingIndicator } from "./LoadingIndicator";
+import { allEntries, bankrollPeriod, currencies, entryChange, entryLabels } from "../lib/bankroll";
+import type { BankrollFilters, Currency, Entry, Kind, Ledger } from "../lib/bankroll";
+import { BankrollDashboard } from "./BankrollDashboard";
 import "./BankrollPanel.css";
 
-const currencies = ["ILS", "USD", "EUR", "GBP"] as const;
-const labels = {
-  cash: "Cash session",
-  tournament: "Tournament",
-  deposit: "Deposit",
-  withdrawal: "Withdrawal",
-};
-type Currency = (typeof currencies)[number];
-type Kind = keyof typeof labels;
-type Entry = { id: string; kind: Kind; date: string; note: string } & (
-  | { kind: "cash" | "tournament"; buyIn: number; cashOut: number }
-  | { kind: "deposit" | "withdrawal"; amount: number }
-);
-type Ledger = {
-  currency: Currency;
-  openingBalance: number;
-  balance: number;
-  pokerProfit: number;
-  netTransfers: number;
-  entries: Entry[];
-};
+const PAGE_SIZE = 20;
 type FeedbackArea = "settings" | "entry" | "ledger";
 type Draft = { kind: Kind; date: string; note: string; buyIn: string; cashOut: string; amount: string };
 
@@ -63,6 +46,10 @@ function MoneyInput({ label, value, setValue }: {
 
 export function BankrollPanel({ preview }: { preview: boolean }) {
   const [ledger, setLedger] = useState<Ledger | null>();
+  const [filters, setFilters] = useState(allEntries);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const period = useMemo(() => ledger ? bankrollPeriod(ledger, filters) : null, [ledger, filters]);
+  const currencyCode = ledger?.currency;
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [feedbackArea, setFeedbackArea] = useState<FeedbackArea>("settings");
@@ -168,9 +155,15 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
-  const money = (value: number) => new Intl.NumberFormat(undefined, {
-    style: "currency", currency: ledger?.currency ?? currency,
-  }).format(value / 100);
+  const formatter = useMemo(() => new Intl.NumberFormat(undefined, {
+    style: "currency", currency: currencyCode ?? currency,
+  }), [currencyCode, currency]);
+  const money = (value: number) => formatter.format(value / 100);
+
+  function updateFilters(next: BankrollFilters) {
+    setFilters(next);
+    setVisibleCount(PAGE_SIZE);
+  }
 
   const feedback = (area: FeedbackArea) => feedbackArea === area && <>
     {error && <p role="alert" className="validation-note">{error}</p>}
@@ -214,10 +207,10 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
         {feedback("settings")}
         {preview && <p className="inline-note">Preview uses read-only sample entries.</p>}
         {!ledger ? openingForm : <>
-          <dl className="bankroll-summary">
+          <dl className="bankroll-summary" aria-label="All-time totals">
             <div><dt>Current balance</dt><dd>{money(ledger.balance)}</dd></div>
-            <div><dt>Poker profit</dt><dd>{money(ledger.pokerProfit)}</dd></div>
-            <div><dt>Net transfers</dt><dd>{money(ledger.netTransfers)}</dd></div>
+            <div><dt>All-time poker profit</dt><dd>{money(ledger.pokerProfit)}</dd></div>
+            <div><dt>All-time net transfers</dt><dd>{money(ledger.netTransfers)}</dd></div>
             <div><dt>Opening balance</dt><dd>{money(ledger.openingBalance)}</dd></div>
           </dl>
           {editingOpening ? openingForm : !preview && (
@@ -229,6 +222,8 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
         </>}
       </section>
 
+      {ledger && <BankrollDashboard filters={filters} onFilters={updateFilters} period={period} money={money} />}
+
       {ledger && !preview && <section className="sidebar-section">
         <h2>{editing ? "Edit entry" : "Add an entry"}</h2>
         <form onSubmit={saveEntry} ref={form} tabIndex={-1} className="bankroll-form" aria-label="Bankroll entry">
@@ -237,7 +232,7 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
               <label className="field-label">
                 Entry type
                 <select value={draft.kind} onChange={(event) => setField("kind", event.target.value as Kind)}>
-                  {Object.entries(labels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                  {Object.entries(entryLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                 </select>
               </label>
               <label className="field-label">Date
@@ -266,14 +261,15 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
       {ledger && <section className="sidebar-section">
         <h2>Ledger</h2>
         {feedback("ledger")}
-        {!ledger.entries.length && <p className="field-help">No entries yet.</p>}
+        {!ledger.entries.length ? <p className="field-help">No entries yet.</p>
+          : period && !period.entries.length ? <p className="field-help">No entries match the filters.</p>
+            : period && <p className="field-help">Showing {Math.min(visibleCount, period.entries.length)} of {period.entries.length} entries, newest first.</p>}
         <ul className="bankroll-entries">
-          {ledger.entries.map((entry) => {
-            const result = "buyIn" in entry ? entry.cashOut - entry.buyIn
-              : entry.kind === "deposit" ? entry.amount : -entry.amount;
+          {period?.entries.slice(0, visibleCount).map((entry) => {
+            const result = entryChange(entry);
             return <li key={entry.id}>
               <div className="bankroll-entry">
-                <div><strong>{labels[entry.kind]}</strong><time dateTime={entry.date}>{entry.date}</time></div>
+                <div><strong>{entryLabels[entry.kind]}</strong><time dateTime={entry.date}>{entry.date}</time></div>
                 <strong className={result < 0 ? "bankroll-loss" : "bankroll-gain"}>{result > 0 ? "+" : ""}{money(result)}</strong>
               </div>
               {"buyIn" in entry && <p className="field-help">Paid {money(entry.buyIn)} · Returned {money(entry.cashOut)}</p>}
@@ -296,6 +292,11 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
             </li>;
           })}
         </ul>
+        {period && visibleCount < period.entries.length && (
+          <button className="secondary-button" type="button" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>
+            Show more entries
+          </button>
+        )}
       </section>}
     </div>
   );

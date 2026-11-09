@@ -27,3 +27,63 @@
 @media (max-width: 480px) {
   .bankroll-fields { grid-template-columns: 1fr; }
 }
+
+.bankroll-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+.bankroll-filters .field-label { margin: 0; min-width: 0; }
+.bankroll-filters input { width: 100%; }
+.bankroll-period-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bankroll-chart { margin: 16px 0 0; }
+.bankroll-chart figcaption { display: grid; gap: 3px; }
+.bankroll-chart figcaption span, .bankroll-chart-dates, .bankroll-chart-values dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.bankroll-chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 6px 8px;
+  margin-top: 16px;
+}
+.bankroll-chart-grid svg { display: block; width: 100%; height: 160px; overflow: visible; }
+.bankroll-chart-scale {
+  position: relative;
+  width: clamp(58px, 15vw, 158px);
+  color: var(--muted);
+  font-size: 11px;
+}
+.bankroll-chart-scale span {
+  position: absolute;
+  right: 0;
+  max-width: 100%;
+  transform: translateY(-50%);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.bankroll-chart-guide { stroke: var(--border); }
+.bankroll-chart-line { stroke: #c7eb9d; stroke-width: 2; fill: none; }
+.bankroll-chart-dates {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  grid-column: 2;
+  gap: 4px;
+}
+.bankroll-chart-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 12px 0 0;
+}
+.bankroll-chart-values dd { margin: 4px 0 0; font-weight: 700; }
+@media (max-width: 620px) {
+  .bankroll-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 400px) {
+  .bankroll-filters { grid-template-columns: minmax(0, 1fr); }
+  .bankroll-period-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
