@@ -13,14 +13,20 @@ function stagingConfig(env = process.env) {
     throw Error("Staging requires three distinct strong passwords.");
   }
 
-  const uri = new URL(env.MONGO_URI);
-  if (env.NODE_ENV !== "production" ||
-      env.APP_DATABASE_NAME !== database ||
-      !env.RPL_STAGING_DB_HOST ||
-      uri.protocol !== "mongodb+srv:" ||
-      uri.hostname !== env.RPL_STAGING_DB_HOST ||
-      uri.pathname !== `/${database}`) {
-    throw Error("Staging requires its designated Atlas host and database.");
+  if (env.NODE_ENV !== "production" || env.APP_DATABASE_NAME !== database || !env.RPL_STAGING_DB_HOST) {
+    throw Error("Staging runtime settings do not specify the designated Atlas host and database.");
+  }
+  let uri;
+  try {
+    uri = new URL(env.MONGO_URI);
+  } catch {
+    throw Error("Staging MONGO_URI is missing or malformed.");
+  }
+  if (uri.protocol !== "mongodb+srv:" || uri.hostname !== env.RPL_STAGING_DB_HOST || uri.port) {
+    throw Error("Staging MONGO_URI must use the designated Atlas host and the mongodb+srv scheme.");
+  }
+  if (uri.pathname && uri.pathname !== "/" && uri.pathname !== `/${database}`) {
+    throw Error("Staging MONGO_URI names a database other than the designated staging database.");
   }
   return { gate, passwords };
 }

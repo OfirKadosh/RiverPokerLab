@@ -21,6 +21,11 @@ test("Staging requires separate strong passwords and the configured staging Atla
   };
   assert.deepEqual(stagingConfig(env), { gate, passwords });
   assert.equal(stagingConfig({}), null);
+  assert.deepEqual(stagingConfig({ ...env, MONGO_URI: "mongodb+srv://staging.example.invalid/?retryWrites=true" }), { gate, passwords });
+  assert.throws(() => stagingConfig({ ...env, MONGO_URI: "mongodb+srv://staging.example.invalid/another_database" }), /other than/);
+  assert.throws(() => stagingConfig({ ...env, MONGO_URI: "secret-that-must-not-be-in-an-error" }), (error) =>
+    error.message === "Staging MONGO_URI is missing or malformed." && !("input" in error));
+
   assert.throws(() => stagingConfig({ ...env, APP_DATABASE_NAME: "production" }), /designated Atlas/);
   assert.throws(() => stagingConfig({ ...env, MONGO_URI: "mongodb+srv://other.example.invalid/river_poker_lab_staging" }), /designated Atlas/);
   assert.throws(() => stagingConfig({ ...env, RPL_STAGING_TESTER_B_PASSWORD: passwords[0] }), /distinct/);
