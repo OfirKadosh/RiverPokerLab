@@ -39,6 +39,7 @@ export const PAGES = [
     description: "Open a saved spot and continue working.",
   },
   { id: "bankroll", label: "Bankroll", description: "Track poker results, deposits and withdrawals." },
+  { id: "practice", label: "Practice", description: "Answer river decisions and compare action EV." },
   { id: "admin", label: "Admin", description: "Review verification requests and manage access." },
   {
     id: "account",

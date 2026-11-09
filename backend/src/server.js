@@ -7,6 +7,7 @@ const {API_CONTRACT_VERSION}=require("@river-poker-lab/core");
 const {capabilities}=require("./capabilities");
 const Spot = require("./models/Spot");
 const { bankrollRoutes } = require("./bankroll/routes");
+const { practiceRoutes } = require("./practice/routes");
 const {
   ValidationError,
   validateCalculateInput,
@@ -51,6 +52,7 @@ function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, dat
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
   app.use("/api/bankroll", bankrollRoutes(bankrollStore));
+  app.use("/api/practice", practiceRoutes(compute));
 
   app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
 
