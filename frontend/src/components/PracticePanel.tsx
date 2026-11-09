@@ -25,6 +25,17 @@ type Result = {
   actions: { type: Action; chipEv: number; prizeEv?: number }[];
 };
 
+type Progress = {
+  answered: number;
+  correct: number;
+  correctStreak: number;
+  bestCorrectStreak: number;
+  dayStreak: number;
+  bestDayStreak: number;
+  zone: string | null;
+  milestones: string[];
+};
+
 const labels = { fold: "Fold", call: "Call" };
 const format = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
 const number = (value: number) => format.format(Math.abs(value) < 0.005 ? 0 : value);
@@ -35,8 +46,20 @@ export function PracticePanel() {
   const [result, setResult] = useState<Result>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<Progress>();
+  const [progressError, setProgressError] = useState(false);
   const pending = useRef<AbortController>();
-  useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => {
+    const controller = new AbortController();
+    apiClient.request("/practice/progress", { signal: controller.signal }).then(
+      (data) => { if (!controller.signal.aborted) setProgress((current) => current ?? data.progress as Progress); },
+      () => { if (!controller.signal.aborted) setProgressError(true); },
+    );
+    return () => {
+      controller.abort();
+      pending.current?.abort();
+    };
+  }, []);
 
   async function request(path: string, body: object, receive: (data: Record<string, unknown>) => void) {
     if (pending.current) return;
@@ -66,7 +89,12 @@ export function PracticePanel() {
 
   function answer(action: Action) {
     if (!spot || result) return;
-    void request(`/practice/spots/${spot.id}/answer`, { action }, (data) => setResult(data.result as Result));
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    void request(`/practice/spots/${spot.id}/answer`, { action, timeZone }, (data) => {
+      setResult(data.result as Result);
+      setProgress(data.progress as Progress);
+      setProgressError(false);
+    });
   }
 
   return (
@@ -126,6 +154,33 @@ export function PracticePanel() {
           </p>
         </div>}
       </section>}
+      <section className="sidebar-section" aria-label="Practice progress">
+        <h2>Practice progress</h2>
+        {progress ? <>
+          <div className="icm-results" aria-live="polite">
+            <div className="icm-result">
+              <h3>Answers</h3>
+              <dl>
+                <div><dt>Correct / answered</dt><dd>{progress.correct} / {progress.answered}</dd></div>
+                <div><dt>Correct in a row</dt><dd>{progress.correctStreak}</dd></div>
+                <div><dt>Best correct streak</dt><dd>{progress.bestCorrectStreak}</dd></div>
+              </dl>
+            </div>
+            <div className="icm-result">
+              <h3>Practice days</h3>
+              <dl>
+                <div><dt>Current day streak</dt><dd>{progress.dayStreak}</dd></div>
+                <div><dt>Best day streak</dt><dd>{progress.bestDayStreak}</dd></div>
+                <div><dt>Time zone</dt><dd>{progress.zone || "Set with your first answer"}</dd></div>
+              </dl>
+            </div>
+          </div>
+          <h3>Milestones</h3>
+          {progress.milestones.length ? <ul>{progress.milestones.map((label) => <li key={label}>{label}</li>)}</ul>
+            : <p className="field-help">Answer 10 spots, get 5 correct in a row, or practice 3 days in a row.</p>}
+        </> : progressError ? <p className="field-help">Practice progress is temporarily unavailable.</p>
+          : <LoadingIndicator label="Loading progress…" />}
+      </section>
     </>
   );
 }

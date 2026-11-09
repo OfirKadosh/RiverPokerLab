@@ -1,5 +1,6 @@
 const express = require('express');
 const { createApp } = require('../server');
+const { memoryPracticeProgress } = require('../practice/progress');
 const USER = Object.freeze({
   id: '00000000000000000000de01', username: 'UI Preview', role: 'user',
   email: null, phone: null, emailVerified: false, phoneVerified: false,
@@ -24,7 +25,7 @@ function createPreviewApp(env = process.env) {
   app.use((req,res,next) => {
     const localJob = req.path === '/api/river-jobs' && ['POST','GET'].includes(req.method) || /^\/api\/river-jobs\/[a-zA-Z0-9-]+$/.test(req.path) && ['GET','DELETE'].includes(req.method);
     const practice = req.method === 'POST' && /^\/api\/practice\/spots(?:\/[0-9a-f-]{36}\/answer)?$/.test(req.path);
-    const permitted = localJob || practice || req.method === 'GET' && ['/api/auth/me','/api/auth/config','/api/capabilities','/api/bankroll'].includes(req.path) ||
+    const permitted = localJob || practice || req.method === 'GET' && ['/api/auth/me','/api/auth/config','/api/capabilities','/api/bankroll','/api/practice/progress'].includes(req.path) ||
       req.method === 'POST' && ['/api/calculate','/api/icm','/api/analyze-decision','/api/ranges/preview','/api/river-tree','/api/river-solve','/api/tournament-tree'].includes(req.path);
     if (!permitted || (req.path === '/api/calculate' && req.body?.saveSpot !== undefined && req.body.saveSpot !== false))
       return res.status(403).json({success:false,error:'Saving and account actions are disabled in UI preview. Use authenticated development for persistence.'});
@@ -41,7 +42,7 @@ function createPreviewApp(env = process.env) {
       { id: "preview-deposit", kind: "deposit", date: "2026-10-29", amount: 50000, note: "" },
     ],
   }) };
-  app.use(createApp({bankrollStore,auth:{preview:true,router,config:{origins:[]},middleware(req,res,next) {req.user=USER;next();}}}));
+  app.use(createApp({bankrollStore,practiceProgress:memoryPracticeProgress(),auth:{preview:true,router,config:{origins:[]},middleware(req,res,next) {req.user=USER;next();}}}));
   return app;
 }
 module.exports = { createPreviewApp };

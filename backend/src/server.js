@@ -25,7 +25,7 @@ const { createAuth, authConfig } = require("./auth");
 const { frontendDirectory, serveFrontend } = require("./hosting");
 const { computeForRequest, ComputeError, pool } = require("./compute/pool");
 const { SolverJobs, JobError } = require("./compute/solverJobs");
-function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
+function createApp({ bankrollStore, practiceProgress, auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -52,7 +52,7 @@ function createApp({ bankrollStore, auth = createAuth(), frontendDir = null, dat
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
   app.use("/api/bankroll", bankrollRoutes(bankrollStore));
-  app.use("/api/practice", practiceRoutes(compute));
+  app.use("/api/practice", practiceRoutes(compute, practiceProgress));
 
   app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
 
