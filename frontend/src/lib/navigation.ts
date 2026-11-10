@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 export const PAGES = [
   {
+    id: "quick",
+    label: "Quick Equity",
+    description: "See how much of the pot each hand is expected to win.",
+  },
+  {
     id: "spot",
     label: "Spot setup",
     description: "Set the game, players, cards and starting stacks.",
@@ -50,7 +55,7 @@ export const PAGES = [
 export type Page = (typeof PAGES)[number]["id"];
 function currentPage(): Page {
   const value = window.location.hash.replace(/^#\/?/, "");
-  return PAGES.some((page) => page.id === value) ? (value as Page) : "spot";
+  return PAGES.some((page) => page.id === value) ? (value as Page) : "quick";
 }
 export function usePage() {
   const [page, setPage] = useState<Page>(currentPage);

@@ -22,6 +22,15 @@ export function makeSeat(id: number, type: GameType): Seat {
     range: "",
   };
 }
+export function validateCommunityCards(board: (string | null)[]): string | null {
+  const count = board.filter(Boolean).length;
+  if (
+    ![0, 3, 4, 5].includes(count) ||
+    board.slice(0, count).some((card) => !card)
+  )
+    return "Complete the flop first, then add the turn and river in order.";
+  return null;
+}
 export function validateSpot(
   seats: Seat[],
   board: (string | null)[],
@@ -45,12 +54,8 @@ export function validateSpot(
     )
       return `Choose ${handSize(type)} cards for ${seat.name || `Seat ${seat.id + 1}`}.`;
   }
-  const count = board.filter(Boolean).length;
-  if (
-    ![0, 3, 4, 5].includes(count) ||
-    board.slice(0, count).some((card) => !card)
-  )
-    return "Complete the flop first, then add the turn and river in order.";
+  const boardIssue = validateCommunityCards(board);
+  if (boardIssue) return boardIssue;
   const cards = [
     ...seats
       .filter((seat) => seat.mode === "hand")

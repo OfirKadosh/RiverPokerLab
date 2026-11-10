@@ -257,7 +257,7 @@ function AuthScreen({
   }
   return (
     <main className="auth-shell">
-      <a className="brand" href="#/spot">
+      <a className="brand" href="#/quick">
         <span className="brand-mark">♠</span>
         <span>
           RIVER<small>POKER LAB</small>

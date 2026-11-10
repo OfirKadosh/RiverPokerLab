@@ -6,6 +6,7 @@ import { replayBetting } from "./lib/betting";
 import type { BettingAction } from "./lib/betting";
 import { buildHandSetup } from "./lib/handSetup";
 import { CardPicker } from "./components/CardPicker";
+import { QuickEquity } from "./components/QuickEquity";
 import { PokerTable } from "./components/PokerTable";
 import {
   formatChips,
@@ -93,6 +94,7 @@ function App() {
   },[]);
   const { page, navigate } = usePage();
   const pageInfo = PAGES.find((item) => item.id === page)!;
+  const isQuick = page === "quick";
   const hasTable = ["spot", "hand", "analysis"].includes(page);
   const [riverIcm,setRiverIcm]=useState(createTournamentWorkspace);
   const [turnIcm,setTurnIcm]=useState(createTournamentWorkspace);
@@ -269,6 +271,11 @@ function App() {
     callAmount: actualCall,
     ...(handActions !== null ? { bettingRevision: handActions } : {}),
   });
+  const workspaceSnapshot = JSON.stringify({
+    payloadKey, seats, board, dealerSeatId, smallBlind, bigBlind, heroSeatId,
+    tournamentDraft, rangeDrafts, betAmount,
+  });
+  const initialWorkspace = useRef(workspaceSnapshot);
   const results = resultKey === payloadKey && !issue ? storedResults : null;
   const usedCards = useMemo(
     () =>
@@ -626,6 +633,21 @@ function App() {
     setNotice(null);
   }
 
+  function openQuickHand(game: GameType, players: Seat[], community: (string | null)[]) {
+    if (workspaceSnapshot !== initialWorkspace.current &&
+        !window.confirm("Replace the current Advanced Workspace draft with this hand? Saved history is kept.")) {
+      return;
+    }
+    resetSpot();
+    setGameType(game);
+    setGameMode("cash");
+    setCalculationMethod("auto");
+    setChipUnit("0.01");
+    setSeats(players.map((player, id) => ({ ...player, id })));
+    setBoard(community);
+    navigate("spot");
+  }
+
   function recordAction(action: BettingAction) {
     if (handActions === null) return;
     try {
@@ -678,7 +700,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#/spot" aria-label="River Poker Lab home">
+        <a className="brand" href="#/quick" aria-label="River Poker Lab home">
           <span className="brand-mark">♠</span>
           <span>
             RIVER<small>POKER LAB</small>
@@ -693,8 +715,13 @@ function App() {
           <span className="build-badge">BETA</span>
         </div>
       </header>
-      <nav ref={navigationRef} className="main-navigation" aria-label="Main navigation">
-        {PAGES.filter(item => item.id !== "admin" || auth.user?.role === "admin").map((item) => (
+      <nav ref={navigationRef} className={`main-navigation${isQuick ? " quick-navigation" : ""}`} aria-label="Main navigation">
+        {isQuick ? (
+          <>
+            <a href="#/quick" aria-current="page">Quick Equity</a>
+            <a href="#/spot">Advanced Workspace →</a>
+          </>
+        ) : PAGES.filter(item => item.id !== "admin" || auth.user?.role === "admin").map((item) => (
           <a
             key={item.id}
             href={`#/${item.id}`}
@@ -706,7 +733,8 @@ function App() {
       </nav>
       {riverJob.job && page !== "river" && <RiverJobStatus controller={riverJob} onOpen={()=>navigate("river")} />}
       {turnJob.job && page !== "turn" && <RiverJobStatus kind="turn" controller={turnJob} onOpen={()=>navigate("turn")} />}
-      <main
+      <QuickEquity active={isQuick} api={API} onOpenAdvanced={openQuickHand} />
+      {!isQuick && <main
         id="main-content"
         tabIndex={-1}
         className={`workspace ${hasTable ? "" : "standalone-workspace"}`}
@@ -1389,12 +1417,12 @@ function App() {
             <span className="live-dot" /> TEXAS HOLD’EM & OMAHA HIGH
           </footer>
         </aside>
-      </main>
+      </main>}
       <footer className="app-footer">
         <span>RIVER / POKER LAB</span>
         <span>A clearer view of every hand.</span>
       </footer>
-      {picker && (
+      {!isQuick && picker && (
         <CardPicker
           title={
             picker.kind === "board"
