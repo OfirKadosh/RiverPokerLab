@@ -3,7 +3,7 @@ export const PAGES = [
   {
     id: "light",
     label: "Light",
-    description: "Check a hand, track your results, or practice a poker decision.",
+    description: "Check a hand, track your results, practice, or run a home game.",
   },
   {
     id: "quick",
@@ -49,6 +49,7 @@ export const PAGES = [
     description: "Open a saved spot and continue working.",
   },
   { id: "bankroll", label: "Bankroll", description: "Track poker results, deposits and withdrawals." },
+  { id: "home-cash", label: "Home Cash Game", description: "Track buy-ins, rebuys, and payouts for your home game." },
   { id: "practice", label: "Practice", description: "Answer river decisions and compare action EV." },
   { id: "admin", label: "Admin", description: "Review verification requests and manage access." },
   {
@@ -58,7 +59,7 @@ export const PAGES = [
   },
 ] as const;
 export type Page = (typeof PAGES)[number]["id"];
-export const LIGHT_TOOLS = ["quick", "bankroll", "practice"] as const;
+export const LIGHT_TOOLS = ["quick", "bankroll", "practice", "home-cash"] as const;
 const PLUS_TOOLS = ["spot", "hand", "ranges", "analysis", "turn", "river", "tournament", "icm", "history"] as const;
 
 export function workspaceFor(page: Page) {

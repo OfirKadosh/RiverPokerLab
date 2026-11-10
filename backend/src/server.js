@@ -6,6 +6,7 @@ require("dotenv").config(process.env.APP_ENV_FILE ? { path: process.env.APP_ENV_
 const {API_CONTRACT_VERSION}=require("@river-poker-lab/core");
 const {capabilities}=require("./capabilities");
 const Spot = require("./models/Spot");
+const { homeCashRoutes } = require("./homeCash/routes");
 const { bankrollRoutes } = require("./bankroll/routes");
 const { practiceRoutes } = require("./practice/routes");
 const {
@@ -25,7 +26,7 @@ const { createAuth, authConfig } = require("./auth");
 const { frontendDirectory, serveFrontend } = require("./hosting");
 const { computeForRequest, ComputeError, pool } = require("./compute/pool");
 const { SolverJobs, JobError } = require("./compute/solverJobs");
-function createApp({ bankrollStore, practiceProgress, auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
+function createApp({ bankrollStore, practiceProgress, homeCashStore, auth = createAuth(), frontendDir = null, databaseReady = () => mongoose.connection.readyState === 1, compute = computeForRequest, jobs = new SolverJobs({pool}) } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -51,6 +52,7 @@ function createApp({ bankrollStore, practiceProgress, auth = createAuth(), front
   app.use(express.json({ limit: "2mb" }));
   app.use("/api/auth", auth.router);
   app.use("/api", auth.middleware);
+  app.use("/api/home-cash", homeCashRoutes(homeCashStore));
   app.use("/api/bankroll", bankrollRoutes(bankrollStore));
   app.use("/api/practice", practiceRoutes(compute, practiceProgress));
 

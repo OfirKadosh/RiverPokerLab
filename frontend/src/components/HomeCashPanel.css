@@ -1,0 +1,16 @@
+.home-cash { display: grid; gap: 12px; }
+.home-cash-panel { padding: clamp(14px, 4vw, 24px); border: 1px solid var(--border); border-radius: 12px; }
+.home-cash-panel h2 { margin: 0 0 10px; }
+.home-cash-panel input { display: block; width: 100%; margin-top: 4px; }
+.home-cash-panel .field-label { display: block; margin-block: 8px; }
+.home-cash-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.home-cash-player-form, .home-cash-player, .home-cash-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.home-cash-player-form { align-items: end; margin-bottom: 12px; }
+.home-cash-player-form .field-label { flex: 1 1 180px; margin: 0; }
+.home-cash-player { justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.home-cash button { min-height: 44px; }
+.home-cash summary { cursor: pointer; padding-block: 12px; }
+.home-cash-log { list-style: none; padding: 0; }
+.home-cash-stack input { max-width: 220px; }
+.home-cash-gain { color: #a7e989; }
+.home-cash-loss { color: #ffaaa6; }

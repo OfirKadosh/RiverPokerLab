@@ -79,6 +79,7 @@ const TurnTreePanel = lazy(()=>import("./components/TurnTreePanel").then(m=>({de
 const RiverTreePanel = lazy(() => import("./components/RiverTreePanel").then(module => ({ default: module.RiverTreePanel })));
 
 const PracticePanel = lazy(() => import("./components/PracticePanel").then(({ PracticePanel }) => ({ default: PracticePanel })));
+const HomeCashPanel = lazy(() => import("./components/HomeCashPanel").then(({ HomeCashPanel }) => ({ default: HomeCashPanel })));
 const BankrollPanel = lazy(() => import("./components/BankrollPanel").then(({ BankrollPanel }) => ({ default: BankrollPanel })));
 
 const API = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
@@ -1355,6 +1356,7 @@ function App() {
             {page === "turn" && <TurnTreePanel icmState={turnIcm} setIcmState={setTurnIcm} api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active} />}
             {page === "river" && <RiverTreePanel icmState={riverIcm} setIcmState={setRiverIcm} blocked={turnJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "practice" && <PracticePanel />}
+            {page === "home-cash" && auth.user && <HomeCashPanel ownerId={auth.user.id} preview={auth.preview === true} />}
             {page === "bankroll" && <BankrollPanel preview={auth.preview === true} />}
             {page === "account" && <AccountPanel />}
             {page === "admin" && (auth.user?.role === "admin"

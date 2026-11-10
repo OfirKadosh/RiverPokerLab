@@ -2766,12 +2766,12 @@ select:disabled {
   box-shadow: none;
 }
 
-.main-navigation.light-tools { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.main-navigation.light-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .main-navigation.workspace-tools a { padding-inline: 4px; white-space: normal; text-align: center; }
 
 .light-tools-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
