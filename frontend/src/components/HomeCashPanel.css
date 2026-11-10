@@ -14,3 +14,4 @@
 .home-cash-stack input { max-width: 220px; }
 .home-cash-gain { color: #a7e989; }
 .home-cash-loss { color: #ffaaa6; }
+.home-cash-sync { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; }

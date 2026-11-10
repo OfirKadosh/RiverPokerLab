@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@river-poker-lab/core";
 import { apiClient } from "../lib/api";
 import { LoadingIndicator } from "./LoadingIndicator";
@@ -37,6 +37,7 @@ type Pending =
   | { gameId: string; body: Command & { id: string; version: number } };
 
 const currency = new Intl.NumberFormat("en-IL", { style: "currency", currency: "ILS" });
+const syncTime = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const money = (agorot: number) => currency.format(agorot / 100);
 const failure = (error: unknown) => error instanceof Error ? error.message : "The game is temporarily unavailable.";
 
@@ -67,7 +68,10 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [resumed, setResumed] = useState(false);
+  const [resumedId, setResumedId] = useState<string>();
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSynced, setLastSynced] = useState<Date>();
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [buyIn, setBuyIn] = useState("50");
   const [chips, setChips] = useState("100");
@@ -78,20 +82,51 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
   const readVersion = useRef(0);
   const alive = useRef(false);
 
-  async function load(signal?: AbortSignal) {
+  const load = useCallback(async (signal?: AbortSignal) => {
     const version = ++readVersion.current;
-    const data = await apiClient.request("/home-cash", { signal }) as Games;
-    if (alive.current && version === readVersion.current && !signal?.aborted) setGames(data);
-  }
+    const isCurrent = () => alive.current && version === readVersion.current && !signal?.aborted;
+    setRefreshing(true);
+    try {
+      const data = await apiClient.request("/home-cash", { signal }) as Games;
+      if (!isCurrent()) return;
+      setGames(data);
+      setLastSynced(new Date());
+      setRefreshError(null);
+    } catch (caught) {
+      if (isCurrent()) setRefreshError(failure(caught));
+    } finally {
+      if (isCurrent()) setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     alive.current = true;
     const controller = new AbortController();
-    void load(controller.signal).catch((caught) => {
-      if (!controller.signal.aborted && !inFlight.current) setError(failure(caught));
-    });
-    return () => { alive.current = false; controller.abort(); };
-  }, []);
+    function refresh() {
+      if (document.visibilityState !== "hidden" && !inFlight.current) {
+        setPending(savedOperation(prefix));
+        void load(controller.signal);
+      }
+    }
+    function syncPending(event: StorageEvent) {
+      if (!inFlight.current && (event.key === null || event.key.startsWith(prefix))) {
+        setPending(savedOperation(prefix));
+      }
+    }
+    void load(controller.signal);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("storage", syncPending);
+    return () => {
+      alive.current = false;
+      controller.abort();
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("storage", syncPending);
+    };
+  }, [load, prefix]);
 
   async function save(operation: Pending) {
     if (inFlight.current) return;
@@ -105,6 +140,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
     const retry = pending?.body.id === operation.body.id;
     inFlight.current = true;
     readVersion.current += 1;
+    setRefreshing(false);
     setPending(operation);
     setSaving(true);
     setNotice(null);
@@ -124,7 +160,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
       }) as { game: Game };
       forget();
       if (!alive.current) return;
-      setResumed(true);
+      setResumedId(data.game.id);
       if (operation.gameId && "type" in operation.body && operation.body.type === "add-player") setPlayerName("");
       if (data.game.status !== "active") {
         setClosing(false);
@@ -135,14 +171,16 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
         ? { active: data.game, recent: previous?.recent ?? null }
         : { active: null, recent: data.game.status === "closed" ? data.game : previous?.recent ?? null });
       setNotice("Saved.");
-      if (retry) await load().catch(() => {});
+      setLastSynced(new Date());
+      setRefreshError(null);
+      if (retry) await load();
     } catch (caught) {
       if (caught instanceof ApiError && [400, 404, 409].includes(caught.status) &&
           !["INVALID_RESPONSE", "ACCOUNT_CHANGED"].includes(caught.code ?? "")) {
         forget();
         if (alive.current) {
           setError(failure(caught));
-          await load().catch(() => {});
+          await load();
         }
       } else if (alive.current) {
         setError("Save not confirmed. Retry the same action when your connection returns.");
@@ -154,6 +192,13 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
   }
 
   const game = games?.active;
+  const gameId = game?.id;
+  useEffect(() => {
+    setClosing(false);
+    setDraft({});
+    setPlayerName("");
+  }, [gameId]);
+  const resumed = gameId !== undefined && resumedId === gameId;
   function act(command: Command) {
     if (!game || pending) return;
     void save({ gameId: game.id, body: { ...command, id: crypto.randomUUID(), version: game.version } });
@@ -174,22 +219,34 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
       {saving && <LoadingIndicator label="Saving game…" compact />}
       {notice && <p role="status" className="field-help">{notice}</p>}
       {error && <p role="alert" className="validation-note">{error}</p>}
+      {refreshError && (
+        <p role="status" className="validation-note">
+          {games ? "Could not refresh the game. Showing the last confirmed data." : refreshError}
+        </p>
+      )}
+      {games && (
+        <div className="home-cash-sync">
+          <span className="field-help" role="status">
+            {refreshing ? "Checking for updates…" : lastSynced ? `Last synced at ${syncTime.format(lastSynced)}` : ""}
+          </span>
+          <button className="text-button" disabled={saving || refreshing} onClick={() => void load()}>Refresh game</button>
+        </div>
+      )}
       {pending && !saving && (
         <div className="home-cash-panel">
           <p>A previous action is waiting for confirmation. Retrying it will not record it twice.</p>
           <button className="primary-button" onClick={() => void save(pending)}>Retry save</button>
         </div>
       )}
-      {!games && !error && <LoadingIndicator label="Loading your game…" />}
-      {!games && error && !pending && <button className="secondary-button" onClick={() => {
-        setError(null);
-        void load().catch((caught) => setError(failure(caught)));
-      }}>Reload game</button>}
+      {!games && refreshing && <LoadingIndicator label="Loading your game…" />}
+      {!games && refreshError && !pending && !refreshing && (
+        <button className="secondary-button" onClick={() => void load()}>Reload game</button>
+      )}
       {game && !resumed && (
         <section className="home-cash-panel">
           <h2>{game.name}</h2>
           <p>{game.players.length} players · {money(entries.length * game.buyIn)} collected</p>
-          <button className="primary-button" disabled={busy} onClick={() => setResumed(true)}>Resume game</button>
+          <button className="primary-button" disabled={busy} onClick={() => setResumedId(game.id)}>Resume game</button>
         </section>
       )}
       {games && !game && (
