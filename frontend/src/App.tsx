@@ -34,7 +34,7 @@ import "./App.css";
 import { useRiverJob } from "./hooks/useRiverJob";
 import { RiverJobStatus } from "./components/RiverJobStatus";
 import { createRiverWorkspace, createTurnWorkspace } from "./lib/riverTree";
-import { PAGES, usePage } from "./lib/navigation";
+import { LIGHT_TOOLS, PAGES, usePage, workspaceFor } from "./lib/navigation";
 import {
   createIcmWorkspace,
   createTournamentDraft,
@@ -95,6 +95,8 @@ function App() {
   const { page, navigate } = usePage();
   const pageInfo = PAGES.find((item) => item.id === page)!;
   const isQuick = page === "quick";
+  const workspace = workspaceFor(page);
+  const tools = PAGES.filter((item) => item.id !== "light" && workspaceFor(item.id) === workspace && workspace !== null);
   const hasTable = ["spot", "hand", "analysis"].includes(page);
   const [riverIcm,setRiverIcm]=useState(createTournamentWorkspace);
   const [turnIcm,setTurnIcm]=useState(createTournamentWorkspace);
@@ -635,7 +637,7 @@ function App() {
 
   function openQuickHand(game: GameType, players: Seat[], community: (string | null)[]) {
     if (workspaceSnapshot !== initialWorkspace.current &&
-        !window.confirm("Replace the current Advanced Workspace draft with this hand? Saved history is kept.")) {
+        !window.confirm("Replace the current Plus draft with this hand? Saved history is kept.")) {
       return;
     }
     resetSpot();
@@ -700,7 +702,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#/quick" aria-label="River Poker Lab home">
+        <a className="brand" href="#/light" aria-label="River Poker Lab home">
           <span className="brand-mark">♠</span>
           <span>
             RIVER<small>POKER LAB</small>
@@ -711,25 +713,24 @@ function App() {
             {auth.user?.username}
           </a>
           <AccountSwitch />
-          <span className="workspace-tag">EQUITY WORKSPACE</span>
+          {auth.user?.role === "admin" && <a className="account-link" href="#/admin">Admin</a>}
           <span className="build-badge">BETA</span>
         </div>
       </header>
-      <nav ref={navigationRef} className={`main-navigation${isQuick ? " quick-navigation" : ""}`} aria-label="Main navigation">
-        {isQuick ? (
-          <>
-            <a href="#/quick" aria-current="page">Quick Equity</a>
-            <a href="#/spot">Advanced Workspace →</a>
-          </>
-        ) : PAGES.filter(item => item.id !== "admin" || auth.user?.role === "admin").map((item) => (
-          <a
-            key={item.id}
-            href={`#/${item.id}`}
-            aria-current={page === item.id ? "page" : undefined}
-          >
-            {item.label}
-          </a>
-        ))}
+      <nav ref={navigationRef} className="workspace-navigation" aria-label="Main navigation">
+        <div className="workspace-switcher" role="group" aria-label="Workspaces">
+          <a href="#/light" className={workspace === "light" ? "active" : undefined} aria-current={page === "light" ? "page" : undefined}>Light</a>
+          <a href="#/spot" className={workspace === "plus" ? "active" : undefined} aria-current={page === "spot" ? "page" : undefined}>Plus</a>
+        </div>
+        {page !== "light" && tools.length > 0 && (
+          <div className={`main-navigation workspace-tools ${workspace}-tools`} role="group" aria-label={workspace === "light" ? "Light tools" : "Plus tools"}>
+            {tools.map((item) => (
+              <a key={item.id} href={`#/${item.id}`} aria-current={page === item.id ? "page" : undefined}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+        )}
       </nav>
       {riverJob.job && page !== "river" && <RiverJobStatus controller={riverJob} onOpen={()=>navigate("river")} />}
       {turnJob.job && page !== "turn" && <RiverJobStatus kind="turn" controller={turnJob} onOpen={()=>navigate("turn")} />}
@@ -747,6 +748,20 @@ function App() {
               <p>{pageInfo.description}</p>
             </div>
           </div>
+        )}
+        {page === "light" && (
+          <section className="light-tools-grid" aria-label="Get started with Light">
+            {LIGHT_TOOLS.map((tool) => {
+              const item = PAGES.find((entry) => entry.id === tool)!;
+              return (
+                <a key={tool} className="light-tool" href={`#/${tool}`}>
+                  <h2>{item.label}</h2>
+                  <p>{item.description}</p>
+                  <span aria-hidden="true">→</span>
+                </a>
+              );
+            })}
+          </section>
         )}
         {hasTable && (
           <section
@@ -869,7 +884,7 @@ function App() {
             </div>
           </section>
         )}
-        <aside className="sidebar" aria-label={`${pageInfo.label} controls`}>
+        {page !== "light" && <aside className="sidebar" aria-label={`${pageInfo.label} controls`}>
           <PageTransition view={page} label={pageInfo.label}>
           <Suspense
             fallback={
@@ -1416,7 +1431,7 @@ function App() {
           <footer className="sidebar-footer">
             <span className="live-dot" /> TEXAS HOLD’EM & OMAHA HIGH
           </footer>
-        </aside>
+        </aside>}
       </main>}
       <footer className="app-footer">
         <span>RIVER / POKER LAB</span>

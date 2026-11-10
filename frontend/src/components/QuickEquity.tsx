@@ -211,7 +211,7 @@ export function QuickEquity({ active, api, onOpenAdvanced }: Props) {
           </div>
           <div className="quick-next">
             <button type="button" className="text-button quick-advanced" onClick={() => onOpenAdvanced(game, players, board)}>
-              Open this hand in Advanced Workspace →
+              Open this hand in Plus →
             </button>
             <button type="button" className="text-button quick-advanced" onClick={() => {
               clearResult();

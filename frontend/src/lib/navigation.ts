@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 export const PAGES = [
   {
+    id: "light",
+    label: "Light",
+    description: "Check a hand, track your results, or practice a poker decision.",
+  },
+  {
     id: "quick",
     label: "Quick Equity",
     description: "See how much of the pot each hand is expected to win.",
@@ -53,9 +58,18 @@ export const PAGES = [
   },
 ] as const;
 export type Page = (typeof PAGES)[number]["id"];
+export const LIGHT_TOOLS = ["quick", "bankroll", "practice"] as const;
+const PLUS_TOOLS = ["spot", "hand", "ranges", "analysis", "turn", "river", "tournament", "icm", "history"] as const;
+
+export function workspaceFor(page: Page) {
+  if (page === "light" || LIGHT_TOOLS.some((tool) => tool === page)) return "light";
+  if (PLUS_TOOLS.some((tool) => tool === page)) return "plus";
+  return null;
+}
+
 function currentPage(): Page {
   const value = window.location.hash.replace(/^#\/?/, "");
-  return PAGES.some((page) => page.id === value) ? (value as Page) : "quick";
+  return PAGES.some((page) => page.id === value) ? (value as Page) : "light";
 }
 export function usePage() {
   const [page, setPage] = useState<Page>(currentPage);

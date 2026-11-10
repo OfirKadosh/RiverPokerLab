@@ -1,16 +1,3 @@
-.main-navigation.quick-navigation {
-  display: flex;
-  justify-content: space-between;
-  min-height: 0;
-  gap: 4px;
-}
-
-.main-navigation.quick-navigation a {
-  padding-inline: 10px;
-  white-space: normal;
-  text-align: center;
-}
-
 .quick-equity {
   width: min(100% - 32px, 720px);
   margin: clamp(24px, 5vw, 64px) auto;
