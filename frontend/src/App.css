@@ -14,6 +14,8 @@
   --border: #2b3b35;
   --surface: #17231f;
   --red: #f08080;
+  --field-height: 44px;
+  --field-font-size: 16px;
   color-scheme: dark;
 }
 * {
@@ -25,7 +27,8 @@ body {
 }
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 button {
@@ -38,7 +41,8 @@ button:disabled {
 }
 button,
 input,
-select {
+select,
+textarea {
   -webkit-tap-highlight-color: transparent;
 }
 button:focus-visible,
@@ -48,7 +52,8 @@ summary:focus-visible {
   outline-offset: 4px;
 }
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid #95c979;
   outline-offset: 1px;
 }
@@ -68,20 +73,58 @@ h3,
 p {
   margin: 0;
 }
-input,
-select {
+:is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
+  display: block;
+  box-sizing: border-box;
   width: 100%;
-  background: #101b17;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 12px;
   border: 1px solid #3a4b41;
   border-radius: 7px;
-  padding: 11px 12px;
+  background-color: #101b17;
   color: #edf4ef;
-  min-height: 44px;
-  font-size: 14px;
+  font-family: inherit;
+  font-size: var(--field-font-size);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: normal;
 }
-select {
-  margin-top: 8px;
+
+:is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select) {
+  height: var(--field-height);
+  min-height: var(--field-height);
 }
+
+select,
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+select:not([multiple]) {
+  padding-inline-end: 34px;
+  background-image: linear-gradient(45deg, transparent 50%, #a6b8a9 50%),
+    linear-gradient(135deg, #a6b8a9 50%, transparent 50%);
+  background-position: right 17px center, right 12px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+input[type="date"] {
+  text-align: start;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  margin: 0;
+  text-align: start;
+}
+
+textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
 input[type="checkbox"],
 input[type="radio"] {
   width: 17px;
@@ -693,15 +736,12 @@ input[type="radio"] {
 .field-label {
   display: block;
   color: #a6b8a9;
-  font-size: 9px;
-  letter-spacing: 1px;
+  font-size: 12px;
+  letter-spacing: .025em;
   font-weight: 600;
 }
-.field-label input {
-  display: block;
+.field-label > :is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
   margin-top: 8px;
-  letter-spacing: normal;
-  font-weight: 400;
 }
 .field-pair {
   display: grid;
@@ -1685,18 +1725,10 @@ input[type="radio"] {
   margin-top: 18px;
 }
 .range-editor textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 74px;
-  margin-top: 8px;
-  padding: 12px;
-  background: #101c15;
+  background-color: #101c15;
   border: 1px solid #4b6445;
   border-radius: 7px;
   color: #e3eddb;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
 }
 .range-editor textarea:focus-visible {
   outline: 2px solid var(--accent);
@@ -1801,9 +1833,6 @@ input[type="radio"] {
   .range-cell {
     height: 32px;
     font-size: 9px;
-  }
-  .range-editor textarea {
-    font-size: 16px;
   }
   .seat-range-badge {
     min-height: 37px;
@@ -2075,7 +2104,8 @@ input[type="radio"] {
   opacity: 0.6;
 }
 input:disabled,
-select:disabled {
+select:disabled,
+textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -2086,12 +2116,8 @@ select:disabled {
   margin: 16px 0;
 }
 .analysis-settings select {
-  width: 100%;
-  max-width: 100%;
-  padding: 10px;
-  border: 1px solid #34434b;
-  border-radius: 8px;
-  background: #14212a;
+  border-color: #34434b;
+  background-color: #14212a;
   color: #edf4f5;
 }
 .outcome-panel section {
@@ -2157,17 +2183,10 @@ select:disabled {
   margin: 18px 0 8px;
 }
 .icm-panel textarea {
-  display: block;
-  width: 100%;
-  max-width: 100%;
   margin-top: 8px;
-  resize: vertical;
-  padding: 10px;
-  border: 1px solid #34534c;
-  border-radius: 8px;
+  border-color: #34534c;
   color: #edf4f5;
-  background: #14212a;
-  font: inherit;
+  background-color: #14212a;
 }
 .icm-confirm {
   display: flex;
@@ -2413,6 +2432,9 @@ select:disabled {
   display: grid;
   gap: 8px;
 }
+.auth-card .field-label > :is(input, select, textarea) {
+  margin-top: 0;
+}
 .auth-tabs {
   display: flex;
   gap: 8px;
@@ -2642,7 +2664,7 @@ select:disabled {
 .tournament-comparison fieldset { min-width: 0; border: 1px solid #43534c; border-radius: 10px; }
 .icm-weight-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
 .icm-outside-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:.7rem; align-items:end; margin:1rem 0; }
-.tournament-comparison textarea { width:100%; max-width:100%; box-sizing:border-box; color:inherit; background:#15251e; padding:.7rem; border:1px solid #43534c; }
+.tournament-comparison textarea { background-color:#15251e; border-color:#43534c; }
 .icm-computing { display:flex; gap:.7rem; align-items:center; }
 .icm-spinner { width:18px; height:18px; border:2px solid #43534c; border-top-color:#cceaa4; border-radius:50%; animation:icm-spin .7s linear infinite; flex-shrink:0; }
 @keyframes icm-spin { to { transform:rotate(360deg); } }

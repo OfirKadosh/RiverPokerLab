@@ -1,7 +1,6 @@
 .home-cash { display: grid; gap: 12px; }
 .home-cash-panel { padding: clamp(14px, 4vw, 24px); border: 1px solid var(--border); border-radius: 12px; }
 .home-cash-panel h2 { margin: 0 0 10px; }
-.home-cash-panel input { display: block; width: 100%; margin-top: 4px; }
 .home-cash-panel .field-label { display: block; margin-block: 8px; }
 .home-cash-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .home-cash-player-form, .home-cash-player, .home-cash-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
