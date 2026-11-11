@@ -64,6 +64,40 @@ test("Settles mixed standard and custom buy-ins including old entries and correc
   ]);
 });
 
+test("Cash-outs remove chips from play, preserve rounding and are safe to retry or correct", () => {
+  const now = new Date();
+  let game = createGame("owner", {
+    id: randomUUID(), name: "Early cash-outs", buyIn: 1, chipsPerBuyIn: 3,
+  }, now);
+  delete game.cashOuts; // A game already open before this feature.
+  function act(command) {
+    const operation = { id: randomUUID(), version: game.version, ...command };
+    game = applyCommand(game, operation, now);
+    return operation;
+  }
+  const dana = act({ type: "add-player", name: "Dana" }).id;
+  const ron = act({ type: "add-player", name: "Ron" }).id;
+  const tal = act({ type: "add-player", name: "Tal" }).id;
+  const entries = [dana, ron, tal].map((playerId) => act({ type: "entry", playerId }));
+  assert.throws(() => act({ type: "cash-out", playerId: dana, chips: 10 }), /outstanding total/);
+  const early = act({ type: "cash-out", playerId: dana, chips: 2 });
+  assert.equal(applyCommand(game, early, now), game);
+  assert.throws(() => act({ type: "entry", playerId: dana }), /already cashed out/);
+  assert.throws(() => act({ type: "void-entry", entryId: entries[0].id }), /cash-out before correcting/);
+  act({ type: "void-cash-out", cashOutId: early.id });
+  assert.equal(game.cashOuts[0].voided, true);
+  act({ type: "cash-out", playerId: dana, chips: 2 });
+  act({ type: "cash-out", playerId: ron, chips: 4 });
+  assert.throws(() => act({ type: "cash-out", playerId: tal, chips: 2 }), /last player/);
+  assert.throws(() => act({ type: "close", stacks: { [tal]: 2 } }), /does not balance/);
+  const closed = act({ type: "close", stacks: { [tal]: 3 } });
+  assert.equal(applyCommand(game, closed, now), game);
+  assert.equal(game.settlement.collected, 3);
+  assert.deepEqual(game.settlement.players.map(({ chips, payout, cashOutPaid, profit }) => [chips, payout, cashOutPaid, profit]), [
+    [2, 1, 0, 0], [4, 1, 1, 0], [3, 1, undefined, 0],
+  ]);
+});
+
 test("Mongo updates compare the game version and scope replacement to its owner", async () => {
   const store = mongoHomeCashStore({
     async replaceOne(filter, next) {

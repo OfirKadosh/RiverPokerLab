@@ -13,6 +13,7 @@ const gameSchema = new mongoose.Schema({
   createdAt: { type: Date, required: true },
   players: [mongoose.Schema.Types.Mixed],
   entries: [mongoose.Schema.Types.Mixed],
+  cashOuts: [mongoose.Schema.Types.Mixed],
   operations: [mongoose.Schema.Types.Mixed],
   settlement: mongoose.Schema.Types.Mixed,
 }, { versionKey: false });

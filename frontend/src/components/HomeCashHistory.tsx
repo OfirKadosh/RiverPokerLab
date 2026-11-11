@@ -9,6 +9,7 @@ interface Result {
   chips: number;
   paid: number;
   payout: number;
+  cashOutPaid?: number;
   profit: number;
 }
 
@@ -39,16 +40,22 @@ const dateLabel = (date: string) => closedDate.format(new Date(date));
 export function HomeCashResults({ name, closedAt, settlement, latest = false }: Omit<ClosedGame, "id"> & { latest?: boolean }) {
   const [copyStatus, setCopyStatus] = useState<"copied" | "manual" | null>(null);
   const [showTransfers, setShowTransfers] = useState(false);
-  const transfers = showTransfers ? suggestedTransfers(settlement.players) : null;
+  const paidEarly = settlement.players.reduce((total, row) => total + (row.cashOutPaid ?? 0), 0);
+  const hasCashOuts = settlement.players.some((row) => row.cashOutPaid !== undefined);
+  const transfers = showTransfers && paidEarly === 0 ? suggestedTransfers(settlement.players) : null;
   const transferLines = transfers?.map(({ from, to, amount }) => `${from.name} pays ${to.name} ${money(amount)}`);
   const heading = latest ? `Latest results · ${name}` : name;
   const summary = [
     `Home Cash Game · ${name}`,
     dateLabel(closedAt),
     `Total buy-ins: ${money(settlement.collected)}`,
+    ...(hasCashOuts ? [`Paid early: ${money(paidEarly)} · Left to pay: ${money(settlement.collected - paidEarly)}`] : []),
     "",
-    ...settlement.players.map((player) =>
-      `${player.name} · Paid ${money(player.paid)} · Gets ${money(player.payout)} · Net ${net(player.profit)}`),
+    ...settlement.players.map((player) => {
+      const result = `${player.name} · Paid ${money(player.paid)} · Gets ${money(player.payout)} · Net ${net(player.profit)}`;
+      return player.cashOutPaid === undefined ? result :
+        `${result} · Already paid ${money(player.cashOutPaid)} · Still due ${money(player.payout - player.cashOutPaid)}`;
+    }),
     ...(transferLines?.length ? ["", "Suggested transfers for end-of-game settlement", ...transferLines] : []),
   ].join("\n");
 
@@ -66,18 +73,25 @@ export function HomeCashResults({ name, closedAt, settlement, latest = false }: 
       <h2>{heading}</h2>
       <p className="field-help">{dateLabel(closedAt)}</p>
       <p>{money(settlement.collected)} in buy-ins · {settlement.issuedChips.toLocaleString()} chips returned</p>
+      {hasCashOuts && <p className="field-help">
+        {money(paidEarly)} paid early · {money(settlement.collected - paidEarly)} left to pay
+      </p>}
       {settlement.players.map((row) => (
         <div className="home-cash-player" key={row.id}>
           <div>
             <strong>{row.name}</strong><br />
             <span className="field-help">{row.chips.toLocaleString()} chips · Paid {money(row.paid)} · Gets {money(row.payout)}</span>
+            {row.cashOutPaid !== undefined && <>
+              <br />
+              <span className="field-help">Already paid {money(row.cashOutPaid)} · Still due {money(row.payout - row.cashOutPaid)}</span>
+            </>}
           </div>
           <strong className={row.profit > 0 ? "home-cash-gain" : row.profit < 0 ? "home-cash-loss" : undefined}>
             {net(row.profit)}
           </strong>
         </div>
       ))}
-      <div className="home-cash-transfers">
+      {paidEarly === 0 && <div className="home-cash-transfers">
         <label className="home-cash-transfer-toggle">
           <input type="checkbox" checked={showTransfers} onChange={(event) => {
             setShowTransfers(event.target.checked);
@@ -97,7 +111,7 @@ export function HomeCashResults({ name, closedAt, settlement, latest = false }: 
             )}
           </>
         )}
-      </div>
+      </div>}
       <button className="secondary-button" onClick={() => void copy()}>Copy results</button>
       {copyStatus === "copied" && <p className="field-help" role="status">Copied. Paste the results into WhatsApp or another chat.</p>}
       {copyStatus === "manual" && (

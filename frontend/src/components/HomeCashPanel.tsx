@@ -7,6 +7,7 @@ import type { Settlement } from "./HomeCashHistory";
 import "./HomeCashPanel.css";
 
 interface Player { id: string; name: string }
+interface CashOut { id: string; playerId: string; chips: number; amount: number; at: string; voided: boolean }
 interface Entry {
   id: string;
   playerId: string;
@@ -25,6 +26,7 @@ interface Game {
   version: number;
   players: Player[];
   entries: Entry[];
+  cashOuts?: CashOut[];
   updatedAt: string;
   settlement: Settlement | null;
 }
@@ -35,6 +37,8 @@ type Command =
   | { type: "add-player"; name: string }
   | { type: "remove-player"; playerId: string }
   | { type: "entry"; playerId: string; amount?: number }
+  | { type: "cash-out"; playerId: string; chips: number }
+  | { type: "void-cash-out"; cashOutId: string }
   | { type: "void-entry"; entryId: string }
   | { type: "close"; stacks: Record<string, number> };
 type Pending =
@@ -80,6 +84,8 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
   const [chips, setChips] = useState("100");
   const [playerName, setPlayerName] = useState("");
   const [customPlayerId, setCustomPlayerId] = useState<string>();
+  const [cashOutPlayerId, setCashOutPlayerId] = useState<string>();
+  const [cashOutChips, setCashOutChips] = useState("");
   const [customAmount, setCustomAmount] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -170,6 +176,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
       if (operation.gameId && "type" in operation.body) {
         if (operation.body.type === "add-player") setPlayerName("");
         if (operation.body.type === "entry") setCustomPlayerId(undefined);
+        if (operation.body.type === "cash-out") setCashOutPlayerId(undefined);
       }
       if (data.game.status !== "active") {
         setClosing(false);
@@ -207,6 +214,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
     setDraft({});
     setPlayerName("");
     setCustomPlayerId(undefined);
+    setCashOutPlayerId(undefined);
   }, [gameId]);
   const resumed = gameId !== undefined && resumedId === gameId;
   function act(command: Command) {
@@ -227,11 +235,26 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
     issued += entry.chips;
   }
   const funded = game?.players.filter((player) => playerTotals.has(player.id)) ?? [];
+  const cashOuts = game?.cashOuts ?? [];
+  const paidCashOuts = new Map(cashOuts.filter((cashOut) => !cashOut.voided).map((cashOut) => [cashOut.playerId, cashOut]));
+  const playing = funded.filter((player) => !paidCashOuts.has(player.id));
+  let returned = 0;
+  let paidOut = 0;
+  for (const cashOut of paidCashOuts.values()) {
+    returned += cashOut.chips;
+    paidOut += cashOut.amount;
+  }
+  const outstanding = issued - returned;
+  const enteredCashOutChips = Number(cashOutChips);
+  const validCashOut = /^\d+$/.test(cashOutChips) && enteredCashOutChips <= outstanding &&
+    (playing.length > 1 || enteredCashOutChips === outstanding);
+  const cashOutAmount = game ? Math.floor(enteredCashOutChips * game.buyIn / game.chipsPerBuyIn) : 0;
+  const cashOutNeedsRounding = game ? enteredCashOutChips * game.buyIn % game.chipsPerBuyIn !== 0 : false;
   const amount = buyInAmount(customAmount);
   const customChips = game ? (amount * game.chipsPerBuyIn) / game.buyIn : 0;
   const validCustomEntry = amount <= 1_000_000 && Number.isSafeInteger(customChips) && customChips > 0;
-  const complete = funded.every(({ id }) => /^\d+$/.test(draft[id] ?? "") && Number(draft[id]) <= issued);
-  const entered = funded.reduce((total, { id }) => total + (Number(draft[id]) || 0), 0);
+  const complete = playing.every(({ id }) => /^\d+$/.test(draft[id] ?? "") && Number(draft[id]) <= outstanding);
+  const entered = playing.reduce((total, { id }) => total + (Number(draft[id]) || 0), 0);
   const busy = !!pending || saving;
 
   return (
@@ -303,6 +326,9 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
             <h2>{game.name}</h2>
             <p>{money(game.buyIn)} = {game.chipsPerBuyIn.toLocaleString()} chips per buy-in</p>
             <p><strong>{money(collected)} collected</strong> · {issued.toLocaleString()} chips issued</p>
+            {paidCashOuts.size > 0 && <p className="field-help">
+              {money(paidOut)} paid early · {money(collected - paidOut)} left to pay · {outstanding.toLocaleString()} chips still in play
+            </p>}
             {game.entries.length === 0 && (
               <details>
                 <summary>Edit game settings</summary>
@@ -346,19 +372,52 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
             {game.players.map((player) => {
               const { count, paid } = playerTotals.get(player.id) ?? { count: 0, paid: 0 };
               const action = count ? "Rebuy" : "Buy in";
+              const cashOut = paidCashOuts.get(player.id);
               return (
                 <div className="home-cash-player" key={player.id}>
                   <div><strong>{player.name}</strong><br /><span className="field-help">{count} {count === 1 ? "entry" : "entries"} · {money(paid)}</span></div>
-                  <div className="home-cash-actions">
+                  {cashOut ? (
+                    <span className="field-help">Cashed out {money(cashOut.amount)} · {cashOut.chips.toLocaleString()} chips returned</span>
+                  ) : <div className="home-cash-actions">
                     {!count && <button className="text-button" disabled={busy || closing} aria-label={`Remove ${player.name}`} onClick={() => act({ type: "remove-player", playerId: player.id })}>Remove</button>}
                     <button className="secondary-button" disabled={busy || closing} aria-label={`${action} for ${player.name}`} onClick={() => act({ type: "entry", playerId: player.id })}>{action} · {money(game.buyIn)}</button>
                     <button className="text-button" disabled={busy || closing} aria-label={`Custom amount for ${player.name}`}
                       aria-expanded={customPlayerId === player.id && !closing} onClick={() => {
                         setCustomPlayerId(customPlayerId === player.id ? undefined : player.id);
                         setCustomAmount("");
+                        setCashOutPlayerId(undefined);
                       }}>Custom amount</button>
-                  </div>
-                  {customPlayerId === player.id && !closing && (
+                    {count > 0 && funded.length >= 2 && (
+                      <button className="text-button" disabled={busy || closing} aria-label={`Cash out ${player.name}`}
+                        aria-expanded={cashOutPlayerId === player.id && !closing} onClick={() => {
+                          setCashOutPlayerId(cashOutPlayerId === player.id ? undefined : player.id);
+                          setCashOutChips("");
+                          setCustomPlayerId(undefined);
+                        }}>Cash out</button>
+                    )}
+                  </div>}
+                  {cashOutPlayerId === player.id && !cashOut && !closing && (
+                    <form className="home-cash-custom-entry" onSubmit={(event) => {
+                      event.preventDefault();
+                      if (!busy && validCashOut && window.confirm(`Record ${money(cashOutAmount)} paid to ${player.name}?`)) {
+                        act({ type: "cash-out", playerId: player.id, chips: enteredCashOutChips });
+                      }
+                    }}>
+                      <label className="field-label">Chips returned by {player.name}
+                        <input required type="number" min={0} max={outstanding} step={1} inputMode="numeric"
+                          value={cashOutChips} onChange={(event) => setCashOutChips(event.target.value)} />
+                      </label>
+                      <p className="field-help" aria-live="polite">
+                        {validCashOut ? `Pay now ${money(cashOutAmount)}` :
+                          playing.length === 1 ? `The last player returns all ${outstanding.toLocaleString()} chips.` :
+                            `Enter up to ${outstanding.toLocaleString()} whole chips, including zero.`}
+                      </p>
+                      {validCashOut && cashOutNeedsRounding &&
+                        <p className="field-help">The early payment rounds down to the agora. Any rounding adjustment appears in the final results.</p>}
+                      <button className="primary-button" disabled={busy || !validCashOut}>Record cash-out</button>
+                    </form>
+                  )}
+                  {customPlayerId === player.id && !cashOut && !closing && (
                     <form className="home-cash-custom-entry" onSubmit={(event) => {
                       event.preventDefault();
                       if (validCustomEntry) act({ type: "entry", playerId: player.id, amount });
@@ -385,9 +444,26 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
                   {[...game.entries].reverse().map((entry) => (
                     <li key={entry.id} className="home-cash-player">
                       <span>{game.players.find((player) => player.id === entry.playerId)?.name ?? "Removed player"} · {entry.kind === "rebuy" ? "Rebuy" : "Buy-in"} · {money(entry.amount)} · {entry.chips.toLocaleString()} chips · {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{entry.voided ? " · Corrected" : ""}</span>
-                      {!entry.voided && <button className="text-button" disabled={busy || closing} onClick={() => {
+                      {!entry.voided && <button className="text-button" disabled={busy || closing || paidCashOuts.has(entry.playerId)} onClick={() => {
                         if (window.confirm("Undo this entry? The chip and cash totals will be updated.")) act({ type: "void-entry", entryId: entry.id });
                       }}>Undo entry</button>}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+            {cashOuts.length > 0 && (
+              <details>
+                <summary>Cash-out log and corrections</summary>
+                <ol className="home-cash-log">
+                  {[...cashOuts].reverse().map((cashOut) => (
+                    <li key={cashOut.id} className="home-cash-player">
+                      <span>{game.players.find((player) => player.id === cashOut.playerId)?.name ?? "Removed player"} · {cashOut.chips.toLocaleString()} chips · {money(cashOut.amount)} · {syncTime.format(new Date(cashOut.at))}{cashOut.voided ? " · Corrected" : ""}</span>
+                      {!cashOut.voided && <button className="text-button" disabled={busy || closing} onClick={() => {
+                        if (window.confirm("Undo this cash-out after reversing any payment to the player?")) {
+                          act({ type: "void-cash-out", cashOutId: cashOut.id });
+                        }
+                      }}>Undo cash-out</button>}
                     </li>
                   ))}
                 </ol>
@@ -408,23 +484,23 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
             {closing && (
               <form onSubmit={(event) => {
                 event.preventDefault();
-                if (busy || !complete || entered !== issued || funded.length < 2) return;
+                if (busy || !complete || entered !== outstanding || funded.length < 2) return;
                 if (window.confirm("Close this game and save the final results?")) {
-                  act({ type: "close", stacks: Object.fromEntries(funded.map(({ id }) => [id, Number(draft[id])])) });
+                  act({ type: "close", stacks: Object.fromEntries(playing.map(({ id }) => [id, Number(draft[id])])) });
                 }
               }}>
-                {funded.map((player) => (
+                {playing.map((player) => (
                   <label className="field-label home-cash-stack" key={player.id}>Final chips for {player.name}
-                    <input required inputMode="numeric" type="number" min={0} max={issued} step={1}
+                    <input required inputMode="numeric" type="number" min={0} max={outstanding} step={1}
                       value={draft[player.id] ?? ""} onChange={(event) => setDraft({ ...draft, [player.id]: event.target.value })} />
                   </label>
                 ))}
-                <p aria-live="polite" className={entered === issued ? "field-help" : "validation-note"}>
-                  {entered.toLocaleString()} of {issued.toLocaleString()} chips entered.
-                  {complete && entered !== issued && ` Difference: ${(entered - issued).toLocaleString()} chips.`}
+                <p aria-live="polite" className={entered === outstanding ? "field-help" : "validation-note"}>
+                  {entered.toLocaleString()} of {outstanding.toLocaleString()} outstanding chips entered.
+                  {complete && entered !== outstanding && ` Difference: ${(entered - outstanding).toLocaleString()} chips.`}
                 </p>
                 <div className="home-cash-actions">
-                  <button className="primary-button" disabled={busy || !complete || entered !== issued || funded.length < 2}>Save results and close</button>
+                  <button className="primary-button" disabled={busy || !complete || entered !== outstanding || funded.length < 2}>Save results and close</button>
                   <button type="button" className="text-button" disabled={busy} onClick={() => setClosing(false)}>Back to game</button>
                 </div>
               </form>
