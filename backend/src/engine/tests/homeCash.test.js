@@ -55,7 +55,8 @@ test("HTTP flow resumes an owner's game and guards duplicate, concurrent, and cr
     config: { secret: "test-only-home-cash-secret", origins: [], secure: false, cookieName: "river_session" },
     delivery: { config: { channels: ["email"] }, async send() {} },
   });
-  const server = createApp({ auth, homeCashStore: memoryHomeCashStore() }).listen(0, "127.0.0.1");
+  const homeCashStore = memoryHomeCashStore();
+  const server = createApp({ auth, homeCashStore }).listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const base = `http://127.0.0.1:${server.address().port}/api`;
@@ -120,4 +121,38 @@ test("HTTP flow resumes an owner's game and guards duplicate, concurrent, and cr
     [10000, 14000, 4000], [5000, 1000, -4000],
   ]);
   assert.equal((await (await call(path, bob)).json()).recent, null);
+
+  const history = `${path}/history`;
+  const details = `${history}/${newGame.id}`;
+  assert.equal((await call(history)).status, 401);
+  assert.equal((await call(details, bob)).status, 404);
+  assert.equal((await call(`${history}?before=invalid`, alice)).status, 400);
+  const saved = await (await call(details, alice)).json();
+  assert.deepEqual(saved.game.settlement, closed.recent.settlement);
+  assert.equal(saved.game.entries, undefined);
+  assert.equal(saved.game.ownerId, undefined);
+  const owner = [...accounts.users.values()].find((account) => account.username === "Alice");
+  const older = [];
+  for (let index = 0; index < 23; index += 1) {
+    const id = randomUUID();
+    const date = new Date("2025-01-01T12:00:00.000Z");
+    await homeCashStore.insert({
+      ...createGame(String(owner._id), { ...newGame, id }, date),
+      status: "closed", settlement: closed.recent.settlement,
+    });
+    older.push(id);
+  }
+  const activeId = randomUUID();
+  assert.equal((await call(path, alice, { ...newGame, id: activeId })).status, 201);
+  assert.equal((await call(`${history}/${activeId}`, alice)).status, 404);
+  const firstPage = await (await call(history, alice)).json();
+  assert.equal(firstPage.games.length, 20);
+  assert.equal(firstPage.games[0].id, newGame.id);
+  assert(firstPage.next);
+  const secondPage = await (await call(`${history}?before=${encodeURIComponent(firstPage.next)}`, alice)).json();
+  assert.equal(secondPage.next, null);
+  assert.deepEqual([...firstPage.games, ...secondPage.games].map((game) => game.id), [
+    newGame.id, ...older.sort().reverse(),
+  ]);
+  assert.deepEqual((await (await call(history, bob)).json()).games, []);
 });

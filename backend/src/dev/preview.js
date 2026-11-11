@@ -27,6 +27,7 @@ function createPreviewApp(env = process.env) {
     const localJob = req.path === '/api/river-jobs' && ['POST','GET'].includes(req.method) || /^\/api\/river-jobs\/[a-zA-Z0-9-]+$/.test(req.path) && ['GET','DELETE'].includes(req.method);
     const practice = req.method === 'POST' && /^\/api\/practice\/spots(?:\/[0-9a-f-]{36}\/answer)?$/.test(req.path);
     const homeCash = ['GET', 'POST'].includes(req.method) && req.path === '/api/home-cash' ||
+      req.method === 'GET' && /^\/api\/home-cash\/history(?:\/[0-9a-f-]{36})?$/.test(req.path) ||
       req.method === 'POST' && /^\/api\/home-cash\/[0-9a-f-]{36}\/actions$/.test(req.path);
     const permitted = homeCash || localJob || practice || req.method === 'GET' && ['/api/auth/me','/api/auth/config','/api/capabilities','/api/bankroll','/api/practice/progress'].includes(req.path) ||
       req.method === 'POST' && ['/api/calculate','/api/icm','/api/analyze-decision','/api/ranges/preview','/api/river-tree','/api/river-solve','/api/tournament-tree'].includes(req.path);

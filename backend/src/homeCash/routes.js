@@ -2,6 +2,19 @@ const { Router } = require("express");
 const { GameError, uuid, createGame, applyCommand, publicGame } = require("./game");
 const { mongoHomeCashStore } = require("./store");
 
+const HISTORY_PAGE_SIZE = 20;
+
+function historyCursor(raw) {
+  if (raw === undefined) return null;
+  const [date, _id, extra] = typeof raw === "string" ? raw.split("|") : [];
+  const updatedAt = new Date(date);
+  if (extra !== undefined || !uuid.test(_id) || !Number.isFinite(updatedAt.getTime()) ||
+      updatedAt.toISOString() !== date) {
+    throw new GameError(400, "Invalid history cursor.");
+  }
+  return { _id, updatedAt };
+}
+
 function homeCashRoutes(store = mongoHomeCashStore()) {
   const router = Router();
   const route = (handler) => async (req, res) => {
@@ -21,6 +34,27 @@ function homeCashRoutes(store = mongoHomeCashStore()) {
       store.latest(ownerId, "active"), store.latest(ownerId, "closed"),
     ]);
     res.json({ success: true, active: publicGame(active), recent: publicGame(recent) });
+  }));
+  router.get("/history", route(async (req, res, ownerId) => {
+    const rows = await store.history(ownerId, historyCursor(req.query.before), HISTORY_PAGE_SIZE + 1);
+    const page = rows.slice(0, HISTORY_PAGE_SIZE);
+    const last = page.at(-1);
+    const next = rows.length > HISTORY_PAGE_SIZE ? `${last.updatedAt.toISOString()}|${last._id}` : null;
+    res.json({
+      success: true,
+      games: page.map((game) => ({
+        id: game._id, name: game.name, closedAt: game.updatedAt, collected: game.settlement.collected,
+      })),
+      next,
+    });
+  }));
+  router.get("/history/:id", route(async (req, res, ownerId) => {
+    if (!uuid.test(req.params.id)) throw new GameError(404, "Game not found.");
+    const game = await store.find(ownerId, req.params.id);
+    if (game?.status !== "closed") throw new GameError(404, "Game not found.");
+    res.json({ success: true, game: {
+      id: game._id, name: game.name, closedAt: game.updatedAt, settlement: game.settlement,
+    } });
   }));
   router.post("/", route(async (req, res, ownerId) => {
     const game = createGame(ownerId, req.body, new Date());

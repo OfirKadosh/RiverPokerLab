@@ -17,9 +17,14 @@ const gameSchema = new mongoose.Schema({
   settlement: mongoose.Schema.Types.Mixed,
 }, { versionKey: false });
 gameSchema.index({ ownerId: 1 }, { unique: true, partialFilterExpression: { status: "active" } });
-gameSchema.index({ ownerId: 1, status: 1, updatedAt: -1 });
+gameSchema.index({ ownerId: 1, status: 1, updatedAt: -1, _id: -1 });
 
 const HomeCashGame = mongoose.model("HomeCashGame", gameSchema);
+
+function descendingGames(first, second) {
+  return second.updatedAt - first.updatedAt ||
+    (second._id > first._id ? 1 : second._id < first._id ? -1 : 0);
+}
 
 function mongoHomeCashStore(model = HomeCashGame) {
   return {
@@ -27,7 +32,19 @@ function mongoHomeCashStore(model = HomeCashGame) {
       return model.findOne({ _id: id, ownerId }).lean();
     },
     latest(ownerId, status) {
-      return model.findOne({ ownerId, status }).sort({ updatedAt: -1 }).lean();
+      return model.findOne({ ownerId, status }).sort({ updatedAt: -1, _id: -1 }).lean();
+    },
+    history(ownerId, before, limit) {
+      const filter = { ownerId, status: "closed" };
+      if (before) {
+        filter.$or = [
+          { updatedAt: { $lt: before.updatedAt } },
+          { updatedAt: before.updatedAt, _id: { $lt: before._id } },
+        ];
+      }
+      return model.find(filter)
+        .select({ name: 1, updatedAt: 1, "settlement.collected": 1 })
+        .sort({ updatedAt: -1, _id: -1 }).limit(limit).lean();
     },
     async insert(game) {
       await model.init();
@@ -58,7 +75,13 @@ function memoryHomeCashStore() {
     async latest(ownerId, status) {
       return structuredClone([...games.values()]
         .filter((game) => game.ownerId === ownerId && game.status === status)
-        .sort((a, b) => b.updatedAt - a.updatedAt).at(0) ?? null);
+        .sort(descendingGames).at(0) ?? null);
+    },
+    async history(ownerId, before, limit) {
+      return structuredClone([...games.values()]
+        .filter((game) => game.ownerId === ownerId && game.status === "closed" &&
+          (!before || descendingGames(game, before) > 0))
+        .sort(descendingGames).slice(0, limit));
     },
     async insert(game) {
       if (games.has(game._id) ||

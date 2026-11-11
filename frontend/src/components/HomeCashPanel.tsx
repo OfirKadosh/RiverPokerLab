@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@river-poker-lab/core";
 import { apiClient } from "../lib/api";
 import { LoadingIndicator } from "./LoadingIndicator";
+import { HomeCashHistory, HomeCashResults, money } from "./HomeCashHistory";
+import type { Settlement } from "./HomeCashHistory";
 import "./HomeCashPanel.css";
 
 interface Player { id: string; name: string }
@@ -12,7 +14,6 @@ interface Entry {
   at: string;
   voided: boolean;
 }
-interface Result extends Player { chips: number; paid: number; payout: number; profit: number }
 interface Game {
   id: string;
   name: string;
@@ -22,7 +23,8 @@ interface Game {
   version: number;
   players: Player[];
   entries: Entry[];
-  settlement: { collected: number; issuedChips: number; players: Result[] } | null;
+  updatedAt: string;
+  settlement: Settlement | null;
 }
 interface Games { active: Game | null; recent: Game | null }
 type Command =
@@ -36,9 +38,7 @@ type Pending =
   | { gameId?: never; body: { id: string; name: string; buyIn: number; chipsPerBuyIn: number } }
   | { gameId: string; body: Command & { id: string; version: number } };
 
-const currency = new Intl.NumberFormat("en-IL", { style: "currency", currency: "ILS" });
 const syncTime = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-const money = (agorot: number) => currency.format(agorot / 100);
 const failure = (error: unknown) => error instanceof Error ? error.message : "The game is temporarily unavailable.";
 
 function buyInAmount(value: string) {
@@ -76,6 +76,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
   const [buyIn, setBuyIn] = useState("50");
   const [chips, setChips] = useState("100");
   const [playerName, setPlayerName] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
   const [closing, setClosing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const inFlight = useRef(false);
@@ -389,18 +390,16 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
         </>
       )}
       {games?.recent?.settlement && !game && (
-        <section className="home-cash-panel" aria-label="Latest results">
-          <h2>Latest results · {games.recent.name}</h2>
-          <p>{money(games.recent.settlement.collected)} paid out · {games.recent.settlement.issuedChips.toLocaleString()} chips returned</p>
-          {games.recent.settlement.players.map((row) => (
-            <div className="home-cash-player" key={row.id}>
-              <div><strong>{row.name}</strong><br /><span className="field-help">{row.chips.toLocaleString()} chips · Paid {money(row.paid)} · Gets {money(row.payout)}</span></div>
-              <strong className={row.profit > 0 ? "home-cash-gain" : row.profit < 0 ? "home-cash-loss" : undefined}>
-                {row.profit > 0 ? "+" : ""}{money(row.profit)}
-              </strong>
-            </div>
-          ))}
-        </section>
+        <HomeCashResults key={games.recent.id} name={games.recent.name} closedAt={games.recent.updatedAt}
+          settlement={games.recent.settlement} latest />
+      )}
+      {games && (
+        <>
+          <button className="secondary-button" aria-expanded={showHistory} onClick={() => setShowHistory(!showHistory)}>
+            {showHistory ? "Hide game history" : "Game history"}
+          </button>
+          {showHistory && <HomeCashHistory key={games.recent?.id ?? "empty"} />}
+        </>
       )}
     </div>
   );
