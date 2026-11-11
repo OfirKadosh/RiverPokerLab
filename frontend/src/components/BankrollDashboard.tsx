@@ -1,5 +1,5 @@
 import type { BankrollFilters, BalancePoint, bankrollPeriod } from "../lib/bankroll";
-import { allEntries } from "../lib/bankroll";
+import { allEntries, venueLabels } from "../lib/bankroll";
 
 type Period = NonNullable<ReturnType<typeof bankrollPeriod>>;
 type FormatMoney = (value: number) => string;
@@ -82,10 +82,20 @@ export function BankrollDashboard({ filters, onFilters, period, money }: {
           <option value="tournament">Tournament</option>
         </select>
       </label>
+      <label className="field-label">Played
+        <select value={filters.venue} onChange={(event) => onFilters({
+          ...filters, venue: event.target.value as BankrollFilters["venue"],
+        })}>
+          <option value="all">All venues</option>
+          <option value="online">{venueLabels.online}</option>
+          <option value="live">{venueLabels.live}</option>
+          <option value="unspecified">{venueLabels.unspecified}</option>
+        </select>
+      </label>
       <button type="button" className="secondary-button" onClick={() => onFilters(allEntries)}>Reset filters</button>
     </div>
     <p className="field-help">
-      Blank dates include all available history on that side. Game type filters poker results and sessions. Transfers and the balance chart include all games.
+      Blank dates include all available history on that side. Game type and venue filter poker results and sessions. Transfers and the balance chart include all games.
     </p>
     {!period ? <p className="validation-note" role="alert">Choose dates from 1900 to 2099 and put the start date first.</p> : <>
       <dl className="bankroll-summary bankroll-period-summary" aria-label="Period results">
@@ -93,6 +103,18 @@ export function BankrollDashboard({ filters, onFilters, period, money }: {
         <div><dt>Period net transfers</dt><dd>{money(period.netTransfers)}</dd></div>
         <div><dt>Poker sessions</dt><dd>{period.sessions}</dd></div>
       </dl>
+      {filters.venue === "all" && (
+        <dl className="bankroll-summary bankroll-period-summary" aria-label="Poker profit by venue">
+          {(Object.keys(venueLabels) as (keyof typeof venueLabels)[]).map((venue) => {
+            const { profit, sessions } = period.byVenue[venue];
+            if (venue === "unspecified" && sessions === 0) return null;
+            return <div key={venue}>
+              <dt>{venueLabels[venue]} profit · {sessions} {sessions === 1 ? "session" : "sessions"}</dt>
+              <dd className={profit > 0 ? "bankroll-gain" : profit < 0 ? "bankroll-loss" : undefined}>{money(profit)}</dd>
+            </div>;
+          })}
+        </dl>
+      )}
       <BalanceChart period={period} money={money} />
     </>}
   </section>;

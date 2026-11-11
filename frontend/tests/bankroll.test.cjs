@@ -68,3 +68,26 @@ test("Empty or single-day ranges still show the correct carried balance", () => 
   assert.equal(bankrollPeriod(ledger, { ...allEntries, from: "2026-11-06", to: "2026-11-05" }), null);
   assert.equal(bankrollPeriod(ledger, { ...allEntries, to: "2150-01-01" }), null);
 });
+
+test("Venue and game filters combine without assigning old sessions or changing the balance", () => {
+  const categorized = { ...ledger, entries: ledger.entries.map((entry, index) => ({
+    ...entry,
+    ...(index === 0 ? { venue: "online" } : {}),
+    ...(index === 2 ? { venue: "live" } : {}),
+  })) };
+  const overall = bankrollPeriod(categorized, allEntries);
+  assert.deepEqual(overall.byVenue, {
+    online: { profit: -600, sessions: 1 },
+    live: { profit: -1700, sessions: 1 },
+    unspecified: { profit: 2000, sessions: 1 },
+  });
+  const liveTournaments = bankrollPeriod(categorized, { ...allEntries, venue: "live", game: "tournament" });
+  assert.equal(liveTournaments.pokerProfit, -1700);
+  assert.equal(liveTournaments.sessions, 1);
+  assert.deepEqual(liveTournaments.entries, [categorized.entries[1], categorized.entries[2], categorized.entries[4]]);
+  assert.deepEqual(liveTournaments.points, overall.points);
+  assert.equal(liveTournaments.netTransfers, overall.netTransfers);
+  const legacy = bankrollPeriod(categorized, { ...allEntries, venue: "unspecified" });
+  assert.equal(legacy.pokerProfit, 2000);
+  assert.equal(legacy.sessions, 1);
+});

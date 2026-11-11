@@ -2,19 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiClient } from "../lib/api";
 import { LoadingIndicator } from "./LoadingIndicator";
-import { allEntries, bankrollPeriod, currencies, entryChange, entryLabels } from "../lib/bankroll";
-import type { BankrollFilters, Currency, Entry, Kind, Ledger } from "../lib/bankroll";
+import { allEntries, bankrollPeriod, currencies, entryChange, entryLabels, venueLabels } from "../lib/bankroll";
+import type { BankrollFilters, Currency, Entry, Kind, Ledger, Venue } from "../lib/bankroll";
 import { BankrollDashboard } from "./BankrollDashboard";
 import "./BankrollPanel.css";
 
 const PAGE_SIZE = 20;
 type FeedbackArea = "settings" | "entry" | "ledger";
-type Draft = { kind: Kind; date: string; note: string; buyIn: string; cashOut: string; amount: string };
+type Draft = { kind: Kind; venue: Venue | ""; date: string; note: string; buyIn: string; cashOut: string; amount: string };
 
 function newEntry(): Draft {
   const now = new Date();
   const date = new Date(+now - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
-  return { kind: "cash", date, note: "", buyIn: "", cashOut: "", amount: "" };
+  return { kind: "cash", venue: "", date, note: "", buyIn: "", cashOut: "", amount: "" };
 }
 
 function minorUnits(value: string) {
@@ -126,7 +126,7 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
     setEditing(entry.id);
     setDraft({
       ...newEntry(), kind: entry.kind, date: entry.date, note: entry.note,
-      ...("buyIn" in entry ? { buyIn: decimal(entry.buyIn), cashOut: decimal(entry.cashOut) }
+      ...("buyIn" in entry ? { buyIn: decimal(entry.buyIn), cashOut: decimal(entry.cashOut), venue: entry.venue ?? "" }
         : { amount: decimal(entry.amount) }),
     });
     setPendingDelete(undefined);
@@ -141,7 +141,10 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
     setStatus("");
     try {
       const money = draft.kind === "cash" || draft.kind === "tournament"
-        ? { buyIn: minorUnits(draft.buyIn), cashOut: minorUnits(draft.cashOut) }
+        ? {
+          buyIn: minorUnits(draft.buyIn), cashOut: minorUnits(draft.cashOut),
+          ...(draft.venue ? { venue: draft.venue } : {}),
+        }
         : { amount: minorUnits(draft.amount) };
       const id = editing ?? (requestId.current ??= crypto.randomUUID());
       const path = editing ? `/bankroll/entries/${id}` : "/bankroll/entries";
@@ -240,6 +243,13 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
                   value={draft.date} onChange={(event) => setField("date", event.target.value)} />
               </label>
               {draft.kind === "cash" || draft.kind === "tournament" ? <>
+                <label className="field-label">Played
+                  <select value={draft.venue} onChange={(event) => setField("venue", event.target.value as Draft["venue"])}>
+                    <option value="">Unspecified</option>
+                    <option value="online">{venueLabels.online}</option>
+                    <option value="live">{venueLabels.live}</option>
+                  </select>
+                </label>
                 <MoneyInput label={draft.kind === "cash" ? "Total buy-ins" : "Total entries and re-entries"}
                   value={draft.buyIn} setValue={(value) => setField("buyIn", value)} />
                 <MoneyInput label={draft.kind === "cash" ? "Cash-out" : "Prizes"}
@@ -269,7 +279,7 @@ export function BankrollPanel({ preview }: { preview: boolean }) {
             const result = entryChange(entry);
             return <li key={entry.id}>
               <div className="bankroll-entry">
-                <div><strong>{entryLabels[entry.kind]}</strong><time dateTime={entry.date}>{entry.date}</time></div>
+                <div><strong>{entryLabels[entry.kind]}</strong>{"buyIn" in entry && <span className="field-help"> · {venueLabels[entry.venue ?? "unspecified"]}</span>}<time dateTime={entry.date}>{entry.date}</time></div>
                 <strong className={result < 0 ? "bankroll-loss" : "bankroll-gain"}>{result > 0 ? "+" : ""}{money(result)}</strong>
               </div>
               {"buyIn" in entry && <p className="field-help">Paid {money(entry.buyIn)} · Returned {money(entry.cashOut)}</p>}

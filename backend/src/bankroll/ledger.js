@@ -1,4 +1,5 @@
 const CURRENCIES = ["ILS", "USD", "EUR", "GBP"];
+const VENUES = ["online", "live"];
 const KINDS = ["cash", "tournament", "deposit", "withdrawal"];
 const MAX_AMOUNT = 100_000_000_000;
 const MAX_ENTRIES = 2_000;
@@ -35,7 +36,7 @@ function entryId(id) {
 }
 
 function entry(input, id) {
-  const { kind, date, note = "" } = input || {};
+  const { kind, date, venue, note = "" } = input || {};
   if (!KINDS.includes(kind)) throw new BankrollError(400, "Choose an entry type.");
   if (typeof date !== "string" || !/^(?:19|20)\d\d-\d\d-\d\d$/.test(date)) {
     throw new BankrollError(400, "Enter a valid date.");
@@ -49,12 +50,17 @@ function entry(input, id) {
   }
   const data = { id: entryId(id), kind, date, note: note.trim() };
   if (kind === "cash" || kind === "tournament") {
+    if (venue !== undefined && !VENUES.includes(venue)) {
+      throw new BankrollError(400, "Choose Online or Live for the playing venue.");
+    }
     return {
       ...data,
+      ...(venue === undefined ? {} : { venue }),
       buyIn: amount(input.buyIn, "Total buy-ins", kind === "cash" ? 1 : 0),
       cashOut: amount(input.cashOut, "Total cash-out or prizes"),
     };
   }
+  if (venue !== undefined) throw new BankrollError(400, "The playing venue applies to poker results only.");
   return { ...data, amount: amount(input.amount, "Transfer", 1) };
 }
 
@@ -75,4 +81,4 @@ function summarize(bankroll) {
   };
 }
 
-module.exports = { CURRENCIES, KINDS, MAX_AMOUNT, MAX_ENTRIES, BankrollError, settings, entryId, entry, summarize };
+module.exports = { CURRENCIES, KINDS, VENUES, MAX_AMOUNT, MAX_ENTRIES, BankrollError, settings, entryId, entry, summarize };

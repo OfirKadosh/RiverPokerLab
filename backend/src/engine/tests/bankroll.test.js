@@ -38,6 +38,20 @@ test("Bankroll rejects fractional or oversized inputs and impossible dates", () 
   assert.equal(entry({ kind: "tournament", date: "2028-02-29", buyIn: 0, cashOut: 0 }, id).buyIn, 0);
 });
 
+test("Online and Live are optional poker venues and survive schema casting", () => {
+  const id = randomUUID();
+  const input = { kind: "cash", date: "2026-11-09", buyIn: 5000, cashOut: 7000 };
+  const online = entry({ ...input, venue: "online" }, id);
+  const live = entry({ ...input, kind: "tournament", venue: "live" }, randomUUID());
+  const legacy = entry(input, randomUUID());
+  assert.equal(legacy.venue, undefined);
+  assert.throws(() => entry({ ...input, venue: "unknown" }, id), { status: 400 });
+  assert.throws(() => entry({ ...input, kind: "deposit", amount: 5000, venue: "live" }, id), { status: 400 });
+  const User = require("../../models/User");
+  const user = new User({ bankroll: { currency: "ILS", openingBalance: 0, entries: [online, live, legacy] } });
+  assert.deepEqual(user.toObject().bankroll.entries.map(({ venue }) => venue), ["online", "live", undefined]);
+});
+
 test("Atomic writes target only the owner, and a replay cannot double-count a new entry", async () => {
   const owner = "owner-id";
   const item = entry({ kind: "deposit", date: "2026-02-28", amount: 1500 }, randomUUID());

@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
-const { CURRENCIES, KINDS } = require("../bankroll/ledger");
+const { CURRENCIES, KINDS, VENUES } = require("../bankroll/ledger");
 
 const bankrollEntry = new mongoose.Schema({
   id: String,
   kind: { type: String, enum: KINDS },
+  venue: { type: String, enum: VENUES },
   date: String,
   note: String,
   amount: Number,

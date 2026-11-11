@@ -41,8 +41,8 @@ function createPreviewApp(env = process.env) {
   const bankrollStore = { get: () => ({
     currency: "ILS", openingBalance: 100000,
     entries: [
-      { id: "preview-cash", kind: "cash", date: "2026-10-31", buyIn: 20000, cashOut: 27500, note: "Cash session" },
-      { id: "preview-tournament", kind: "tournament", date: "2026-10-30", buyIn: 12000, cashOut: 0, note: "Two entries" },
+      { id: "preview-cash", kind: "cash", venue: "online", date: "2026-10-31", buyIn: 20000, cashOut: 27500, note: "Cash session" },
+      { id: "preview-tournament", kind: "tournament", venue: "live", date: "2026-10-30", buyIn: 12000, cashOut: 0, note: "Two entries" },
       { id: "preview-deposit", kind: "deposit", date: "2026-10-29", amount: 50000, note: "" },
     ],
   }) };
