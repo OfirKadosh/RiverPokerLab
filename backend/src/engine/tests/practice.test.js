@@ -95,7 +95,16 @@ test("Progress counts each exercise once across concurrent replies and follows t
   assert.equal(secondDay.progress.bestCorrectStreak, 3);
 
   now = new Date("2026-11-10T22:01:00Z");
-  for (let i = 0; i < 6; i += 1) await store.record("alice", entry(`third-day-${i}`));
+  const unlocked = [];
+  for (let i = 0; i < 6; i += 1) {
+    const result = await store.record("alice", entry(`third-day-${i}`));
+    unlocked.push(result.unlockedMilestones);
+  }
+  assert.deepEqual(unlocked, [
+    ["3 practice days in a row"], [], [], [], ["5 correct in a row"], ["10 answers"],
+  ]);
+  const replay = await store.record("alice", entry("third-day-5"));
+  assert.deepEqual(replay.unlockedMilestones, ["10 answers"]);
   const third = await store.get("alice");
   assert.equal(third.answered, 10);
   assert.equal(third.dayStreak, 3);

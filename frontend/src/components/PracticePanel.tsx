@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { signedValueClass } from "../lib/signedValue";
+import { AchievementCelebration, PracticeAchievements } from "./PracticeAchievements";
 import { apiClient } from "../lib/api";
 import { Card } from "./Card";
 import { LoadingIndicator } from "./LoadingIndicator";
@@ -38,7 +40,12 @@ type Progress = {
 
 const labels = { fold: "Fold", call: "Call" };
 const format = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
-const number = (value: number) => format.format(Math.abs(value) < 0.005 ? 0 : value);
+const displayedValue = (value: number) => Math.abs(value) < 0.005 ? 0 : value;
+const number = (value: number) => format.format(displayedValue(value));
+function DecisionValue({ value }: { value: number }) {
+  const shown = displayedValue(value);
+  return <strong className={signedValueClass(shown)}>{shown > 0 ? "+" : ""}{number(shown)}</strong>;
+}
 
 export function PracticePanel() {
   const [mode, setMode] = useState<Mode>("cash");
@@ -47,6 +54,7 @@ export function PracticePanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<Progress>();
+  const [unlocked, setUnlocked] = useState<string[]>([]);
   const [progressError, setProgressError] = useState(false);
   const pending = useRef<AbortController>();
   useEffect(() => {
@@ -93,9 +101,12 @@ export function PracticePanel() {
     void request(`/practice/spots/${spot.id}/answer`, { action, timeZone }, (data) => {
       setResult(data.result as Result);
       setProgress(data.progress as Progress);
+      setUnlocked((data.unlockedMilestones as string[] | undefined) ?? []);
       setProgressError(false);
     });
   }
+
+  const foldPrizeEv = result?.actions.find((action) => action.type === "fold")?.prizeEv;
 
   return (
     <>
@@ -144,7 +155,10 @@ export function PracticePanel() {
           <p>Best within {number(result.tolerance)} {spot.mode === "cash" ? "chips" : "prize units"}: {result.accepted.map((action) => labels[action]).join(" or ")}.</p>
           <ul>{result.actions.map(({ type, chipEv, prizeEv }) => (
             <li key={type}>
-              {labels[type]}: {number(chipEv)} chip EV{prizeEv !== undefined ? ` · ${number(prizeEv)} prize EV` : ""}
+              {labels[type]}: <DecisionValue value={chipEv} /> chip EV
+              {prizeEv !== undefined && foldPrizeEv !== undefined && (
+                <> · {number(prizeEv)} prize EV (<DecisionValue value={prizeEv - foldPrizeEv} /> vs folding)</>
+              )}
             </li>
           ))}</ul>
           <p className="field-help">
@@ -175,12 +189,12 @@ export function PracticePanel() {
               </dl>
             </div>
           </div>
-          <h3>Milestones</h3>
-          {progress.milestones.length ? <ul>{progress.milestones.map((label) => <li key={label}>{label}</li>)}</ul>
-            : <p className="field-help">Answer 10 spots, get 5 correct in a row, or practice 3 days in a row.</p>}
+          <h3>Achievements</h3>
+          <PracticeAchievements earned={progress.milestones} />
         </> : progressError ? <p className="field-help">Practice progress is temporarily unavailable.</p>
           : <LoadingIndicator label="Loading progress…" />}
       </section>
+      {unlocked.length > 0 && <AchievementCelebration milestones={unlocked} onDismiss={() => setUnlocked([])} />}
     </>
   );
 }

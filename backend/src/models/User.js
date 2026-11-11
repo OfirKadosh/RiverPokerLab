@@ -21,6 +21,7 @@ const practiceReceipt = new mongoose.Schema({
   id: String,
   action: { type: String, enum: ["fold", "call"] },
   expiresAt: Number,
+  unlockedMilestones: { type: [String], default: undefined },
 }, { _id: false });
 
 const practiceProgress = new mongoose.Schema({

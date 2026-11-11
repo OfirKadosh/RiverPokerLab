@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { signedValueClass } from "../lib/signedValue";
 import { suggestedTransfers } from "../lib/homeCashTransfers";
 import { apiClient } from "../lib/api";
 import { LoadingIndicator } from "./LoadingIndicator";
@@ -35,6 +36,10 @@ const currency = new Intl.NumberFormat("en-IL", { style: "currency", currency: "
 const closedDate = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 export const money = (agorot: number) => currency.format(agorot / 100);
 const net = (value: number) => `${value > 0 ? "+" : ""}${money(value)}`;
+const shareDate = new Intl.DateTimeFormat("he-IL", { dateStyle: "medium", timeStyle: "short" });
+const shareMoney = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS" });
+const shareNet = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", signDisplay: "exceptZero" });
+const hebrewMoney = (agorot: number) => shareMoney.format(agorot / 100);
 const dateLabel = (date: string) => closedDate.format(new Date(date));
 
 export function HomeCashResults({ name, closedAt, settlement, latest = false }: Omit<ClosedGame, "id"> & { latest?: boolean }) {
@@ -46,17 +51,18 @@ export function HomeCashResults({ name, closedAt, settlement, latest = false }: 
   const transferLines = transfers?.map(({ from, to, amount }) => `${from.name} pays ${to.name} ${money(amount)}`);
   const heading = latest ? `Latest results · ${name}` : name;
   const summary = [
-    `Home Cash Game · ${name}`,
-    dateLabel(closedAt),
-    `Total buy-ins: ${money(settlement.collected)}`,
-    ...(hasCashOuts ? [`Paid early: ${money(paidEarly)} · Left to pay: ${money(settlement.collected - paidEarly)}`] : []),
+    `סיכום משחק קאש ביתי – ${name}`,
+    shareDate.format(new Date(closedAt)),
+    `סך הכניסות: ${hebrewMoney(settlement.collected)}`,
+    ...(hasCashOuts ? [`שולם במהלך הערב: ${hebrewMoney(paidEarly)} · נותר לשלם: ${hebrewMoney(settlement.collected - paidEarly)}`] : []),
     "",
     ...settlement.players.map((player) => {
-      const result = `${player.name} · Paid ${money(player.paid)} · Gets ${money(player.payout)} · Net ${net(player.profit)}`;
+      const result = `שחקן: ${player.name} · הכניס: ${hebrewMoney(player.paid)} · סך זכאות: ${hebrewMoney(player.payout)} · רווח או הפסד: ${shareNet.format(player.profit / 100)}`;
       return player.cashOutPaid === undefined ? result :
-        `${result} · Already paid ${money(player.cashOutPaid)} · Still due ${money(player.payout - player.cashOutPaid)}`;
+        `${result} · כבר שולם: ${hebrewMoney(player.cashOutPaid)} · נותר לשלם: ${hebrewMoney(player.payout - player.cashOutPaid)}`;
     }),
-    ...(transferLines?.length ? ["", "Suggested transfers for end-of-game settlement", ...transferLines] : []),
+    ...(transfers?.length ? ["", "העברות מוצעות לסגירת המשחק",
+      ...transfers.map(({ from, to, amount }) => `העברה מ־${from.name} אל ${to.name}: ${hebrewMoney(amount)}`)] : []),
   ].join("\n");
 
   async function copy() {
@@ -80,13 +86,19 @@ export function HomeCashResults({ name, closedAt, settlement, latest = false }: 
         <div className="home-cash-player" key={row.id}>
           <div>
             <strong>{row.name}</strong><br />
-            <span className="field-help">{row.chips.toLocaleString()} chips · Paid {money(row.paid)} · Gets {money(row.payout)}</span>
+            <span className="field-help">
+              {row.chips.toLocaleString()} chips · Paid <b className={signedValueClass(-row.paid)}>{money(row.paid)}</b>
+              {" · Gets "}<b className={signedValueClass(row.payout)}>{money(row.payout)}</b>
+            </span>
             {row.cashOutPaid !== undefined && <>
               <br />
-              <span className="field-help">Already paid {money(row.cashOutPaid)} · Still due {money(row.payout - row.cashOutPaid)}</span>
+              <span className="field-help">
+                Already paid <b className={signedValueClass(row.cashOutPaid)}>{money(row.cashOutPaid)}</b>
+                {" · Still due "}<b className={signedValueClass(row.payout - row.cashOutPaid)}>{money(row.payout - row.cashOutPaid)}</b>
+              </span>
             </>}
           </div>
-          <strong className={row.profit > 0 ? "home-cash-gain" : row.profit < 0 ? "home-cash-loss" : undefined}>
+          <strong className={signedValueClass(row.profit)}>
             {net(row.profit)}
           </strong>
         </div>
@@ -116,7 +128,7 @@ export function HomeCashResults({ name, closedAt, settlement, latest = false }: 
       {copyStatus === "copied" && <p className="field-help" role="status">Copied. Paste the results into WhatsApp or another chat.</p>}
       {copyStatus === "manual" && (
         <label className="field-label">Select and copy the results below
-          <textarea className="home-cash-share" readOnly value={summary} rows={6} onFocus={(event) => event.currentTarget.select()} />
+          <textarea dir="rtl" lang="he" className="home-cash-share" readOnly value={summary} rows={6} onFocus={(event) => event.currentTarget.select()} />
         </label>
       )}
     </section>

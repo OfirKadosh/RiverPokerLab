@@ -48,11 +48,11 @@ function practiceRoutes(compute, progress = mongoPracticeProgress()) {
       return fail(res, 404, "Practice spot unavailable. Start a new spot.");
     }
     try {
-      const { selected, progress: stats } = await progress.record(req.user.id, {
+      const { selected, progress: stats, unlockedMilestones } = await progress.record(req.user.id, {
         id: req.params.id, action, correct: spot.decision.accepted.includes(action), expiresAt: spot.expiresAt, timeZone,
       });
       const result = { ...spot.decision, selected, correct: spot.decision.accepted.includes(selected) };
-      return res.json({ success: true, result, progress: stats });
+      return res.json({ success: true, result, progress: stats, unlockedMilestones });
     } catch (error) {
       return error instanceof ProgressError ? fail(res, error.status, error.message)
         : fail(res, 503, "Could not save practice progress. Retry your answer.");

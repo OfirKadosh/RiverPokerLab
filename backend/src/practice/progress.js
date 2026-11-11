@@ -55,7 +55,10 @@ function createPracticeProgress({ read, write }, clock = () => new Date()) {
         const now = clock();
         const receipts = (state.receipts || []).filter((entry) => entry.expiresAt > +now);
         const replay = receipts.find((entry) => entry.id === id);
-        if (replay) return { selected: replay.action, progress: progressView(state, now) };
+        if (replay) return {
+          selected: replay.action, progress: progressView(state, now),
+          unlockedMilestones: replay.unlockedMilestones ?? [],
+        };
         if (expiresAt <= +now) throw new ProgressError(404, "Practice spot expired. Start a new spot.");
         if (receipts.length >= receiptLimit) {
           throw new ProgressError(429, "Practice limit reached for this half hour. Try again later.");
@@ -73,10 +76,13 @@ function createPracticeProgress({ read, write }, clock = () => new Date()) {
           correctStreak, bestCorrectStreak: Math.max(correctStreak, state.bestCorrectStreak || 0),
           lastDay: Math.max(day, state.lastDay ?? day),
           dayStreak, bestDayStreak: Math.max(dayStreak, state.bestDayStreak || 0),
-          receipts: [...receipts, { id, action, expiresAt }],
         };
+        const previousMilestones = progressView(state, now).milestones;
+        const progress = progressView(next, now);
+        const unlockedMilestones = progress.milestones.filter((label) => !previousMilestones.includes(label));
+        next.receipts = [...receipts, { id, action, expiresAt, unlockedMilestones }];
         if (await write(owner, state.version, next)) {
-          return { selected: action, progress: progressView(next, now) };
+          return { selected: action, progress, unlockedMilestones };
         }
       }
       throw new ProgressError(503, "Could not save practice progress. Retry your answer.");

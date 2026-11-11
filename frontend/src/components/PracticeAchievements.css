@@ -1,0 +1,80 @@
+.practice-badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.practice-badge {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.practice-badge p { margin: 3px 0 0; }
+.practice-badge:not(.earned) .practice-badge-art { filter: grayscale(1); opacity: .65; }
+
+.practice-badge-art {
+  display: inline-block;
+  flex: none;
+  width: 72px;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: #102019 url("/icons/practice-achievements.webp") no-repeat center;
+  background-size: 300% 100%;
+}
+
+.achievement-celebration {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: min(92vw, 440px);
+  max-height: 88dvh;
+  padding: 24px;
+  overflow: auto;
+  border: 1px solid #94c572;
+  border-radius: 16px;
+  background: #14251d;
+  color: #f2f8f0;
+  text-align: center;
+}
+
+.achievement-celebration[open] { animation: achievement-pop 350ms ease-out both; }
+.achievement-celebration::backdrop { background: #07130bba; }
+.achievement-celebration h2 { position: relative; margin-top: 0; }
+.achievement-celebration ul { position: relative; display: grid; gap: 10px; padding: 0; list-style: none; }
+.achievement-celebration li { display: grid; gap: 8px; justify-items: center; }
+.achievement-celebration .practice-badge-art { width: 104px; }
+.achievement-celebration button { position: relative; justify-content: center; margin: 10px auto 0; }
+.achievement-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.achievement-confetti span {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: #f1c85c;
+  opacity: 0;
+  animation: achievement-fall 1s ease-out both;
+}
+.achievement-confetti span:nth-child(3n) { background: #b2e788; }
+.achievement-confetti span:nth-child(3n + 1) { background: #75c9ff; }
+.achievement-confetti span:nth-child(even) { width: 5px; height: 7px; }
+@keyframes achievement-pop {
+  from { opacity: 0; transform: scale(.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes achievement-fall {
+  0% { opacity: 0; transform: translateY(-12px) rotate(0deg); }
+  18% { opacity: 1; }
+  80% { opacity: .9; }
+  100% { opacity: 0; transform: translateY(220px) rotate(270deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .achievement-celebration[open] { animation: none; }
+  .achievement-confetti { display: none; }
+}
