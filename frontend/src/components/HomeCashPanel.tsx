@@ -11,6 +11,8 @@ interface Entry {
   id: string;
   playerId: string;
   kind: "buy-in" | "rebuy";
+  amount: number;
+  chips: number;
   at: string;
   voided: boolean;
 }
@@ -31,7 +33,8 @@ type Command =
   | { type: "configure"; name: string; buyIn: number; chipsPerBuyIn: number }
   | { type: "cancel-empty" }
   | { type: "add-player"; name: string }
-  | { type: "remove-player" | "entry"; playerId: string }
+  | { type: "remove-player"; playerId: string }
+  | { type: "entry"; playerId: string; amount?: number }
   | { type: "void-entry"; entryId: string }
   | { type: "close"; stacks: Record<string, number> };
 type Pending =
@@ -76,6 +79,8 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
   const [buyIn, setBuyIn] = useState("50");
   const [chips, setChips] = useState("100");
   const [playerName, setPlayerName] = useState("");
+  const [customPlayerId, setCustomPlayerId] = useState<string>();
+  const [customAmount, setCustomAmount] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [closing, setClosing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -162,7 +167,10 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
       forget();
       if (!alive.current) return;
       setResumedId(data.game.id);
-      if (operation.gameId && "type" in operation.body && operation.body.type === "add-player") setPlayerName("");
+      if (operation.gameId && "type" in operation.body) {
+        if (operation.body.type === "add-player") setPlayerName("");
+        if (operation.body.type === "entry") setCustomPlayerId(undefined);
+      }
       if (data.game.status !== "active") {
         setClosing(false);
         setDraft({});
@@ -198,6 +206,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
     setClosing(false);
     setDraft({});
     setPlayerName("");
+    setCustomPlayerId(undefined);
   }, [gameId]);
   const resumed = gameId !== undefined && resumedId === gameId;
   function act(command: Command) {
@@ -206,10 +215,21 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
   }
 
   const entries = game?.entries.filter((entry) => !entry.voided) ?? [];
-  const counts = new Map<string, number>();
-  for (const entry of entries) counts.set(entry.playerId, (counts.get(entry.playerId) ?? 0) + 1);
-  const funded = game?.players.filter((player) => counts.has(player.id)) ?? [];
-  const issued = entries.length * (game?.chipsPerBuyIn ?? 0);
+  const playerTotals = new Map<string, { count: number; paid: number }>();
+  let collected = 0;
+  let issued = 0;
+  for (const entry of entries) {
+    const totals = playerTotals.get(entry.playerId) ?? { count: 0, paid: 0 };
+    totals.count += 1;
+    totals.paid += entry.amount;
+    playerTotals.set(entry.playerId, totals);
+    collected += entry.amount;
+    issued += entry.chips;
+  }
+  const funded = game?.players.filter((player) => playerTotals.has(player.id)) ?? [];
+  const amount = buyInAmount(customAmount);
+  const customChips = game ? (amount * game.chipsPerBuyIn) / game.buyIn : 0;
+  const validCustomEntry = amount <= 1_000_000 && Number.isSafeInteger(customChips) && customChips > 0;
   const complete = funded.every(({ id }) => /^\d+$/.test(draft[id] ?? "") && Number(draft[id]) <= issued);
   const entered = funded.reduce((total, { id }) => total + (Number(draft[id]) || 0), 0);
   const busy = !!pending || saving;
@@ -246,7 +266,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
       {game && !resumed && (
         <section className="home-cash-panel">
           <h2>{game.name}</h2>
-          <p>{game.players.length} players · {money(entries.length * game.buyIn)} collected</p>
+          <p>{game.players.length} players · {money(collected)} collected</p>
           <button className="primary-button" disabled={busy} onClick={() => setResumedId(game.id)}>Resume game</button>
         </section>
       )}
@@ -282,7 +302,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
           <section className="home-cash-panel">
             <h2>{game.name}</h2>
             <p>{money(game.buyIn)} = {game.chipsPerBuyIn.toLocaleString()} chips per buy-in</p>
-            <p><strong>{money(entries.length * game.buyIn)} collected</strong> · {issued.toLocaleString()} chips issued</p>
+            <p><strong>{money(collected)} collected</strong> · {issued.toLocaleString()} chips issued</p>
             {game.entries.length === 0 && (
               <details>
                 <summary>Edit game settings</summary>
@@ -324,14 +344,37 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
               <button className="secondary-button" disabled={busy || closing}>Add player</button>
             </form>
             {game.players.map((player) => {
-              const count = counts.get(player.id) ?? 0;
+              const { count, paid } = playerTotals.get(player.id) ?? { count: 0, paid: 0 };
+              const action = count ? "Rebuy" : "Buy in";
               return (
                 <div className="home-cash-player" key={player.id}>
-                  <div><strong>{player.name}</strong><br /><span className="field-help">{count} {count === 1 ? "entry" : "entries"} · {money(count * game.buyIn)}</span></div>
+                  <div><strong>{player.name}</strong><br /><span className="field-help">{count} {count === 1 ? "entry" : "entries"} · {money(paid)}</span></div>
                   <div className="home-cash-actions">
                     {!count && <button className="text-button" disabled={busy || closing} aria-label={`Remove ${player.name}`} onClick={() => act({ type: "remove-player", playerId: player.id })}>Remove</button>}
-                    <button className="secondary-button" disabled={busy || closing} aria-label={`${count ? "Rebuy" : "Buy in"} for ${player.name}`} onClick={() => act({ type: "entry", playerId: player.id })}>{count ? "Rebuy" : "Buy in"}</button>
+                    <button className="secondary-button" disabled={busy || closing} aria-label={`${action} for ${player.name}`} onClick={() => act({ type: "entry", playerId: player.id })}>{action} · {money(game.buyIn)}</button>
+                    <button className="text-button" disabled={busy || closing} aria-label={`Custom amount for ${player.name}`}
+                      aria-expanded={customPlayerId === player.id && !closing} onClick={() => {
+                        setCustomPlayerId(customPlayerId === player.id ? undefined : player.id);
+                        setCustomAmount("");
+                      }}>Custom amount</button>
                   </div>
+                  {customPlayerId === player.id && !closing && (
+                    <form className="home-cash-custom-entry" onSubmit={(event) => {
+                      event.preventDefault();
+                      if (validCustomEntry) act({ type: "entry", playerId: player.id, amount });
+                    }}>
+                      <label className="field-label">Amount for {player.name} (₪)
+                        <input required inputMode="decimal" maxLength={8} value={customAmount}
+                          onChange={(event) => setCustomAmount(event.target.value)} />
+                      </label>
+                      <p className="field-help" aria-live="polite">
+                        {validCustomEntry ? `${customChips.toLocaleString()} chips` :
+                          customAmount ? "Enter ₪0.01–₪10,000 in an amount that converts to whole chips." :
+                            "This entry uses the game's chip rate."}
+                      </p>
+                      <button className="primary-button" disabled={busy || !validCustomEntry}>Record {action.toLowerCase()}</button>
+                    </form>
+                  )}
                 </div>
               );
             })}
@@ -341,7 +384,7 @@ export function HomeCashPanel({ ownerId, preview }: { ownerId: string; preview: 
                 <ol className="home-cash-log">
                   {[...game.entries].reverse().map((entry) => (
                     <li key={entry.id} className="home-cash-player">
-                      <span>{game.players.find((player) => player.id === entry.playerId)?.name ?? "Removed player"} · {entry.kind === "rebuy" ? "Rebuy" : "Buy-in"} · {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{entry.voided ? " · Corrected" : ""}</span>
+                      <span>{game.players.find((player) => player.id === entry.playerId)?.name ?? "Removed player"} · {entry.kind === "rebuy" ? "Rebuy" : "Buy-in"} · {money(entry.amount)} · {entry.chips.toLocaleString()} chips · {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{entry.voided ? " · Corrected" : ""}</span>
                       {!entry.voided && <button className="text-button" disabled={busy || closing} onClick={() => {
                         if (window.confirm("Undo this entry? The chip and cash totals will be updated.")) act({ type: "void-entry", entryId: entry.id });
                       }}>Undo entry</button>}

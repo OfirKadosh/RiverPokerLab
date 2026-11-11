@@ -6,7 +6,7 @@ const { createAuth } = require("../../auth");
 const { hashPassword } = require("../../auth/security");
 const { createApp } = require("../../server");
 const { memoryHomeCashStore, mongoHomeCashStore } = require("../../homeCash/store");
-const { createGame, applyCommand } = require("../../homeCash/game");
+const { createGame, applyCommand, publicGame } = require("../../homeCash/game");
 const { MemoryAuthStore } = require("./support/authStore");
 
 test("Balances fractional agorot and resolves rounding ties by player order", () => {
@@ -27,6 +27,41 @@ test("Balances fractional agorot and resolves rounding ties by player order", ()
   assert.equal(game.settlement.collected, 3);
   assert.equal(game.settlement.issuedChips, 12);
   assert.throws(() => act({ type: "entry", playerId: alice }), /already closed/);
+});
+
+test("Settles mixed standard and custom buy-ins including old entries and corrections", () => {
+  const now = new Date();
+  let game = createGame("owner", {
+    id: randomUUID(), name: "Variable buy-ins", buyIn: 5000, chipsPerBuyIn: 100,
+  }, now);
+  function act(command) {
+    const operation = { id: randomUUID(), version: game.version, ...command };
+    game = applyCommand(game, operation, now);
+    return operation;
+  }
+  const dana = act({ type: "add-player", name: "Dana" }).id;
+  const ron = act({ type: "add-player", name: "Ron" }).id;
+  act({ type: "entry", playerId: dana });
+  delete game.entries[0].amount;
+  delete game.entries[0].chips;
+  assert.equal(publicGame(game).entries[0].amount, 5000);
+  assert.equal(publicGame(game).entries[0].chips, 100);
+  assert.throws(() => act({ type: "entry", playerId: dana, amount: 2401 }), /whole chips/);
+  assert.throws(() => act({ type: "entry", playerId: dana, amount: null }), /Enter a buy-in/);
+  const rebuy = act({ type: "entry", playerId: dana, amount: 2500 });
+  assert.equal(applyCommand(game, rebuy, now), game);
+  assert.deepEqual(game.entries.map(({ kind, amount, chips }) => [kind, amount, chips]), [
+    ["buy-in", undefined, undefined], ["rebuy", 2500, 50],
+  ]);
+  const mistake = act({ type: "entry", playerId: dana, amount: 7500 });
+  act({ type: "void-entry", entryId: mistake.id });
+  act({ type: "entry", playerId: ron });
+  act({ type: "close", stacks: { [dana]: 190, [ron]: 60 } });
+  assert.equal(game.settlement.collected, 12500);
+  assert.equal(game.settlement.issuedChips, 250);
+  assert.deepEqual(game.settlement.players.map(({ paid, payout, profit }) => [paid, payout, profit]), [
+    [7500, 9500, 2000], [5000, 3000, -2000],
+  ]);
 });
 
 test("Mongo updates compare the game version and scope replacement to its owner", async () => {

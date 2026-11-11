@@ -46,11 +46,22 @@ function activeEntries(game) {
   return game.entries.filter((entry) => !entry.voided);
 }
 
+function entryValues(game, entry) {
+  return { amount: entry.amount ?? game.buyIn, chips: entry.chips ?? game.chipsPerBuyIn };
+}
+
 function settle(game, stacks) {
-  const entries = activeEntries(game);
-  const players = game.players.filter((player) => entries.some((entry) => entry.playerId === player.id));
+  const paidByPlayer = new Map();
+  let collected = 0;
+  let issuedChips = 0;
+  for (const entry of activeEntries(game)) {
+    const { amount, chips } = entryValues(game, entry);
+    collected += amount;
+    issuedChips += chips;
+    paidByPlayer.set(entry.playerId, (paidByPlayer.get(entry.playerId) ?? 0) + amount);
+  }
+  const players = game.players.filter((player) => paidByPlayer.has(player.id));
   required(players.length >= 2, "Record a buy-in for at least two players.");
-  const issuedChips = entries.length * game.chipsPerBuyIn;
   required(stacks && typeof stacks === "object" && !Array.isArray(stacks) &&
     Object.keys(stacks).length === players.length &&
     players.every(({ id }) => Object.hasOwn(stacks, id) && integer(stacks[id], 0, issuedChips)),
@@ -62,11 +73,10 @@ function settle(game, stacks) {
   const rows = players.map(({ id, name }, order) => {
     const chips = stacks[id];
     const numerator = chips * game.buyIn;
-    const paid = entries.filter((entry) => entry.playerId === id).length * game.buyIn;
+    const paid = paidByPlayer.get(id);
     return { id, name, chips, paid, payout: Math.floor(numerator / game.chipsPerBuyIn),
       remainder: numerator % game.chipsPerBuyIn, order };
   });
-  const collected = entries.length * game.buyIn;
   const remaining = collected - rows.reduce((sum, row) => sum + row.payout, 0);
   const byRemainder = [...rows].sort((a, b) => b.remainder - a.remainder || a.order - b.order);
   for (const row of byRemainder.slice(0, remaining)) row.payout += 1;
@@ -118,7 +128,11 @@ function applyCommand(game, input, now) {
     case "entry": {
       required(next.players.some((player) => player.id === command.playerId), "Player not found.");
       const kind = activeEntries(next).some((entry) => entry.playerId === command.playerId) ? "rebuy" : "buy-in";
-      next.entries.push({ id, playerId: command.playerId, kind, at: now, voided: false });
+      const amount = command.amount === undefined ? next.buyIn : command.amount;
+      required(integer(amount, 1, 1_000_000), "Enter a buy-in of ₪0.01–₪10,000.");
+      const chips = (amount * next.chipsPerBuyIn) / next.buyIn;
+      required(Number.isSafeInteger(chips) && chips > 0, "Choose an amount that converts to whole chips.");
+      next.entries.push({ id, playerId: command.playerId, kind, amount, chips, at: now, voided: false });
       break;
     }
     case "void-entry": {
@@ -147,7 +161,9 @@ function applyCommand(game, input, now) {
 function publicGame(game) {
   if (!game) return null;
   const { _id, ownerId, operations, openingFingerprint, ...details } = game;
-  return { id: _id, ...details };
+  return { id: _id, ...details,
+    entries: details.entries.map((entry) => ({ ...entry, ...entryValues(game, entry) })),
+  };
 }
 
 module.exports = { GameError, uuid, createGame, applyCommand, publicGame };
