@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { suggestedTransfers } from "../lib/homeCashTransfers";
 import { apiClient } from "../lib/api";
 import { LoadingIndicator } from "./LoadingIndicator";
 
@@ -37,14 +38,18 @@ const dateLabel = (date: string) => closedDate.format(new Date(date));
 
 export function HomeCashResults({ name, closedAt, settlement, latest = false }: Omit<ClosedGame, "id"> & { latest?: boolean }) {
   const [copyStatus, setCopyStatus] = useState<"copied" | "manual" | null>(null);
+  const [showTransfers, setShowTransfers] = useState(false);
+  const transfers = showTransfers ? suggestedTransfers(settlement.players) : null;
+  const transferLines = transfers?.map(({ from, to, amount }) => `${from.name} pays ${to.name} ${money(amount)}`);
   const heading = latest ? `Latest results · ${name}` : name;
   const summary = [
     `Home Cash Game · ${name}`,
     dateLabel(closedAt),
-    `Total paid out: ${money(settlement.collected)}`,
+    `Total buy-ins: ${money(settlement.collected)}`,
     "",
     ...settlement.players.map((player) =>
       `${player.name} · Paid ${money(player.paid)} · Gets ${money(player.payout)} · Net ${net(player.profit)}`),
+    ...(transferLines?.length ? ["", "Suggested transfers for end-of-game settlement", ...transferLines] : []),
   ].join("\n");
 
   async function copy() {
@@ -60,7 +65,7 @@ export function HomeCashResults({ name, closedAt, settlement, latest = false }: 
     <section className="home-cash-panel" aria-label={latest ? "Latest results" : "Game results"}>
       <h2>{heading}</h2>
       <p className="field-help">{dateLabel(closedAt)}</p>
-      <p>{money(settlement.collected)} paid out · {settlement.issuedChips.toLocaleString()} chips returned</p>
+      <p>{money(settlement.collected)} in buy-ins · {settlement.issuedChips.toLocaleString()} chips returned</p>
       {settlement.players.map((row) => (
         <div className="home-cash-player" key={row.id}>
           <div>
@@ -72,6 +77,27 @@ export function HomeCashResults({ name, closedAt, settlement, latest = false }: 
           </strong>
         </div>
       ))}
+      <div className="home-cash-transfers">
+        <label className="home-cash-transfer-toggle">
+          <input type="checkbox" checked={showTransfers} onChange={(event) => {
+            setShowTransfers(event.target.checked);
+            setCopyStatus(null);
+          }} />
+          Show suggested transfers
+        </label>
+        {showTransfers && (
+          <>
+            <p className="field-help">Use these amounts when players settle directly with each other at the end of the game.</p>
+            {transferLines?.length ? (
+              <ul>
+                {transferLines.map((line, index) => <li key={index}>{line}</li>)}
+              </ul>
+            ) : (
+              <p>{transferLines ? "Everyone broke even. No transfers are needed." : "The game balances do not add up. Transfers are unavailable."}</p>
+            )}
+          </>
+        )}
+      </div>
       <button className="secondary-button" onClick={() => void copy()}>Copy results</button>
       {copyStatus === "copied" && <p className="field-help" role="status">Copied. Paste the results into WhatsApp or another chat.</p>}
       {copyStatus === "manual" && (
@@ -149,7 +175,7 @@ export function HomeCashHistory() {
         <div className="home-cash-player" key={game.id}>
           <div>
             <strong>{game.name}</strong><br />
-            <span className="field-help">{dateLabel(game.closedAt)} · {money(game.collected)} paid out</span>
+            <span className="field-help">{dateLabel(game.closedAt)} · {money(game.collected)} in buy-ins</span>
           </div>
           <button className="secondary-button" aria-label={`View results for ${game.name}`} disabled={loading}
             onClick={() => void fetchHistory(undefined, game.id)}>

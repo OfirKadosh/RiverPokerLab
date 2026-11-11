@@ -18,3 +18,8 @@
 .home-cash-share { display: block; width: 100%; margin-top: 6px; }
 .home-cash-custom-entry { flex-basis: 100%; }
 .home-cash-custom-entry input { max-width: 220px; }
+
+.home-cash-transfers { border-top: 1px solid var(--border); padding-block: 10px 14px; }
+.home-cash-transfer-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.home-cash-panel .home-cash-transfer-toggle input { width: auto; margin: 0; }
+.home-cash-transfers ul { padding-inline-start: 22px; list-style: disc; overflow-wrap: anywhere; }
