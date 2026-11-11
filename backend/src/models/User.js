@@ -17,6 +17,25 @@ const bankroll = new mongoose.Schema({
   entries: { type: [bankrollEntry], default: undefined },
 }, { _id: false });
 
+const practiceReceipt = new mongoose.Schema({
+  id: String,
+  action: { type: String, enum: ["fold", "call"] },
+  expiresAt: Number,
+}, { _id: false });
+
+const practiceProgress = new mongoose.Schema({
+  version: Number,
+  zone: String,
+  answered: Number,
+  correct: Number,
+  correctStreak: Number,
+  bestCorrectStreak: Number,
+  lastDay: Number,
+  dayStreak: Number,
+  bestDayStreak: Number,
+  receipts: { type: [practiceReceipt], default: undefined },
+}, { _id: false });
+
 const schema = new mongoose.Schema(
   {
     email: { type: String, required: function () { return this.role !== "admin"; }, unique: true },
@@ -26,6 +45,7 @@ const schema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user", immutable: true },
     passwordHash: { type: String, required: true },
     bankroll: { type: bankroll, select: false },
+    practiceProgress: { type: practiceProgress, select: false },
     accountApprovedAt: Date,
     restrictedAt: Date,
     trialStartedAt: Date,

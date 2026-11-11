@@ -62,6 +62,8 @@ Each bankroll uses one currency (ILS, USD, EUR or GBP) and supports up to 2,000 
 
 ## Version 1.2 — practice
 
+Initial branch: `release/v1-2-practice`. The first exercise set covers heads-up Hold'em river Fold/Call in Cash and Tournament. It varies suit assignments, shoving-range weights, pots, and stacks across a bounded template set. Cash uses exact terminal chip EV and Tournament uses fixed-response ICM. The server withholds results until the first answer and replays that result on retry. Open questions are temporarily kept in process memory. First answers, totals, and streaks are saved to the account. The first answer sets the account's practice time zone for consistent day boundaries across devices.
+
 - Let players choose Cash or Tournament and the type of decision to practice. Draw a random spot from validated templates, varying hands, boards, ranges and other supported inputs. Present only legal actions and reveal the solution after the first submitted answer.
 - Begin with supported heads-up cash river decisions and tournament Fold/Call ICM decisions with a complete field and explicit assumptions. Use the existing engine to grade and explain each spot. In cash, show action EV and mix where relevant. In tournaments, explain chip EV and prize EV separately when both are available.
 - Accept multiple actions when their values are within the declared scoring tolerance. Skip or regenerate a spot if the analysis cannot support a reliable grade. Show what made the accepted answers reasonable.
@@ -69,7 +71,7 @@ Each bankroll uses one currency (ILS, USD, EUR or GBP) and supports up to 2,000 
 
 | Step | Deliverable |
 | --- | --- |
-| 1. Practice questions | Generate supported spots for Cash and Tournament modes, with legal cards and actions. Reveal the solution after the first submission. |
+| 1. Practice questions | Initial Cash and Tournament river Fold/Call templates implemented. Expand the template set and decision types. |
 | 2. Grading and explanations | Grade on the server with the existing solver and ICM engine. Accept equivalent actions within a declared tolerance. |
-| 3. Personal progress | Persist correct-answer streaks, practice days, personal bests and achievements. Count first answers and local practice days once. |
+| 3. Personal progress | Implemented persistent totals, correct-answer and practice-day streaks, personal bests, and three initial milestones. Count first answers and local practice days once. |
 | 4. Release validation | Verify grading, date boundaries, account isolation and mobile layouts. |
