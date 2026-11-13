@@ -49,6 +49,7 @@ const RangesWorkspace = lazy(() =>
     default: module.RangesWorkspace,
   })),
 );
+const PushFoldPanel = lazy(() => import("./components/PushFoldPanel").then(({ PushFoldPanel }) => ({ default: PushFoldPanel })));
 const IcmPanel = lazy(() =>
   import("./components/IcmPanel").then((module) => ({
     default: module.IcmPanel,
@@ -1345,6 +1346,7 @@ function App() {
                 )}
               />
             )}
+            {page === "push-fold" && <PushFoldPanel />}
             {page === "icm" && (
               <IcmPanel
                 api={API}

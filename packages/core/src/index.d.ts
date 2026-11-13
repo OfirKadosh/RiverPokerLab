@@ -26,7 +26,7 @@ export function chipValuation(street:'river'|'turn',expectedNet:number[],startin
 export function icmActionValuation(call:number,fold:number):IcmActionValuation;
 export function parseValuation(value:unknown):Valuation;
 export class ApiError extends Error {status:number;code?:string;retryAfter?:string;constructor(message:string,status:number,options?:{code?:string;retryAfter?:string})}
-export interface Capabilities {contractVersion:1;authentication:{mode:'cookie-session'|'local-preview';bearerTokens:false};solvers:{river:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};turn:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};icmTree:{enabled:false}};icm:{snapshot:true;closingCall:true;maxRemainingPlayers:9;treeActions:{enabled:true;evaluation:"fixed-response-policy";limits:Record<string,number>}};jobs:{storage:'process-memory';survivesServerRestart:false;restoresBrowserWorksheet:false};offlineSolving:false}
+export interface Capabilities {contractVersion:1;authentication:{mode:'cookie-session'|'local-preview';bearerTokens:false};solvers:{river:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};turn:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};icmTree:{enabled:false}};icm:{snapshot:true;closingCall:true;maxRemainingPlayers:9;pushFold?:{enabled:true;evaluation:"fixed-response-policy";limits:{minSamplesPerHand:number;maxSamplesPerHand:number;maxRemainingPlayers:number}};treeActions:{enabled:true;evaluation:"fixed-response-policy";limits:Record<string,number>}};jobs:{storage:'process-memory';survivesServerRestart:false;restoresBrowserWorksheet:false};offlineSolving:false}
 export interface JobResponse {success:true;job:ServerJob}
 export interface ApiClient {
  raw(path:string,init?:TransportInit):Promise<TransportResponse>;
@@ -35,6 +35,7 @@ export interface ApiClient {
  calculate(input:import('./models').CalculateRequest,init?:TransportInit):Promise<Calculation>;
  analyzeDecision(input:import('./models').CalculateRequest,init?:TransportInit):Promise<{success:true;analysis:DecisionAnalysis}>;
  calculateIcm(input:import('./models').IcmSnapshotRequest,init?:TransportInit):Promise<{success:true}&import('./models').IcmSnapshot>;
+ analyzePushFold(input:import('./models').PushFoldRequest,init?:TransportInit):Promise<{success:true;analysis:import('./models').PushFoldAnalysis}>;
  compareTournamentTree(input:import('./models').TournamentTreeRequest,init?:TransportInit):Promise<{success:true;analysis:import('./models').TournamentTreeAnalysis}>;
  buildRiverTree(input:RiverSpotRequest,init?:TransportInit):Promise<{success:true;tree:RiverTree}>;
  createSolverJob(input:SolverRequest,requestId:string,init?:TransportInit):Promise<JobResponse>;

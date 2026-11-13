@@ -13,16 +13,18 @@ function createApiClient({baseUrl,fetch:transport=globalThis.fetch,credentials='
     const response=await transport(base+route,{...init,headers,credentials});
     if(response.status===401&&!route.startsWith('/auth/'))onUnauthorized?.();return response;
   }
-  async function request(relative,init={}){
-    const controller=new AbortController(),abort=()=>controller.abort();init.signal?.addEventListener('abort',abort,{once:true});if(init.signal?.aborted)abort();const timer=setTimeout(abort,timeoutMs);
+  async function request(relative,init={},deadlineMs=timeoutMs){
+    const controller=new AbortController(),abort=()=>controller.abort();init.signal?.addEventListener('abort',abort,{once:true});if(init.signal?.aborted)abort();const timer=setTimeout(abort,deadlineMs);
     try{const response=await raw(relative,{...init,signal:controller.signal});let data;try{data=await response.json();}catch{throw new ApiError('The API returned an invalid JSON response.',response.status,{code:'INVALID_RESPONSE'});}
       if(!response.ok||data?.success!==true)throw new ApiError(data?.error||'The API request failed.',response.status,{code:data?.code,retryAfter:response.headers.get('Retry-After')||undefined});return data;
     }finally{clearTimeout(timer);init.signal?.removeEventListener('abort',abort);}
   }
-  const json=(relative,body,method='POST',init={})=>{const headers=copyHeaders(init.headers);headers.set('Content-Type','application/json');return request(relative,{...init,method,headers,body:JSON.stringify(body)});};
+  const json=(relative,body,method='POST',init={},deadlineMs=timeoutMs)=>{const headers=copyHeaders(init.headers);headers.set('Content-Type','application/json');return request(relative,{...init,method,headers,body:JSON.stringify(body)},deadlineMs);};
   const idPath=id=>{if(typeof id!=='string'||!/^[a-zA-Z0-9-]{1,80}$/.test(id))throw new ContractError('Invalid calculation ID.','id');return '/river-jobs/'+id;};
   return {raw,request,
     capabilities:async init=>{const data=await request('/capabilities',init);if(data.capabilities?.contractVersion!==API_CONTRACT_VERSION)throw new ApiError('This API contract version is not supported by the client.',200,{code:'CONTRACT_VERSION'});return data;},
+    // A full nine-player matrix can outlast the standard request deadline.
+    analyzePushFold:(input,init)=>json('/push-fold',input,'POST',init,Math.max(timeoutMs,55000)),
     compareTournamentTree:(input,init)=>json('/tournament-tree',input,'POST',init),
     calculate:(input,init)=>json('/calculate',input,'POST',init),analyzeDecision:(input,init)=>json('/analyze-decision',input,'POST',init),calculateIcm:(input,init)=>json('/icm',input,'POST',init),
     buildRiverTree:(input,init)=>json('/river-tree',input,'POST',init),createSolverJob:(input,requestId,init)=>json('/river-jobs',{input,requestId},'POST',init),

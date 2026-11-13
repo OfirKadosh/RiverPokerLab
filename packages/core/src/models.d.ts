@@ -239,3 +239,35 @@ export interface TournamentTreeRequest {analysisKind:'fixed-policy-icm';street:'
 export interface TournamentActionValue {index:number;type:string;label:string;frequency:number|null;prizeEv:number|null;chipNet:number|null;deltaPrize:number|null;deltaChips:number|null;expectedPrizes:(number|null)[]}
 export interface TournamentNodeValue {nodeId:number;reachProbability:number;expectedPrizes:(number|null)[];riverProbabilities?:{card:string;probability:number|null}[];actor?:number;referenceAction?:number;preferredActions?:number[];actions?:TournamentActionValue[];combos?:{cards:string[];reachProbability:number;conditionalProbability:number|null;valueKind:string;frequencies:number[];prizeEv:(number|null)[];chipNet:(number|null)[]}[]}
 export interface TournamentTreeAnalysis {contractVersion:1;analysisKind:'fixed-policy-icm';valuation:import('./index').IcmTreeValuation;street:'turn'|'river';runtimeMs:number;fingerprint:string;input:{spot:unknown;tournament:TournamentTreeContext;responsePolicy:FixedResponsePolicy};field:{players:{name:string;stack:number}[];payouts:number[];totalPrize:number};privateDeals:number;scenarios:number;nodeDealVisits:number;uniqueOutcomes:number;limits:Record<string,number>;tree:TurnPublicNode[];nodes:TournamentNodeValue[];notes:string[]}
+
+export interface PushFoldRequest {
+  players: { name: string; stack: number; pushRange?: string; callRange?: string }[];
+  outsidePlayers?: { name: string; stack: number }[];
+  hero: number;
+  dealer: number;
+  shover?: number;
+  smallBlind: number;
+  bigBlind: number;
+  ante: number;
+  payouts: number[];
+  samples?: number;
+  seed?: number;
+  hand?: [string, string];
+}
+export interface PushFoldAnalysis {
+  model: 'fixed-response-policy';
+  method: 'monte-carlo';
+  samplesPerHand: number;
+  seed: number;
+  action: 'push' | 'call';
+  rows: {
+    hand: string;
+    aggressive: { chips: number; prize: number };
+    fold: { chips: number; prize: number };
+    prizeDelta: number;
+    chipDelta: number;
+    confidence95: [number, number];
+    recommendation: 'push' | 'call' | 'fold' | 'close';
+  }[];
+  blockedHands: string[];
+}

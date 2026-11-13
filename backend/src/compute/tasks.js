@@ -1,5 +1,6 @@
 const {compareTournamentTree}=require('../engine/tournamentTree');
 const { calculateSnapshot, analyzeClosingCall } = require('../engine/analysis');
+const { analyzePushFold } = require('../engine/pushFold');
 const { calculateICM } = require('../engine/icm');
 const { previewWeightedRange } = require('../engine/weightedRanges');
 const { solveTurnTree } = require('../engine/turnSolver');
@@ -18,6 +19,7 @@ function executeTask(kind, input, hooks = {}) {
     case 'riverSolve': return solveRiverTree(input, hooks);
     case 'riverTree': return buildRiverTree(input);
     case 'decision': return analyzeClosingCall(input);
+    case 'pushFold': return analyzePushFold(input);
     case 'icm': return calculateICM(input);
     case 'range': return previewWeightedRange(input, input.deadCards);
     default: throw new ValidationError('Unsupported calculation task.');
