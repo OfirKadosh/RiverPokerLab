@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { PushFoldAnalysis, PushFoldRequest } from "@river-poker-lab/core";
+import type { PushFoldAnalysis, PushFoldRequest, PushFoldSolution } from "@river-poker-lab/core";
 import { apiClient } from "../lib/api";
+import { PushFoldSolutionView, startingHandMatrix } from "./PushFoldSolutionView";
 import { LoadingIndicator } from "./LoadingIndicator";
 
 const examplePlayers = [
@@ -24,6 +25,9 @@ export function PushFoldPanel() {
   const [outside, setOutside] = useState("");
   const [hand, setHand] = useState("");
   const [samples, setSamples] = useState("120");
+  const [mode, setMode] = useState<"compare" | "solve">("compare");
+  const [rounds, setRounds] = useState("10");
+  const [solution, setSolution] = useState<PushFoldSolution>();
   const [analysis, setAnalysis] = useState<PushFoldAnalysis>();
   const [selected, setSelected] = useState("");
   const [error, setError] = useState("");
@@ -45,7 +49,7 @@ export function PushFoldPanel() {
     event.preventDefault();
     if (pending.current) return;
     const cards = hand.trim().split(/[\s,]+/).filter(Boolean);
-    if (cards.length && cards.length !== 2) {
+    if (mode === "compare" && cards.length && cards.length !== 2) {
       setError("Enter two cards, such as As Kh, or leave this field blank.");
       return;
     }
@@ -53,16 +57,28 @@ export function PushFoldPanel() {
     pending.current = controller;
     setBusy(true);
     setAnalysis(undefined);
+    setSolution(undefined);
     setError("");
-    const input: PushFoldRequest = {
-      players: players.map((player) => ({ ...player, stack: Number(player.stack) })),
-      hero, dealer, ...(shover !== "" ? { shover: Number(shover) } : {}),
+    const table = {
+      dealer,
       smallBlind: Number(smallBlind), bigBlind: Number(bigBlind), ante: Number(ante),
-      payouts: list(payouts), samples: Number(samples),
+      payouts: list(payouts),
       outsidePlayers: list(outside).map((stack, index) => ({ name: `Other table ${index + 1}`, stack })),
-      ...(cards.length ? { hand: [cards[0], cards[1]] } : {}),
     };
     try {
+      if (mode === "solve") {
+        const { analysis: result } = await apiClient.solvePushFold({
+          ...table, rounds: Number(rounds),
+          players: players.map(({ name, stack }) => ({ name, stack: Number(stack) })),
+        }, { signal: controller.signal });
+        if (!controller.signal.aborted) setSolution(result);
+        return;
+      }
+      const input: PushFoldRequest = {
+        ...table, hero, samples: Number(samples), ...(shover !== "" ? { shover: Number(shover) } : {}),
+        players: players.map((player) => ({ ...player, stack: Number(player.stack) })),
+        ...(cards.length ? { hand: [cards[0], cards[1]] } : {}),
+      };
       const { analysis: result } = await apiClient.analyzePushFold(input, { signal: controller.signal });
       if (!controller.signal.aborted) {
         setAnalysis(result);
@@ -76,48 +92,55 @@ export function PushFoldPanel() {
     }
   }
 
-  const ranks = [..."AKQJT98765432"];
-  const matrix = ranks.flatMap((high, i) => ranks.map((low, j) =>
-    i === j ? high + low : i < j ? high + low + "s" : low + high + "o"));
   const byHand = new Map(analysis?.rows.map((item) => [item.hand, item]));
   const action = analysis?.action === "call" ? "Call" : "Push";
 
   return (
     <section className="sidebar-section push-fold-panel">
-      <form onSubmit={(event) => void calculate(event)} onChange={() => setAnalysis(undefined)}>
+      <form onSubmit={(event) => void calculate(event)} onChange={() => { setAnalysis(undefined); setSolution(undefined); setError(""); }}>
         <fieldset disabled={busy}>
           <div className="river-settings">
+            <label className="field-label">Analysis mode<select value={mode} onChange={(e) => setMode(e.target.value === "solve" ? "solve" : "compare")}>
+              <option value="compare">Compare fixed ranges</option>
+              <option value="solve">Solve ranges</option>
+            </select></label>
             <label className="field-label">Table players<select value={players.length} onChange={(e) => resize(Number(e.target.value))}>
               {Array.from({ length: 8 }, (_, index) => <option key={index}>{index + 2}</option>)}
             </select></label>
             <label className="field-label">Dealer<select value={dealer} onChange={(e) => setDealer(Number(e.target.value))}>
               {players.map(({ name }, index) => <option key={index} value={index}>{name}</option>)}
             </select></label>
-            <label className="field-label">Hero<select value={hero} onChange={(e) => {
-              setHero(Number(e.target.value));
-              if (shover === e.target.value) setShover("");
-            }}>
-              {players.map(({ name }, index) => <option key={index} value={index}>{name}</option>)}
-            </select></label>
-            <label className="field-label">Decision<select value={shover} onChange={(e) => setShover(e.target.value)}>
-              <option value="">Unopened pot · Push/Fold</option>
-              {players.map(({ name }, index) => index !== hero && <option key={index} value={index}>Facing {name}'s shove</option>)}
-            </select></label>
+            {mode === "compare" && <>
+              <label className="field-label">Hero<select value={hero} onChange={(e) => {
+                setHero(Number(e.target.value));
+                if (shover === e.target.value) setShover("");
+              }}>
+                {players.map(({ name }, index) => <option key={index} value={index}>{name}</option>)}
+              </select></label>
+              <label className="field-label">Decision<select value={shover} onChange={(e) => setShover(e.target.value)}>
+                <option value="">Unopened pot · Push/Fold</option>
+                {players.map(({ name }, index) => index !== hero && <option key={index} value={index}>Facing {name}'s shove</option>)}
+              </select></label>
+            </>}
             <label className="field-label">Small blind<input required type="number" min="1" value={smallBlind} onChange={(e) => setSmallBlind(e.target.value)} /></label>
             <label className="field-label">Big blind<input required type="number" min="1" value={bigBlind} onChange={(e) => setBigBlind(e.target.value)} /></label>
             <label className="field-label">Ante per player<input required type="number" min="0" value={ante} onChange={(e) => setAnte(e.target.value)} /></label>
             <label className="field-label">Remaining prizes<input required placeholder="65, 35" value={payouts} onChange={(e) => setPayouts(e.target.value)} /></label>
             <label className="field-label">Stacks at other tables<input placeholder="Optional, comma-separated" value={outside} onChange={(e) => setOutside(e.target.value)} /></label>
-            <label className="field-label">Hero's cards<input placeholder="As Kh or blank for matrix" value={hand} onChange={(e) => setHand(e.target.value)} /></label>
-            <label className="field-label">Samples per hand<input required type="number" min="30" max="240" value={samples} onChange={(e) => setSamples(e.target.value)} /></label>
+            {mode === "solve" ? (
+              <label className="field-label">Training rounds<input required type="number" min="4" max="16" value={rounds} onChange={(e) => setRounds(e.target.value)} /></label>
+            ) : <>
+              <label className="field-label">Hero's cards<input placeholder="As Kh or blank for matrix" value={hand} onChange={(e) => setHand(e.target.value)} /></label>
+              <label className="field-label">Samples per hand<input required type="number" min="30" max="240" value={samples} onChange={(e) => setSamples(e.target.value)} /></label>
+            </>}
           </div>
-          <h2>Stacks and ranges</h2>
-          <p className="field-help">Enter seats in clockwise order and stacks before blinds and antes. Players must have chips left after posting. Blank ranges fold. Use AA, AKs, or AA@50% for mixed actions.</p>
+          <h2>{mode === "solve" ? "Starting stacks" : "Stacks and ranges"}</h2>
+          <p className="field-help">Enter seats in clockwise order and stacks before blinds and antes. Players must have chips left after posting. {mode === "compare" && "Blank ranges fold. Use AA, AKs, or AA@50% for mixed actions."}</p>
           {players.map((player, index) => (
             <div className="river-settings push-fold-seat" key={index}>
               {([
                 ["name", "Name"], ["stack", "Starting stack"], ["pushRange", "Push range"], ["callRange", "Call range"],
-              ] as const).map(([field, label]) => (
+              ] as const).slice(0, mode === "solve" ? 2 : 4).map(([field, label]) => (
                 <label className="field-label" key={field}>{label}
                   <input aria-label={`Seat ${index + 1} ${label.toLowerCase()}`} value={player[field]}
                     required={field === "stack" || field === "name"} type={field === "stack" ? "number" : "text"}
@@ -128,12 +151,15 @@ export function PushFoldPanel() {
               ))}
             </div>
           ))}
-          <button className="primary-button">Analyze decision</button>
+          <button className="primary-button">{mode === "solve" ? "Solve ranges" : "Analyze decision"}</button>
         </fieldset>
       </form>
-      <p className="field-help">Hold’em · Fixed opponent ranges · Push, call or fold only. In the facing-shove model, intervening players have folded. Earlier folds do not condition card ranges. No bounties.</p>
-      {busy && <LoadingIndicator label="Sampling hands and valuing payouts…" />}
+      {mode === "solve" ? (
+        <p className="field-help">Hold’em · Preflop all-in or fold · Calls account for the shover and number of earlier callers. No bounties.</p>
+      ) : <p className="field-help">Hold’em · Fixed opponent ranges · Push, call or fold only. In the facing-shove model, intervening players have folded. Earlier folds do not condition card ranges. No bounties.</p>}
+      {busy && <LoadingIndicator label={mode === "solve" ? "Training ranges and checking deviations…" : "Sampling hands and valuing payouts…"} />}
       {error && <p className="validation-note" role="alert">{error}</p>}
+      {solution && <PushFoldSolutionView solution={solution} />}
       {analysis && (
         <section aria-label="Push/Fold results">
           <h2>Decision by hand</h2>
@@ -141,7 +167,7 @@ export function PushFoldPanel() {
           {analysis.rows.length + analysis.blockedHands.length === 169 && (
             <div className="push-fold-matrix-scroll">
               <div className="push-fold-matrix" role="group" aria-label="Starting hand matrix">
-                {matrix.map((label) => {
+                {startingHandMatrix.map((label) => {
                   const item = byHand.get(label);
                   return <button type="button" key={label} disabled={!item} aria-pressed={selected === label}
                     aria-label={`${label}: ${item?.recommendation ?? "blocked"}`}

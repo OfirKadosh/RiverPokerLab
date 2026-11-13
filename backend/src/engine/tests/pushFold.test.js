@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { once } = require("node:events");
 const { test } = require("node:test");
 const { analyzePushFold } = require("../pushFold");
+const { solvePushFold } = require("../pushFoldSolver");
 const { createPreviewApp } = require("../../dev/preview");
 
 const headsUp = {
@@ -82,4 +83,44 @@ test("The portable API client runs the real preview worker and receives input er
   const result = await client.analyzePushFold(headsUp);
   assert.deepEqual(result.analysis, analyzePushFold(headsUp));
   await assert.rejects(client.analyzePushFold({ ...headsUp, hero: 1 }), { status: 400 });
+  assert.equal(capabilities.icm.pushFold.solver.model, "sampled-iterative-icm");
+  await assert.rejects(client.solvePushFold({ ...headsUp, rounds: 100 }), { status: 400 });
+  const solved = await client.solvePushFold({ ...headsUp, rounds: 4 });
+  assert.equal(solved.analysis.model, "sampled-iterative-icm");
+  assert.equal(solved.analysis.contexts.length, 2);
+});
+
+test("Heads-up ranges learn card strength and evaluate deviations on fresh deals", () => {
+  const result = solvePushFold({ ...headsUp, rounds: 8 });
+  assert.equal(result.hands.length, 169);
+  assert.deepEqual(result.contexts.map(({ seat, action, shover }) => [seat, action, shover]),
+    [[0, "push", null], [1, "call", 0]]);
+  for (const { frequencies } of result.contexts) {
+    const aces = frequencies[result.hands.indexOf("AA")];
+    const sevenDeuce = frequencies[result.hands.indexOf("72o")];
+    assert(aces > 0.8);
+    assert(aces > sevenDeuce);
+  }
+  assert.equal(result.trainingDeals, 12000);
+  assert.equal(result.evaluationDeals, 6000);
+  for (const { gain, confidence95 } of result.deviations) {
+    assert(Number.isFinite(gain));
+    assert(confidence95[0] <= gain && confidence95[1] >= gain);
+  }
+});
+
+test("The solver keeps distinct overcall contexts and rejects oversized requests", () => {
+  const input = {
+    ...headsUp,
+    players: [headsUp.players[0], headsUp.players[1], { name: "Short stack", stack: 375 }],
+    outsidePlayers: [{ name: "Other table", stack: 550 }],
+    payouts: [50, 30, 20],
+    rounds: 4,
+  };
+  const result = solvePushFold(input);
+  assert.deepEqual(result.contexts.filter(({ seat, shover }) => seat === 2 && shover === 0)
+    .map(({ priorCallers }) => priorCallers).sort(), [0, 1]);
+  assert(result.contexts.some(({ frequencies }) => frequencies.includes(null)));
+  assert.throws(() => solvePushFold({ ...input, rounds: 100 }), /training rounds/);
+  assert.throws(() => solvePushFold({ ...input, outsidePlayers: Array(7).fill(input.outsidePlayers[0]) }), /9 players/);
 });

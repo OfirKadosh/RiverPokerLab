@@ -25,6 +25,7 @@ function createApiClient({baseUrl,fetch:transport=globalThis.fetch,credentials='
     capabilities:async init=>{const data=await request('/capabilities',init);if(data.capabilities?.contractVersion!==API_CONTRACT_VERSION)throw new ApiError('This API contract version is not supported by the client.',200,{code:'CONTRACT_VERSION'});return data;},
     // A full nine-player matrix can outlast the standard request deadline.
     analyzePushFold:(input,init)=>json('/push-fold',input,'POST',init,Math.max(timeoutMs,55000)),
+    solvePushFold:(input,init)=>json('/push-fold/solve',input,'POST',init,Math.max(timeoutMs,55000)),
     compareTournamentTree:(input,init)=>json('/tournament-tree',input,'POST',init),
     calculate:(input,init)=>json('/calculate',input,'POST',init),analyzeDecision:(input,init)=>json('/analyze-decision',input,'POST',init),calculateIcm:(input,init)=>json('/icm',input,'POST',init),
     buildRiverTree:(input,init)=>json('/river-tree',input,'POST',init),createSolverJob:(input,requestId,init)=>json('/river-jobs',{input,requestId},'POST',init),

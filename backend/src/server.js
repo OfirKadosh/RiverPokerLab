@@ -58,9 +58,9 @@ function createApp({ bankrollStore, practiceProgress, homeCashStore, auth = crea
 
   app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
 
-  app.post("/api/push-fold", async (req, res) => {
+  const pushFoldRoute = (task) => async (req, res) => {
     try {
-      const analysis = await compute(req, res, "pushFold", req.body);
+      const analysis = await compute(req, res, task, req.body);
       if (!res.destroyed) res.json({ success: true, analysis });
     } catch (error) {
       if (res.destroyed) return;
@@ -68,7 +68,9 @@ function createApp({ bankrollStore, practiceProgress, homeCashStore, auth = crea
       const status = error instanceof ValidationError ? 400 : error instanceof ComputeError ? error.status : 500;
       res.status(status).json({ success: false, error: status === 500 ? "Push/Fold analysis failed." : error.message });
     }
-  });
+  };
+  app.post("/api/push-fold", pushFoldRoute("pushFold"));
+  app.post("/api/push-fold/solve", pushFoldRoute("pushFoldSolve"));
 
   app.post("/api/tournament-tree",async(req,res)=>{
     try{const analysis=await compute(req,res,"tournamentTree",req.body);if(!res.destroyed)res.json({success:true,analysis});}

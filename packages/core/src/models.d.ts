@@ -271,3 +271,27 @@ export interface PushFoldAnalysis {
   }[];
   blockedHands: string[];
 }
+
+export type PushFoldSolveRequest = Pick<PushFoldRequest, 'outsidePlayers' | 'dealer' | 'smallBlind' | 'bigBlind' | 'ante' | 'payouts' | 'seed'> & {
+  players: { name: string; stack: number }[];
+  rounds?: number;
+};
+export interface PushFoldSolution {
+  model: 'sampled-iterative-icm';
+  rounds: number;
+  seed: number;
+  trainingDeals: number;
+  evaluationDeals: number;
+  hands: string[];
+  seats: { seat: number; name: string; position: string }[];
+  contexts: {
+    id: number;
+    seat: number;
+    action: 'push' | 'call';
+    shover: number | null;
+    priorCallers: number;
+    visits: number[];
+    frequencies: (number | null)[];
+  }[];
+  deviations: { seat: number; gain: number; confidence95: [number, number] }[];
+}

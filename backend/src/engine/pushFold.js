@@ -35,27 +35,36 @@ function policy(text, cache) {
   return cache.get(range);
 }
 
-function prepare(input) {
-  const { players, hero, dealer, shover, smallBlind, bigBlind, ante, payouts,
-    outsidePlayers = [], samples = 120, seed = 73129, hand } = input ?? {};
+function prepareTable(input) {
+  const { players, dealer, smallBlind, bigBlind, ante, payouts, outsidePlayers = [] } = input ?? {};
   requireInput(Array.isArray(players) && players.length >= 2 && players.length <= LIMITS.maxRemainingPlayers &&
     Array.isArray(outsidePlayers) && players.length + outsidePlayers.length <= LIMITS.maxRemainingPlayers,
   "Enter 2–9 table players and all remaining stacks, up to 9 players in total.");
-  const last = players.length - 1;
-  requireInput(integer(hero, 0, last) && integer(dealer, 0, last) &&
-    (shover === undefined || (integer(shover, 0, last) && shover !== hero)), "Choose valid seats.");
+  requireInput(integer(dealer, 0, players.length - 1), "Choose a valid dealer seat.");
   requireInput(integer(smallBlind, 1, 1e8) && integer(bigBlind, smallBlind, 1e8) &&
     integer(ante, 0, 1e8), "Enter whole chips for blinds and per-player ante.");
-  requireInput(integer(samples, LIMITS.minSamplesPerHand, LIMITS.maxSamplesPerHand) && integer(seed, 0, 0xffffffff),
-    `Use ${LIMITS.minSamplesPerHand}–${LIMITS.maxSamplesPerHand} samples per hand and a valid seed.`);
   const { players: field, payouts: prizes } = validateICMInput({ players: [...players, ...outsidePlayers], payouts });
   requireInput(field.every(({ stack }) => integer(stack, 1, 1e8)), "Stacks must be positive whole chips.");
   const setup = buildHandSetup(field.slice(0, players.length).map(({ stack }, id) =>
     ({ id, startingStack: stack })), dealer, smallBlind, bigBlind);
   const posted = players.map((_, index) => setup.positions.find(({ seatId }) => seatId === index).posted);
-  requireInput(players.every((_, index) => field[index].stack > ante + posted[index]),
+  const starting = field.map(({ stack }) => stack);
+  const available = starting.slice(0, posted.length).map((stack) => stack - ante);
+  requireInput(available.every((stack, i) => stack > posted[i]),
     "Each table player must have chips behind after posting their ante and blind.");
-  const order = setup.preflopOrder;
+  return { field, prizes, ante, posted, available, starting, dealer,
+    order: setup.preflopOrder, bb: setup.bigBlindSeatId, positions: setup.positions };
+}
+
+function prepare(input) {
+  const { players, hero, shover, samples = 120, seed = 73129, hand } = input ?? {};
+  const table = prepareTable(input);
+  const last = players.length - 1;
+  requireInput(integer(hero, 0, last) &&
+    (shover === undefined || (integer(shover, 0, last) && shover !== hero)), "Choose valid seats.");
+  requireInput(integer(samples, LIMITS.minSamplesPerHand, LIMITS.maxSamplesPerHand) && integer(seed, 0, 0xffffffff),
+    `Use ${LIMITS.minSamplesPerHand}–${LIMITS.maxSamplesPerHand} samples per hand and a valid seed.`);
+  const { order, field, ante, posted, bb } = table;
   const heroPosition = order.indexOf(hero);
   if (shover === undefined) requireInput(heroPosition < order.length - 1, "The big blind has no unopened push decision.");
   else {
@@ -67,7 +76,7 @@ function prepare(input) {
   const callPolicies = players.map((player, i) => i === hero || order.indexOf(i) < heroPosition
     ? null : policy(player.callRange ?? "", cache));
   const pushPolicies = players.map((player, i) => shover !== undefined || order.indexOf(i) <= heroPosition ||
-    i === setup.bigBlindSeatId ? null : policy(player.pushRange ?? "", cache));
+    i === bb ? null : policy(player.pushRange ?? "", cache));
   const shove = shover === undefined ? null : policy(players[shover].pushRange ?? "", cache);
   requireInput(!shove || shove.entries.length > 0, "Enter the observed shover's range.");
   let classes = HAND_CLASSES;
@@ -78,8 +87,7 @@ function prepare(input) {
     classes = [{ label: hand.join(" "), combos: [cards] }];
   }
   return {
-    field, prizes, ante, posted, order, heroPosition, hero, dealer, shover, samples, seed, callPolicies, pushPolicies,
-    shove, classes, bb: setup.bigBlindSeatId,
+    ...table, heroPosition, hero, shover, samples, seed, callPolicies, pushPolicies, shove, classes,
   };
 }
 
@@ -121,6 +129,10 @@ function deal(config, distribution, rng) {
   const holes = Array(count);
   holes[config.hero] = heroCombo.cards;
   if (config.shove) holes[config.shover] = weightedChoice(heroCombo.compatible, heroCombo.weight, rng).cards;
+  return completeDeal(holes, rng);
+}
+
+function completeDeal(holes, rng) {
   const reserved = new Set(holes.flat());
   const available = deck.filter((card) => !reserved.has(card));
   let offset = 0;
@@ -130,13 +142,12 @@ function deal(config, distribution, rng) {
     available[choice] = available[offset++];
     return card;
   }
-  for (let i = 0; i < count; i++) if (!holes[i]) holes[i] = [draw(), draw()];
+  for (let i = 0; i < holes.length; i++) if (!holes[i]) holes[i] = [draw(), draw()];
   return { holes, board: Array.from({ length: 5 }, draw), rolls: holes.map(() => rng()), scores: [] };
 }
 
 function resolveLine(config, sample, aggressive, cache) {
-  const { hero, shover, ante, posted, field, order, heroPosition, callPolicies, pushPolicies, bb, dealer } = config;
-  const available = field.slice(0, posted.length).map(({ stack }) => stack - ante);
+  const { hero, shover, posted, field, available, order, heroPosition, callPolicies, pushPolicies, bb } = config;
   const bets = [...posted];
   const live = new Set();
   let firstShove = shover;
@@ -167,7 +178,12 @@ function resolveLine(config, sample, aggressive, cache) {
   }
   if (!live.size) live.add(bb);
 
-  const key = bets.join(",") + "|" + [...live].sort((a, b) => a - b).join(",");
+  const { stacks, values } = valueTerminal(config, sample, bets, live, cache);
+  return { chips: stacks[hero] - field[hero].stack, prize: values[hero] };
+}
+
+function valueTerminal(config, sample, bets, live, cache, key = bets.join(",") + "|" + [...live].sort((a, b) => a - b).join(",")) {
+  const { ante, posted, available, starting, dealer, prizes } = config;
   let prepared = cache.plans.get(key);
   if (!prepared) {
     const remaining = available.map((stack, i) => stack - bets[i]);
@@ -196,20 +212,20 @@ function resolveLine(config, sample, aggressive, cache) {
   }
   const payouts = settleScores(scores, prepared.plan).payouts;
   const stacks = [...prepared.remaining.map((stack, i) => stack + payouts[i] / 100),
-    ...field.slice(posted.length).map(({ stack }) => stack)];
+    ...starting.slice(posted.length)];
   const outcomeKey = stacks.join(",");
   if (!cache.icm.has(outcomeKey)) {
-    const result = resolveTournamentOutcome(stacks, cache.starting, config.prizes);
+    const result = resolveTournamentOutcome(stacks, starting, prizes);
     if (cache.icm.size >= 8192) cache.icm.clear();
-    cache.icm.set(outcomeKey, result.values[hero]);
+    cache.icm.set(outcomeKey, result.values);
   }
-  return { chips: stacks[hero] - field[hero].stack, prize: cache.icm.get(outcomeKey) };
+  return { stacks, values: cache.icm.get(outcomeKey) };
 }
 
 function analyzePushFold(input) {
   const config = prepare(input);
   const rng = seededRandom(config.seed);
-  const cache = { plans: new Map(), icm: new Map(), starting: config.field.map(({ stack }) => stack) };
+  const cache = { plans: new Map(), icm: new Map() };
   const rows = [];
   const blockedHands = [];
   for (const { label, combos } of config.classes) {
@@ -246,4 +262,4 @@ function analyzePushFold(input) {
     seed: config.seed, action: config.shove ? "call" : "push", rows, blockedHands };
 }
 
-module.exports = { analyzePushFold, LIMITS };
+module.exports = { analyzePushFold, prepareTable, seededRandom, completeDeal, valueTerminal, comboIndex, HAND_CLASSES, LIMITS };
