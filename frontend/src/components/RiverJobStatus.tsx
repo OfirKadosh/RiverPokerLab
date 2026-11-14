@@ -1,9 +1,9 @@
 import type {RiverJobController} from '../hooks/useRiverJob';
 import {LoadingIndicator} from './LoadingIndicator';
-export function RiverJobStatus({controller,onOpen,kind="river"}:{kind?:"river"|"turn";controller:RiverJobController;onOpen?:()=>void}){
+export function RiverJobStatus({controller,onOpen,kind="river"}:{kind?:"river"|"turn"|"flop";controller:RiverJobController;onOpen?:()=>void}){
   const {job,active,cancel}=controller;if(!job)return null;
   const labels:Record<string,string>={starting:'Submitting river calculation',queued:'Waiting for the CPU worker',running:'River calculation running',cancelling:'Cancelling river calculation',completed:'River calculation completed',failed:'River calculation failed',cancelled:'River calculation cancelled',unavailable:'River calculation unavailable'};
-  const title=kind==='turn'?'Turn':'River';
+  const title=kind[0].toUpperCase()+kind.slice(1);
   const label=(labels[job.status]||job.status).replace(/river/g,kind).replace(/River/g,title);
   const phase:Record<string,string>={preparing:'Preparing exact deals and tree',solving:'Updating strategy',evaluating:'Checking exact best responses'};
   const p=job.progress;

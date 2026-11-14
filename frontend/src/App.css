@@ -2781,7 +2781,7 @@ textarea:disabled {
 .main-navigation.workspace-tools {
   position: static;
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-columns: repeat(11, minmax(0, 1fr));
   min-height: 0;
   padding: 4px clamp(12px, 3vw, 36px) 8px;
   border: 0;

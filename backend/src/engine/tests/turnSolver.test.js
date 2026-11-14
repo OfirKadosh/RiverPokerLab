@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {once}=require('node:events'),{randomUUID}=require('node:crypto');
-const {prepareTurnGame,assessTurnPolicy,evaluateProfile,solveTurnTree}=require('../turnSolver');
+const {prepareTurnGame,prepareFlopGame,assessTurnPolicy,evaluateProfile,solveTurnTree,solveFlopTree}=require('../turnSolver');
 const {runEquitySimulation}=require('../engine');
 const {ComputePool}=require('../../compute/pool');
 const {createPreviewApp}=require('../../dev/preview');
@@ -99,4 +99,106 @@ test('The 16-pair boundary enumerates every scenario; broader private ranges fai
   const x=input();x.players[0].input={type:'range',range:'AhKh,AdKd,AcKc,AsKs'};x.players[1].input={type:'range',range:'QsQc,QsQd,QhQc,QhQd'};
   const g=prepareTurnGame(x);assert.equal(g.privateDeals,16);assert.equal(g.scenarios.length,704);
   x.players[1].input.range+=',QhQs';assert.throws(()=>prepareTurnGame(x),/private-deal limit/);
+});
+
+const { createApiClient, chipValuation, parseValuation } = require('@river-poker-lab/core');
+const flopInput = () => ({
+  ...input(), solverStreet: 'flop', board: ['2h', '7d', 'Th'],
+  turnBetSizes: [.5], riverBetSizes: [],
+});
+const follow = (game, node, type) => game.nodes[node.actions.find(action => action.type === type).nodeId];
+
+test('Flop chance includes 1,980 ordered blocker-safe runouts per private pair', () => {
+  const x = flopInput();
+  x.players[0].input = { type: 'range', range: 'AhKh@25%,AdKd@75%' };
+  const game = prepareFlopGame(x);
+  assert.equal(game.privateDeals, 2);
+  assert.equal(game.scenarios.length, 3960);
+  near(game.scenarios.reduce((sum, scenario) => sum + scenario.probability, 0), 1);
+  const deals = game.scenarios.filter(scenario => scenario.hands[0] === game.hands[0].findIndex(cards => cards.includes('Ah')));
+  assert.equal(new Set(deals.map(d => [d.turn, d.river].join(','))).size, 1980);
+  const {cardFromString}=require('../card');
+  const used = new Set([...x.board, 'Ah', 'Kh', ...x.players[1].input].map(cardFromString));
+  assert(deals.every(({ turn, river }) => turn !== river && !used.has(turn) && !used.has(river)));
+  const chance = follow(game, follow(game, game.nodes[0], 'check'), 'check');
+  const assessment = assessTurnPolicy(game, policy(game), true);
+  const cards = assessment.publicValues[chance.id].turnProbabilities;
+  near(cards.reduce((sum, card) => sum + card.probability, 0), 1);
+  near(cards.find(({ card }) => card === 'Ah').probability, .75 / 45);
+  const child = game.nodes[chance.actions.find(({ card }) => card === 'Ah').nodeId];
+  assert(child.handIds.every(id => !game.hands[0][id].includes('Ah')));
+});
+
+test('Flop checkdown and all-in utilities agree with independent exact equity', () => {
+  const x = flopInput();
+  const equity = runEquitySimulation(x.players.map(p => p.input), x.board, 'holdem', 1, { method: 'exact' });
+  const r = solveFlopTree({ ...x, betSizes: [], turnBetSizes: [] });
+  assert.equal(r.iterationsCompleted, 0);
+  near(r.metrics.exploitability, 0);
+  assert.equal(Number((100 * r.metrics.expectedNet[0] / x.potSize).toFixed(2)), equity.results[0].equity);
+  assert.deepEqual(parseValuation(r.valuation),chipValuation('flop',r.metrics.expectedNet,x.potSize));
+  const game = prepareFlopGame({ ...x, betSizes: [], includeAllIn: true });
+  const called = follow(game, follow(game, game.nodes[0], 'bet'), 'call');
+  assert.equal(called.kind, 'terminal');
+  assert.equal(called.outcome.contestPot, 10);
+  near(called.active.length, 1980);
+  const ev = called.active.reduce((sum, id, i) => sum + game.scenarios[id].probability * ((called.utility[i] + .5) * 2), 0);
+  assert.equal(Number(((ev + 4) / 10 * 100).toFixed(2)), equity.results[0].equity);
+});
+
+test('Optional river betting uses the revealed turn and river and preserves flop-start EV', () => {
+  const x = { ...flopInput(), betSizes: [], turnBetSizes: [], riverBetSizes: [.5] };
+  const game = prepareFlopGame(x);
+  const turnChance = follow(game, follow(game, game.nodes[0], 'check'), 'check');
+  const turn = game.nodes[turnChance.actions[0].nodeId];
+  const riverChance = follow(game, follow(game, turn, 'check'), 'check');
+  const river = game.nodes[riverChance.actions[0].nodeId];
+  assert.equal(riverChance.dealStreet, 'river');
+  assert.equal(river.board.length, 5);
+  assert.equal(new Set(river.board).size, 5);
+  assert.equal(river.active.length, 1);
+  const r = solveFlopTree(x);
+  assert(r.metrics.exploitability < r.history[0].exploitability);
+  near(r.metrics.expectedNet[0] + r.metrics.expectedNet[1], x.potSize);
+  assert.throws(() => solveFlopTree({ ...x, board: [...x.board, 'As'] }), /three-card flop/);
+  assert.throws(() => solveFlopTree({ ...x, maxRaises: 1 }), /no raises/);
+  assert.throws(() => solveFlopTree({ ...x, solver: { maxIterations: 501 } }), /100–500/);
+});
+
+test('A small flop tree permits betting on all three streets, within worker result retention', () => {
+  const x = flopInput();
+  for (const player of x.players) player.stack = 1;
+  x.riverBetSizes = [.5];
+  const result = solveFlopTree(x);
+  const streets = new Set(result.flopTree.nodes
+    .filter(node => node.actions.some(action => action.type === 'bet'))
+    .map(node => node.street));
+  assert.deepEqual([...streets], ['flop', 'turn', 'river']);
+  assert(Buffer.byteLength(JSON.stringify(result)) < 16 * 1024 * 1024);
+  const broad = { ...x, players: [
+    { ...x.players[0], input: { type: 'range', range: 'random' } }, x.players[1],
+  ] };
+  assert.throws(() => prepareFlopGame(broad), /private-deal limit/);
+});
+
+test('Flop background jobs run through the portable client and real preview worker', async () => {
+  const server = createPreviewApp({ NODE_ENV: 'development' }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const client = createApiClient({ baseUrl: `http://127.0.0.1:${server.address().port}/api` });
+  try {
+    assert.equal((await client.capabilities()).capabilities.solvers.flop.enabled, true);
+    const { job } = await client.createSolverJob(flopInput(), randomUUID());
+    let result;
+    for (let i = 0; i < 250; i++) {
+      result = (await client.getSolverJob(job.id)).job;
+      if (!['queued', 'running'].includes(result.status)) break;
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    assert.equal(result.status, 'completed', result.error?.message);
+    assert.equal(result.solution.scope, 'heads-up-flop-turn-river-holdem-cash');
+    assert.equal(result.solution.flopTree.scenarios, 1980);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+  }
 });

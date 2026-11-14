@@ -31,6 +31,7 @@ export const PAGES = [
     description: "Explore equity, pot payouts and Fold versus Call.",
   },
   { id: "push-fold", label: "Push/Fold ICM", description: "Compare preflop all-in decisions under fixed opponent ranges." },
+  { id: "flop", label: "Flop tree", description: "Explore heads-up flop strategy and later streets in a bounded cash game." },
   { id: "turn", label: "Turn tree", description: "Solve a bounded heads-up turn-and-river game with every legal runout." },
   { id: "river", label: "River tree", description: "Explore a restricted heads-up river betting tree and conditional payoffs." },
   {
@@ -61,7 +62,7 @@ export const PAGES = [
 ] as const;
 export type Page = (typeof PAGES)[number]["id"];
 export const LIGHT_TOOLS = ["quick", "bankroll", "practice", "home-cash"] as const;
-const PLUS_TOOLS = ["spot", "hand", "ranges", "analysis", "push-fold", "turn", "river", "tournament", "icm", "history"] as const;
+const PLUS_TOOLS = ["spot", "hand", "ranges", "analysis", "push-fold", "flop", "turn", "river", "tournament", "icm", "history"] as const;
 
 export function workspaceFor(page: Page) {
   if (page === "light" || LIGHT_TOOLS.some((tool) => tool === page)) return "light";

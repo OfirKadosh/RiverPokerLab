@@ -9,3 +9,10 @@ export function createRiverWorkspace():RiverWorkspace {
 }
 
 export function createTurnWorkspace():RiverWorkspace {const state=createRiverWorkspace();state.draft={...state.draft,players:state.draft.players.map((p,i)=>({...p,stack:'4',cards:i===0?['Ah','Kh']:['Qs','Qc'],mode:'range',rangeDraft:{range:i===0?'AhKh,AdKd':'QsQc,JsJc',actionRanges:{},rangeAction:'base'}})),board:['2h','7d','Th','9s'],pot:'2',minBet:'1',bets:'50',riverBets:'50',raises:'',maxRaises:'0',includeAllIn:true};state.solver={iterations:'1500',target:'0.5'};return state;}
+
+export function createFlopWorkspace():RiverWorkspace {
+  const state=createTurnWorkspace();
+  state.draft={...state.draft,board:['2h','7d','Th'],turnBets:'50',riverBets:'',includeAllIn:false};
+  state.solver={iterations:'100',target:'0.5'};
+  return state;
+}

@@ -33,7 +33,7 @@ import "./App.css";
 
 import { useRiverJob } from "./hooks/useRiverJob";
 import { RiverJobStatus } from "./components/RiverJobStatus";
-import { createRiverWorkspace, createTurnWorkspace } from "./lib/riverTree";
+import { createFlopWorkspace, createRiverWorkspace, createTurnWorkspace } from "./lib/riverTree";
 import { LIGHT_TOOLS, PAGES, usePage, workspaceFor } from "./lib/navigation";
 import {
   createIcmWorkspace,
@@ -106,6 +106,8 @@ function App() {
   const riverJob = useRiverJob(API, riverWorkspace, setRiverWorkspace);
   const [turnWorkspace,setTurnWorkspace]=useState(createTurnWorkspace);
   const turnJob=useRiverJob(API,turnWorkspace,setTurnWorkspace);
+  const [flopWorkspace,setFlopWorkspace]=useState(createFlopWorkspace);
+  const flopJob=useRiverJob(API,flopWorkspace,setFlopWorkspace);
   const [icmWorkspace, setIcmWorkspace] = useState(createIcmWorkspace);
   const [tournamentDraft, setTournamentDraft] = useState(createTournamentDraft);
   const [rangeDrafts, setRangeDrafts] = useState<Record<number, RangeDraft>>(
@@ -735,6 +737,7 @@ function App() {
         )}
       </nav>
       {riverJob.job && page !== "river" && <RiverJobStatus controller={riverJob} onOpen={()=>navigate("river")} />}
+      {flopJob.job && page !== "flop" && <RiverJobStatus kind="flop" controller={flopJob} onOpen={()=>navigate("flop")} />}
       {turnJob.job && page !== "turn" && <RiverJobStatus kind="turn" controller={turnJob} onOpen={()=>navigate("turn")} />}
       <QuickEquity active={isQuick} api={API} onOpenAdvanced={openQuickHand} />
       {!isQuick && <main
@@ -1355,8 +1358,9 @@ function App() {
                 setState={setIcmWorkspace}
               />
             )}
-            {page === "turn" && <TurnTreePanel icmState={turnIcm} setIcmState={setTurnIcm} api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active} />}
-            {page === "river" && <RiverTreePanel icmState={riverIcm} setIcmState={setRiverIcm} blocked={turnJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
+            {page === "flop" && <TurnTreePanel street="flop" api={API} state={flopWorkspace} setState={setFlopWorkspace} controller={flopJob} blocked={riverJob.active||turnJob.active} />}
+            {page === "turn" && <TurnTreePanel icmState={turnIcm} setIcmState={setTurnIcm} api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active||flopJob.active} />}
+            {page === "river" && <RiverTreePanel icmState={riverIcm} setIcmState={setRiverIcm} blocked={turnJob.active||flopJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "practice" && <PracticePanel />}
             {page === "home-cash" && auth.user && <HomeCashPanel ownerId={auth.user.id} preview={auth.preview === true} />}
             {page === "bankroll" && <BankrollPanel preview={auth.preview === true} />}

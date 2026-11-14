@@ -20,10 +20,10 @@ function validateRiverInput(input, {street='river'}={}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('River tree input must be an object.');
   try{assertChipSolverValuation(input);}catch(error){fail(error.message);}
   if ((optional(input.gameType, 'holdem')) !== 'holdem' || (optional(input.gameMode, 'cash')) !== 'cash')
-    fail('Stage 10 supports heads-up no-limit Hold\'em cash Chip EV only; Omaha and tournament ICM trees are not supported.');
-  if (input.tournament || input.betting || input.initialContributions) fail('Start at a fresh river decision with no outstanding bet or imported action ledger.');
+    fail(`The ${street} strategy solver supports heads-up no-limit Hold'em cash Chip EV only.`);
+  if (input.tournament || input.betting || input.initialContributions) fail(`Start at a fresh ${street} decision with no outstanding bet or imported action ledger.`);
   if (!Array.isArray(input.players) || input.players.length !== 2) fail('Exactly two players are required: OOP first, IP second.');
-  if (!Array.isArray(input.board) || input.board.length !== (street==='turn'?4:5)) fail(street==='turn'?'A four-card turn board is required.':'A complete five-card river board is required.');
+  if (!Array.isArray(input.board) || input.board.length !== ({flop:3,turn:4,river:5}[street])) fail(street==='flop'?'A three-card flop board is required.':street==='turn'?'A four-card turn board is required.':'A complete five-card river board is required.');
   const simulation = validateSimulationInput(input.players.map(p => p?.input), input.board, 'holdem', 1);
   const denomination = chipUnits(optional(input.chipUnit, 1), 'Smallest chip');
   if (!denomination) fail('Smallest chip must be positive.');
@@ -32,7 +32,7 @@ function validateRiverInput(input, {street='river'}={}) {
     if ((positive && cents <= 0) || cents % denomination !== 0) fail(`${label} must be positive and divisible by the smallest chip.`);
     return cents / denomination;
   };
-  const pot = amount(input.potSize, 'River-start pot');
+  const pot = amount(input.potSize, `${street[0].toUpperCase()+street.slice(1)}-start pot`);
   const minBet = amount(optional(input.minBet, 2), 'Minimum full bet');
   const players = input.players.map((p,index) => {
     if (typeof p.name !== 'string' || !p.name.trim() || p.name.trim().length > 40) fail('Each player needs a name of 1–40 characters.');

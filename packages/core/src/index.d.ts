@@ -11,22 +11,22 @@ export function handSize(type:'holdem'|'omaha'):number;
 export class ContractError extends Error {code:string;field?:string;constructor(message:string,field?:string)}
 export function normalizeCard(value:unknown):string;
 export interface SolverSettingsDraft {iterations:string;target:string}
-export interface RiverSpotRequest {gameType:'holdem';gameMode:'cash';board:string[];players:{name:string;stack:number;input:string[]|import('./models').PlayerInput}[];potSize:number;chipUnit:number;minBet:number;betSizes:number[];raiseSizes:number[];maxRaises:number;includeAllIn:boolean;solverStreet?:'river'|'turn';riverBetSizes?:number[]}
+export interface RiverSpotRequest {gameType:'holdem';gameMode:'cash';board:string[];players:{name:string;stack:number;input:string[]|import('./models').PlayerInput}[];potSize:number;chipUnit:number;minBet:number;betSizes:number[];raiseSizes:number[];maxRaises:number;includeAllIn:boolean;solverStreet?:'river'|'turn'|'flop';turnBetSizes?:number[];riverBetSizes?:number[]}
 export interface SolverRequest extends RiverSpotRequest {solver:{maxIterations:number;targetPotPct:number}}
 export function buildRiverTreeRequest(draft:SolverDraft):RiverSpotRequest;
-export function buildSolverRequest(draft:SolverDraft,options:SolverSettingsDraft,street?:'river'|'turn'):SolverRequest;
+export function buildSolverRequest(draft:SolverDraft,options:SolverSettingsDraft,street?:'river'|'turn'|'flop'):SolverRequest;
 export function assertChipSolverValuation(input:unknown):void;
-export interface ChipValuation {kind:'chip-ev';unit:'chips';baseline:'river-start-stack'|'turn-start-stack';street:'river'|'turn';startingPot:number;expectedNet:number[]}
+export interface ChipValuation {kind:'chip-ev';unit:'chips';baseline:'river-start-stack'|'turn-start-stack'|'flop-start-stack';street:'river'|'turn'|'flop';startingPot:number;expectedNet:number[]}
 export interface IcmActionValuation {kind:'icm-prize-ev';unit:'prize-units';baseline:'absolute-expected-prize';model:'Malmuth-Harville ICM';expectedByAction:{call:number;fold:number};difference:{action:'call';reference:'fold';value:number}}
 export interface IcmTreeValuation {kind:'icm-tree-ev';unit:'prize-units';baseline:'absolute-expected-prize';model:'Malmuth-Harville ICM';evaluation:'fixed-response-policy'}
 export type Valuation=ChipValuation|IcmActionValuation|IcmTreeValuation;
 export function icmTreeValuation():IcmTreeValuation;
 export function buildTournamentTreeRequest(draft:SolverDraft,tournament:import('./models').TournamentTreeContext,responsePolicy:import('./models').FixedResponsePolicy,street?:'river'|'turn'):import('./models').TournamentTreeRequest;
-export function chipValuation(street:'river'|'turn',expectedNet:number[],startingPot:number):ChipValuation;
+export function chipValuation(street:'river'|'turn'|'flop',expectedNet:number[],startingPot:number):ChipValuation;
 export function icmActionValuation(call:number,fold:number):IcmActionValuation;
 export function parseValuation(value:unknown):Valuation;
 export class ApiError extends Error {status:number;code?:string;retryAfter?:string;constructor(message:string,status:number,options?:{code?:string;retryAfter?:string})}
-export interface Capabilities {contractVersion:1;authentication:{mode:'cookie-session'|'local-preview';bearerTokens:false};solvers:{river:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};turn:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};icmTree:{enabled:false}};icm:{snapshot:true;closingCall:true;maxRemainingPlayers:9;pushFold?:{enabled:true;evaluation:"fixed-response-policy";limits:{minSamplesPerHand:number;maxSamplesPerHand:number;maxRemainingPlayers:number};solver?:{model:"sampled-iterative-icm";limits:Record<string,number>}};treeActions:{enabled:true;evaluation:"fixed-response-policy";limits:Record<string,number>}};jobs:{storage:'process-memory';survivesServerRestart:false;restoresBrowserWorksheet:false};offlineSolving:false}
+export interface Capabilities {contractVersion:1;authentication:{mode:'cookie-session'|'local-preview';bearerTokens:false};solvers:{river:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};turn:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};flop?:{enabled:true;valuation:'chip-ev';limits:Record<string,number>};icmTree:{enabled:false}};icm:{snapshot:true;closingCall:true;maxRemainingPlayers:9;pushFold?:{enabled:true;evaluation:"fixed-response-policy";limits:{minSamplesPerHand:number;maxSamplesPerHand:number;maxRemainingPlayers:number};solver?:{model:"sampled-iterative-icm";limits:Record<string,number>}};treeActions:{enabled:true;evaluation:"fixed-response-policy";limits:Record<string,number>}};jobs:{storage:'process-memory';survivesServerRestart:false;restoresBrowserWorksheet:false};offlineSolving:false}
 export interface JobResponse {success:true;job:ServerJob}
 export interface ApiClient {
  raw(path:string,init?:TransportInit):Promise<TransportResponse>;

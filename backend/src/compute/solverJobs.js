@@ -2,7 +2,7 @@ const {randomUUID,createHash}=require('node:crypto');
 const {ComputeError}=require('./pool');
 const {ValidationError}=require('../engine/errors');
 const {solverOptions}=require('../engine/riverSolver');
-const {turnSolverOptions}=require('../engine/turnSolver');
+const {turnSolverOptions,flopSolverOptions}=require('../engine/turnSolver');
 const ACTIVE=new Set(['queued','running']);
 class JobError extends Error {constructor(message,status){super(message);this.status=status;}}
 // Process-local bounded results. No production database, secret or session token is stored.
@@ -21,8 +21,9 @@ class SolverJobs {
   list(owner){this.prune();return [...this.jobs.values()].filter(j=>j.owner===owner).map(j=>this.snapshot(j,false));}
   create(owner,input,requestId){
     this.prune();
-    if(input?.solverStreet!==undefined&&!['turn','river'].includes(input.solverStreet))throw new ValidationError('Unsupported solver street.');
-    const turn=input?.solverStreet==='turn',options=turn?turnSolverOptions(input):solverOptions(input);
+    if(input?.solverStreet!==undefined&&!['flop','turn','river'].includes(input.solverStreet))throw new ValidationError('Unsupported solver street.');
+    const street=input?.solverStreet??'river';
+    const options={flop:flopSolverOptions,turn:turnSolverOptions,river:solverOptions}[street](input);
     if(typeof requestId!=='string'||! /^[a-zA-Z0-9-]{16,80}$/.test(requestId))throw new ValidationError('A unique requestId of 16–80 letters, digits or hyphens is required.');
     const fingerprint=createHash('sha256').update(JSON.stringify(input)).digest('hex');
     const previous=[...this.jobs.values()].find(j=>j.owner===owner&&j.requestId===requestId);
@@ -35,7 +36,7 @@ class SolverJobs {
       progress:{phase:'queued',completedIterations:0,maxIterations:options.maxIterations}};
     this.jobs.set(job.id,job);
     // The job owns its cancellation signal, independently of the POST or polling connection.
-    this.pool.run(turn?'turnSolve':'riverSolve',input,{owner,signal:job.controller.signal,onProgress:progress=>{
+    this.pool.run(street+'Solve',input,{owner,signal:job.controller.signal,onProgress:progress=>{
       if(!ACTIVE.has(job.status))return;
       job.status='running';job.progress=progress;job.updatedAt=this.now();
     }}).then(solution=>{

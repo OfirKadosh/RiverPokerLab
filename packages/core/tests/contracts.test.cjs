@@ -20,3 +20,15 @@ test('Chip and ICM results have distinct units and baselines, and cannot be pars
   for(const bad of [{...chips,unit:'prize-units'},{...icm,unit:'chips'},{...icm,baseline:'turn-start-stack'},{...chips,expectedNet:[NaN,1]},null])assert.throws(()=>parseValuation(bad),ContractError);
 });
 module.exports={draft};
+
+test('Flop job contract accepts separate turn and river sizes and a flop EV baseline', () => {
+  const d = { ...draft(), board: ['2c', '7d', 'Th'], bets: '50', turnBets: '75', riverBets: '',
+    maxRaises: '0', raises: '' };
+  const settings = { iterations: '100', target: '0.5' };
+  const request = buildSolverRequest(d, settings, 'flop');
+  assert.equal(request.solverStreet, 'flop');
+  assert.deepEqual(request.turnBetSizes, [.75]);
+  assert.deepEqual(request.riverBetSizes, []);
+  assert.throws(() => buildSolverRequest(d, { ...settings, iterations: '501' }, 'flop'), ContractError);
+  assert.equal(parseValuation(chipValuation('flop', [1, 1], 2)).baseline, 'flop-start-stack');
+});
