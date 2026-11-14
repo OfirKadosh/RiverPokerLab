@@ -29,7 +29,8 @@ function createPreviewApp(env = process.env) {
     const homeCash = ['GET', 'POST'].includes(req.method) && req.path === '/api/home-cash' ||
       req.method === 'GET' && /^\/api\/home-cash\/history(?:\/[0-9a-f-]{36})?$/.test(req.path) ||
       req.method === 'POST' && /^\/api\/home-cash\/[0-9a-f-]{36}\/actions$/.test(req.path);
-    const permitted = homeCash || localJob || practice || req.method === 'GET' && ['/api/auth/me','/api/auth/config','/api/capabilities','/api/bankroll','/api/practice/progress'].includes(req.path) ||
+    const preflop = req.method === 'GET' && /^\/api\/preflop-charts(?:\/[a-z0-9-]+)?$/.test(req.path);
+    const permitted = preflop || homeCash || localJob || practice || req.method === 'GET' && ['/api/auth/me','/api/auth/config','/api/capabilities','/api/bankroll','/api/practice/progress'].includes(req.path) ||
       req.method === 'POST' && ['/api/calculate','/api/icm','/api/push-fold','/api/push-fold/solve','/api/analyze-decision','/api/ranges/preview','/api/river-tree','/api/river-solve','/api/tournament-tree','/api/tournament-tree/solve'].includes(req.path);
     if (!permitted || (req.path === '/api/calculate' && req.body?.saveSpot !== undefined && req.body.saveSpot !== false))
       return res.status(403).json({success:false,error:'Saving and account actions are disabled in UI preview. Use authenticated development for persistence.'});

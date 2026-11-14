@@ -213,6 +213,7 @@ function valueTerminal(config, sample, bets, live, cache, key = bets.join(",") +
   const payouts = settleScores(scores, prepared.plan).payouts;
   const stacks = [...prepared.remaining.map((stack, i) => stack + payouts[i] / 100),
     ...starting.slice(posted.length)];
+  if (config.valuation === "chip-ev") return { stacks, values: stacks };
   const outcomeKey = stacks.join(",");
   if (!cache.icm.has(outcomeKey)) {
     const result = resolveTournamentOutcome(stacks, starting, prizes);

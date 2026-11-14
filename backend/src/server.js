@@ -5,6 +5,7 @@ require("dotenv").config(process.env.APP_ENV_FILE ? { path: process.env.APP_ENV_
 
 const {API_CONTRACT_VERSION}=require("@river-poker-lab/core");
 const {capabilities}=require("./capabilities");
+const { preflopCatalog, getPreflopChart } = require("./preflopCatalog");
 const Spot = require("./models/Spot");
 const { homeCashRoutes } = require("./homeCash/routes");
 const { bankrollRoutes } = require("./bankroll/routes");
@@ -57,6 +58,16 @@ function createApp({ bankrollStore, practiceProgress, homeCashStore, auth = crea
   app.use("/api/practice", practiceRoutes(compute, practiceProgress));
 
   app.get("/api/capabilities",(req,res)=>res.json({success:true,capabilities:capabilities(auth.preview===true)}));
+
+  app.get("/api/preflop-charts", (req, res) => {
+    res.json({ success: true, ...preflopCatalog() });
+  });
+
+  app.get("/api/preflop-charts/:id", (req, res) => {
+    const chart = getPreflopChart(req.params.id);
+    if (!chart) return res.status(404).json({ success: false, error: "Preflop chart not found." });
+    res.json({ success: true, chart });
+  });
 
   const pushFoldRoute = (task) => async (req, res) => {
     try {

@@ -296,3 +296,19 @@ export interface PushFoldSolution {
   }[];
   deviations: { seat: number; gain: number; confidence95: [number, number] }[];
 }
+
+export interface PreflopPreset {
+  id: string;
+  label: string;
+  mode: 'cash' | 'tournament';
+  valuation: 'chip-ev' | 'icm-prize-ev';
+}
+export interface PreflopCatalog {
+  version: string;
+  presets: PreflopPreset[];
+}
+export interface PreflopChart extends PreflopPreset, Omit<PushFoldSolution, 'model'> {
+  version: string;
+  config: Pick<PushFoldSolveRequest, 'players' | 'dealer' | 'smallBlind' | 'bigBlind' | 'ante'> &
+    Partial<Pick<PushFoldSolveRequest, 'payouts' | 'outsidePlayers'>>;
+}

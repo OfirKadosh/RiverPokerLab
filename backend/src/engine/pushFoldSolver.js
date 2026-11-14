@@ -134,12 +134,16 @@ function measureDeviations(table, game, rng, deviations) {
 }
 
 function solvePushFold(input) {
+  return solvePushFoldStrategy(input, "icm-prize-ev");
+}
+
+function solvePushFoldStrategy(input, valuation) {
   const { rounds = 10, seed = 73129 } = input ?? {};
   if (!Number.isSafeInteger(rounds) || rounds < LIMITS.minRounds || rounds > LIMITS.maxRounds ||
       !Number.isSafeInteger(seed) || seed < 0 || seed > 0xffffffff) {
     throw new ValidationError(`Use ${LIMITS.minRounds}–${LIMITS.maxRounds} training rounds and a valid seed.`);
   }
-  const table = prepareTable(input);
+  const table = { ...prepareTable(valuation === "chip-ev" ? { ...input, payouts: [1], outsidePlayers: [] } : input), valuation };
   const game = buildGame(table);
   const rng = seededRandom(seed);
   const updates = game.contexts.map(() => new Float64Array(HAND_COUNT));
@@ -176,7 +180,7 @@ function solvePushFold(input) {
   // Train candidate one-seat deviations on fresh deals and score them on a separate sample.
   const deviations = fitDeviations(table, game, rng);
   return {
-    model: "sampled-iterative-icm", rounds, seed, trainingDeals: rounds * LIMITS.dealsPerRound,
+    model: valuation === "chip-ev" ? "sampled-iterative-chip-ev" : "sampled-iterative-icm", rounds, seed, trainingDeals: rounds * LIMITS.dealsPerRound,
     evaluationDeals: LIMITS.dealsPerEvaluation,
     hands: HAND_CLASSES.map(({ label }) => label),
     seats: table.order.map((seat) => ({
@@ -192,4 +196,4 @@ function solvePushFold(input) {
   };
 }
 
-module.exports = { solvePushFold, LIMITS };
+module.exports = { solvePushFold, solvePushFoldStrategy, LIMITS };

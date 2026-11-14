@@ -8,7 +8,7 @@ export const startingHandMatrix = ranks.flatMap((high, i) => ranks.map((low, j) 
 const { format } = new Intl.NumberFormat("en", { maximumFractionDigits: 3 });
 const { format: percent } = new Intl.NumberFormat("en", { style: "percent", maximumFractionDigits: 1 });
 
-export function PushFoldSolutionView({ solution }: { solution: PushFoldSolution }) {
+export function PushFoldSolutionView({ solution, unit = "prize units" }: { solution: Omit<PushFoldSolution, "model">; unit?: "chips" | "prize units" }) {
   const ordered = [...solution.contexts].sort((a, b) =>
     Number(a.action === "call") - Number(b.action === "call") ||
     solution.seats.findIndex(({ seat }) => seat === a.seat) -
@@ -57,10 +57,10 @@ export function PushFoldSolutionView({ solution }: { solution: PushFoldSolution 
         <p>{format(context.visits[selected])} training visits</p>
       </div>
       <h3>Sampled deviation check</h3>
-      <p className="field-help">Expected prize change per dealt hand for one tested strategy change per seat. An interval above zero indicates room to improve. Other possible changes may do better.</p>
+      <p className="field-help">Expected change in {unit} per dealt hand for one tested strategy change per seat. An interval above zero indicates room to improve. Other possible changes may do better.</p>
       <ul>
         {solution.deviations.map(({ seat, gain, confidence95 }) => (
-          <li key={seat}>{seats.get(seat)} · {format(gain)} prize units ({confidence95.map(format).join(" to ")}; approx. 95%)</li>
+          <li key={seat}>{seats.get(seat)} · {format(gain)} {unit} ({confidence95.map(format).join(" to ")}; approx. 95%)</li>
         ))}
       </ul>
     </section>
