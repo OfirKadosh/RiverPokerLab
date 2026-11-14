@@ -234,4 +234,4 @@ function solvePostflop(input,street,{onProgress=()=>{}}={}){
       'Exploitability is half the sum of exact information-set-constrained unilateral best-response gains in this configured two-street game.',
       'No rake, side pots, outstanding bets, Omaha, tournament ICM or unrestricted-game guarantee. Temporary job retention follows the existing background calculation rules.']};
 }
-module.exports={LIMITS,FLOP_LIMITS,flopSolverOptions,prepareFlopGame,solveFlopTree,turnSolverOptions,prepareTurnGame,evaluateProfile,assessTurnPolicy,turnStep,averageTurnPolicy,solveTurnTree};
+module.exports={LIMITS,FLOP_LIMITS,flopSolverOptions,prepareFlopGame,solveFlopTree,turnSolverOptions,prepareTurnGame,forward,evaluateProfile,assessTurnPolicy,turnStep,averageTurnPolicy,solveTurnTree};

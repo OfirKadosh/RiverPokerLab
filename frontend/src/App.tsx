@@ -101,6 +101,7 @@ function App() {
   const tools = PAGES.filter((item) => item.id !== "light" && workspaceFor(item.id) === workspace && workspace !== null);
   const hasTable = ["spot", "hand", "analysis"].includes(page);
   const [riverIcm,setRiverIcm]=useState(createTournamentWorkspace);
+  const [flopIcm,setFlopIcm]=useState(createTournamentWorkspace);
   const [turnIcm,setTurnIcm]=useState(createTournamentWorkspace);
   const [riverWorkspace, setRiverWorkspace] = useState(createRiverWorkspace);
   const riverJob = useRiverJob(API, riverWorkspace, setRiverWorkspace);
@@ -1358,7 +1359,7 @@ function App() {
                 setState={setIcmWorkspace}
               />
             )}
-            {page === "flop" && <TurnTreePanel street="flop" api={API} state={flopWorkspace} setState={setFlopWorkspace} controller={flopJob} blocked={riverJob.active||turnJob.active} />}
+            {page === "flop" && <TurnTreePanel street="flop" icmState={flopIcm} setIcmState={setFlopIcm} api={API} state={flopWorkspace} setState={setFlopWorkspace} controller={flopJob} blocked={riverJob.active||turnJob.active} />}
             {page === "turn" && <TurnTreePanel icmState={turnIcm} setIcmState={setTurnIcm} api={API} state={turnWorkspace} setState={setTurnWorkspace} controller={turnJob} blocked={riverJob.active||flopJob.active} />}
             {page === "river" && <RiverTreePanel icmState={riverIcm} setIcmState={setRiverIcm} blocked={turnJob.active||flopJob.active} jobController={riverJob} api={API} state={riverWorkspace} setState={setRiverWorkspace} source={{ seats, board, pot:actualPot, gameType, gameMode, inHand:handActions!==null }} />}
             {page === "practice" && <PracticePanel />}

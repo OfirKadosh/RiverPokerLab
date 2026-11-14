@@ -26,7 +26,8 @@ function createApiClient({baseUrl,fetch:transport=globalThis.fetch,credentials='
     // A full nine-player matrix can outlast the standard request deadline.
     analyzePushFold:(input,init)=>json('/push-fold',input,'POST',init,Math.max(timeoutMs,55000)),
     solvePushFold:(input,init)=>json('/push-fold/solve',input,'POST',init,Math.max(timeoutMs,55000)),
-    compareTournamentTree:(input,init)=>json('/tournament-tree',input,'POST',init),
+    compareTournamentTree:(input,init)=>json('/tournament-tree',input,'POST',init,Math.max(timeoutMs,55000)),
+    solveTournamentTree:(input,init)=>json('/tournament-tree/solve',input,'POST',init,Math.max(timeoutMs,55000)),
     calculate:(input,init)=>json('/calculate',input,'POST',init),analyzeDecision:(input,init)=>json('/analyze-decision',input,'POST',init),calculateIcm:(input,init)=>json('/icm',input,'POST',init),
     buildRiverTree:(input,init)=>json('/river-tree',input,'POST',init),createSolverJob:(input,requestId,init)=>json('/river-jobs',{input,requestId},'POST',init),
     getSolverJob:(id,init)=>request(idPath(id),init),listSolverJobs:init=>request('/river-jobs',init),cancelSolverJob:(id,init)=>json(idPath(id),{},'DELETE',init),

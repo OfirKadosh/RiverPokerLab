@@ -1,4 +1,4 @@
-const {compareTournamentTree}=require('../engine/tournamentTree');
+const {compareTournamentTree,solveTournamentTree}=require('../engine/tournamentTree');
 const { calculateSnapshot, analyzeClosingCall } = require('../engine/analysis');
 const { solvePushFold } = require('../engine/pushFoldSolver');
 const { analyzePushFold } = require('../engine/pushFold');
@@ -15,6 +15,7 @@ function executeTask(kind, input, hooks = {}) {
         analysis: calculateSnapshot(input),
         decisionAnalysis: input.includeDecisionAnalysis ? analyzeClosingCall(input) : undefined,
       };
+    case 'tournamentSolve': return solveTournamentTree(input);
     case 'tournamentTree': return compareTournamentTree(input);
     case 'flopSolve': return solveFlopTree(input,hooks);
     case 'turnSolve': return solveTurnTree(input,hooks);

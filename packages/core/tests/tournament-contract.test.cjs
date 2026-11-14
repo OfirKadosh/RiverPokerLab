@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {buildTournamentTreeRequest,buildSolverRequest,parseValuation,icmTreeValuation}=require('../src');
+const {buildTournamentTreeRequest,buildTournamentSolveRequest,buildSolverRequest,parseValuation,icmTreeValuation}=require('../src');
 const draft={players:[{name:'OOP',stack:'98',mode:'hand',cards:['Qh','Qc']},{name:'IP',stack:'98',mode:'range',rangeDraft:{range:'AhAc@40%,ThTc@60%',actionRanges:{},rangeAction:'base'}}],board:['2s','3d','7h','8c','9s'],pot:'4',chipUnit:'1',minBet:'2',bets:'',raises:'',maxRaises:'0',includeAllIn:true};
 const field={fieldConfirmed:true,eliminationRule:'starting-stack-split',handStartStacks:[100,100],otherPlayers:[{name:'Outside',stack:98}],payouts:[50,50,0]},policy={confirmed:true,players:[{turn:{check:1},river:{check:1}},{turn:{check:1},river:{check:1}}]};
 test('Tournament factory preserves source, copies nested inputs, labels prize units, and leaves cash builder unchanged',()=>{
@@ -7,3 +7,15 @@ test('Tournament factory preserves source, copies nested inputs, labels prize un
 });
 test('Tournament factory requires explicit field and policy confirmation',()=>{assert.throws(()=>buildTournamentTreeRequest(draft,{...field,fieldConfirmed:false},policy));assert.throws(()=>buildTournamentTreeRequest(draft,field,{...policy,confirmed:false}));});
 test('Tree prize metadata cannot be read as cash or closing-call metadata',()=>{const v=icmTreeValuation();assert.deepEqual(parseValuation(v),v);assert.equal(v.unit,'prize-units');assert.equal(v.expectedNet,undefined);assert.equal(v.expectedByAction,undefined);for(const change of [{unit:'chips'},{evaluation:'GTO'},{baseline:'turn-start-stack'}])assert.throws(()=>parseValuation({...v,...change}));});
+test('Portable tournament flop solver requests carry the field and retain the distinct ICM valuation',()=>{
+ const flop={...draft,board:draft.board.slice(0,3),turnBets:'50',riverBets:''};
+ const request=buildTournamentSolveRequest(flop,field,'50','flop');
+ assert.equal(request.analysisKind,'iterative-icm');
+ assert.equal(request.spot.gameMode,'tournament');
+ assert.equal(request.spot.solverStreet,'flop');
+ assert.deepEqual(request.spot.turnBetSizes,[.5]);
+ assert.equal(request.iterations,50);
+ assert.throws(()=>buildTournamentSolveRequest(flop,field,'101','flop'));
+ const valuation=icmTreeValuation('iterative-strategy');
+ assert.deepEqual(parseValuation(valuation),valuation);
+});

@@ -64,7 +64,7 @@ export function TurnTreePanel({icmState,setIcmState,api,state,setState,controlle
       <details><summary>Convergence checkpoints</summary><div className="river-outcome-wrap"><table className="river-outcome"><thead><tr><th>Iteration</th><th>Exploitability · % pot</th></tr></thead><tbody>{result.history.map(h=><tr key={h.iteration}><td>{h.iteration}</td><td>{h.exploitabilityPotPct.toFixed(4)}%</td></tr>)}</tbody></table></div></details><details><summary>Scope and accounting</summary><ul>{result.notes.map(n=><li key={n}>{n}</li>)}</ul></details>
     </div>}
     <p className="field-help">This worksheet is session-only. Switching pages preserves a running job; changing its inputs cancels it. Server restarts can lose temporary tasks/results.</p>
-    {icmState&&setIcmState&&<TournamentTreePanel street="turn" draft={draft} onSource={draft=>setState(s=>({...s,draft,selected:0,response:null,solution:null}))} state={icmState} setState={setIcmState} blocked={blocked||controller.active}/>}
+    {icmState&&setIcmState&&<TournamentTreePanel street={street} draft={draft} onSource={draft=>setState(s=>({...s,draft,selected:0,response:null,solution:null}))} state={icmState} setState={setIcmState} blocked={blocked||controller.active}/>}
     {picker!==null&&<CardPicker title={picker==='board'?`${title} board`:`${draft.players[picker].name} · ${street} hand`} cards={cards} activeIndex={active} usedCards={used} onActiveIndex={setActive} onPick={pick} onClose={()=>setPicker(null)}/>}
   </section>;
 }

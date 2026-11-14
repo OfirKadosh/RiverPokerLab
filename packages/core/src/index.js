@@ -21,3 +21,4 @@ exports.activeJob=jobs.activeJob;
 exports.RiverJobClient=jobs.RiverJobClient;
 exports.buildTournamentTreeRequest=contracts.buildTournamentTreeRequest;
 exports.icmTreeValuation=contracts.icmTreeValuation;
+exports.buildTournamentSolveRequest=contracts.buildTournamentSolveRequest;

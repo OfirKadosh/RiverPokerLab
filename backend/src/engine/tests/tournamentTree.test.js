@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {once}=require('node:events');
-const {compareTournamentTree,LIMITS}=require('../tournamentTree');
+const {compareTournamentTree,solveTournamentTree,LIMITS}=require('../tournamentTree');
 const {resolveTournamentOutcome}=require('../tournament');
 const {calculateICM}=require('../icm');
 const {createApiClient,parseValuation,buildTournamentTreeRequest}=require('@river-poker-lab/core');
@@ -81,8 +81,70 @@ test('New endpoint round-trips through the portable SDK and worker, writes no hi
  const {createPreviewApp}=require('../../dev/preview'),{createApp}=require('../../server'),{createAuth}=require('../../auth');
  const Spot=require('../../models/Spot'),save=Spot.prototype.save;let writes=0;Spot.prototype.save=async()=>{writes++;throw Error('Unexpected persistence');};
  const server=createPreviewApp({NODE_ENV:'development'}).listen(0,'127.0.0.1');await once(server,'listening');
- try{const api=createApiClient({baseUrl:`http://127.0.0.1:${server.address().port}/api`,fetch});const result=await api.compareTournamentTree(input('turn'));assert.equal(result.analysis.street,'turn');assert.equal(result.analysis.valuation.unit,'prize-units');assert.equal((await api.capabilities()).capabilities.icm.treeActions.enabled,true);const bad=input();bad.tournament.fieldConfirmed=false;await assert.rejects(()=>api.compareTournamentTree(bad),e=>e.status===400);assert.equal(writes,0);
+ try{const api=createApiClient({baseUrl:`http://127.0.0.1:${server.address().port}/api`,fetch});const result=await api.compareTournamentTree(input('turn'));assert.equal(result.analysis.street,'turn');assert.equal(result.analysis.valuation.unit,'prize-units');assert.equal((await api.capabilities()).capabilities.icm.treeActions.enabled,true);const bad=input();bad.tournament.fieldConfirmed=false;await assert.rejects(()=>api.compareTournamentTree(bad),e=>e.status===400);const solved=await api.solveTournamentTree(solveInput(flopInput()));
+ assert.equal(solved.analysis.street,'flop');assert.equal(solved.analysis.strategy.iterations,10);
+ assert.equal(writes,0);
  }finally{Spot.prototype.save=save;server.closeAllConnections();await new Promise(r=>server.close(r));}
  const auth=createAuth({config:{secret:'tournament-fixture-secret-only-long',origins:[],secure:false,cookieName:'icm_fixture'},delivery:{config:{channels:[]}}});const live=createApp({auth}).listen(0,'127.0.0.1');await once(live,'listening');try{assert.equal((await fetch(`http://127.0.0.1:${live.address().port}/api/tournament-tree`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input())})).status,403);}finally{live.closeAllConnections();await new Promise(r=>live.close(r));}
+});
+function flopInput(){
+ const r=input('turn'),weights={...passive,bet:1};
+ r.street=r.spot.solverStreet='flop';
+ r.spot.board.pop();
+ Object.assign(r.spot,{betSizes:[.5],turnBetSizes:[.5],includeAllIn:false});
+ r.responsePolicy.players=Array.from({length:2},()=>({flop:weights,turn:weights,river:passive}));
+ return r;
+}
+function solveInput(r,iterations=10){
+ const {responsePolicy,...data}=r;
+ return {...data,analysisKind:'iterative-icm',iterations};
+}
+test('Flop fixed-policy ICM integrates all ordered runouts and exposes conditional turn probabilities',()=>{
+ const r=flopInput(),a=compareTournamentTree(r);
+ assert.equal(a.scenarios,1980);
+ close(a.nodes[0].expectedPrizes.reduce((sum,value)=>sum+value,0),100);
+ const chance=a.tree.find(n=>n.dealStreet==='turn'&&a.nodes[n.id].reachProbability>0);
+ assert.equal(chance.actions.length,45);
+ const values=a.nodes[chance.id].turnProbabilities;
+ close(values.reduce((sum,row)=>sum+row.probability,0),1);
+ assert(values.every(row=>Math.abs(row.probability-1/45)<1e-8));
+ assert(!values.some(row=>row.card==='9s'||row.card==='Ah'));
+ delete r.responsePolicy.players[0].flop;
+ assert.throws(()=>compareTournamentTree(r),/explicit action weights/);
+});
+for(const street of ['flop','turn','river'])test(street+' iterative strategy conserves total prizes and reports exact unilateral responses',()=>{
+ const a=solveTournamentTree(solveInput(street==='flop'?flopInput():input(street)));
+ assert.equal(a.street,street);
+ assert.equal(a.strategy.iterations,10);
+ assert.equal(parseValuation(a.valuation).evaluation,'iterative-strategy');
+ close(a.nodes[0].expectedPrizes.reduce((sum,value)=>sum+value,0),100);
+ for(const r of a.strategy.unilateralResponses){
+  close(r.profilePrize,a.nodes[0].expectedPrizes[r.player]);
+  close(r.bestResponsePrize-r.profilePrize,r.gain);
+ }
+ if(street==='river'){
+  const r=solveInput(input('river'));
+  r.spot.includeAllIn=false;
+  const checkdown=solveTournamentTree(r);
+  assert(checkdown.strategy.unilateralResponses.every(response=>response.gain<1e-8));
+ }
+});
+test('River ICM best responses match independent backward induction for a known private pair',()=>{
+ const r=solveInput(input('river'));
+ r.spot.players[1].input=['Th','Tc'];
+ const a=solveTournamentTree(r);
+ function walk(id,player){
+  const node=a.tree[id],value=a.nodes[id];
+  if(node.kind==='terminal'){
+   const [oop,ip]=node.contributions,matched=Math.min(oop,ip);
+   const winner=node.incoming==='Fold'?1-a.tree[node.parentId].actor:0;
+   return resolveTournamentOutcome([98-matched+(winner===0?4+2*matched:0),
+    98-matched+(winner===1?4+2*matched:0),98],[100,100,98],[50,50,0]).values[player];
+  }
+  const childValues=node.actions.map(action=>walk(action.nodeId,player));
+  if(node.actor===player)return Math.max(...childValues);
+  return childValues.reduce((sum,v,i)=>sum+v*value.combos[0].frequencies[i],0);
+ }
+ for(const response of a.strategy.unilateralResponses)close(response.bestResponsePrize,walk(0,response.player));
 });
 module.exports={input};
