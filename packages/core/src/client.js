@@ -24,6 +24,7 @@ function createApiClient({baseUrl,fetch:transport=globalThis.fetch,credentials='
   return {raw,request,
     capabilities:async init=>{const data=await request('/capabilities',init);if(data.capabilities?.contractVersion!==API_CONTRACT_VERSION)throw new ApiError('This API contract version is not supported by the client.',200,{code:'CONTRACT_VERSION'});return data;},
     // A full nine-player matrix can outlast the standard request deadline.
+    analyzeMultiway:(input,init)=>json('/multiway',input,'POST',init,Math.max(timeoutMs,55000)),
     listPreflopCharts:init=>request('/preflop-charts',init),
     getPreflopChart:(id,init)=>{
       if(typeof id!=='string'||!/^[a-z0-9-]{1,80}$/.test(id))throw new ContractError('Invalid preflop chart ID.','id');

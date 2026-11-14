@@ -102,7 +102,7 @@ function createJointSampler(
     },
   };
 }
-function prepareRanges(players, board, iterations) {
+function prepareRanges(players, board, iterations, random = Math.random) {
   const known = new Set(
     [...board, ...players.filter(Array.isArray).flat()].map(cardFromString),
   );
@@ -156,7 +156,7 @@ function prepareRanges(players, board, iterations) {
     sampler: createJointSampler(
       candidates,
       board.map(cardFromString),
-      Math.random,
+      random,
       Math.min(2000000, Math.max(10000, iterations * 200)),
       candidateWeights,
     ),

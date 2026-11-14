@@ -1,3 +1,4 @@
+const { analyzeMultiway } = require("../engine/multiway");
 const {compareTournamentTree,solveTournamentTree}=require('../engine/tournamentTree');
 const { calculateSnapshot, analyzeClosingCall } = require('../engine/analysis');
 const { solvePushFold } = require('../engine/pushFoldSolver');
@@ -22,6 +23,7 @@ function executeTask(kind, input, hooks = {}) {
     case 'riverSolve': return solveRiverTree(input, hooks);
     case 'riverTree': return buildRiverTree(input);
     case 'decision': return analyzeClosingCall(input);
+    case 'multiway': return analyzeMultiway(input);
     case 'pushFold': return analyzePushFold(input);
     case 'pushFoldSolve': return solvePushFold(input);
     case 'icm': return calculateICM(input);

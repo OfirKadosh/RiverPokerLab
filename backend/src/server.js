@@ -80,6 +80,18 @@ function createApp({ bankrollStore, practiceProgress, homeCashStore, auth = crea
       res.status(status).json({ success: false, error: status === 500 ? "Push/Fold analysis failed." : error.message });
     }
   };
+  app.post("/api/multiway", async (req, res) => {
+    try {
+      const analysis = await compute(req, res, "multiway", req.body);
+      if (!res.destroyed) res.json({ success: true, analysis });
+    } catch (error) {
+      if (res.destroyed) return;
+      if (error instanceof ComputeError) res.set("Retry-After", "1");
+      const status = error instanceof ValidationError ? 400 : error instanceof ComputeError ? error.status : 500;
+      res.status(status).json({ success: false, error: status === 500 ? "Multiway analysis failed." : error.message });
+    }
+  });
+
   app.post("/api/push-fold", pushFoldRoute("pushFold"));
   app.post("/api/push-fold/solve", pushFoldRoute("pushFoldSolve"));
 

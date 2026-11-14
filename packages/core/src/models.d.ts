@@ -312,3 +312,31 @@ export interface PreflopChart extends PreflopPreset, Omit<PushFoldSolution, 'mod
   config: Pick<PushFoldSolveRequest, 'players' | 'dealer' | 'smallBlind' | 'bigBlind' | 'ante'> &
     Partial<Pick<PushFoldSolveRequest, 'payouts' | 'outsidePlayers'>>;
 }
+
+export interface MultiwayRequest {
+  mode: 'cash' | 'tournament';
+  board: string[];
+  /** Clockwise order. Seat 1 is Hero; Seat 2 is the bettor when facing a wager. */
+  players: { name: string; input: string[] | PlayerInput; behind: number; invested: number; callFrequency?: number }[];
+  dealer: number;
+  sizes?: number[];
+  facingBet?: number;
+  chipUnit?: number;
+  samples?: number;
+  seed?: number;
+  tournament?: { confirmed: true; outsidePlayers: { name: string; stack: number }[]; payouts: number[] };
+}
+export interface MultiwayAnalysis {
+  model: 'fixed-response-checkdown';
+  mode: MultiwayRequest['mode'];
+  samples: number;
+  seed: number;
+  board: string[];
+  pot: number;
+  hero: string;
+  field?: { name: string; stack: number }[];
+  payouts?: number[];
+  rangeStats: { playerIndex: number; availableCombos: number; blockedCombos: number; totalCombos: number }[];
+  actions: { type: 'check' | 'bet' | 'fold' | 'call'; amount: number; chipEv: number; prizeEv: number | null;
+    delta: number; interval95: [number, number] }[];
+}

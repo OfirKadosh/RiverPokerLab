@@ -49,6 +49,7 @@ const RangesWorkspace = lazy(() =>
     default: module.RangesWorkspace,
   })),
 );
+const MultiwayPanel = lazy(() => import("./components/MultiwayPanel").then(({ MultiwayPanel }) => ({ default: MultiwayPanel })));
 const PreflopChartsPanel = lazy(() => import("./components/PreflopChartsPanel").then(({ PreflopChartsPanel }) => ({ default: PreflopChartsPanel })));
 const PushFoldPanel = lazy(() => import("./components/PushFoldPanel").then(({ PushFoldPanel }) => ({ default: PushFoldPanel })));
 const IcmPanel = lazy(() =>
@@ -1351,6 +1352,7 @@ function App() {
                 )}
               />
             )}
+            {page === "multiway" && <MultiwayPanel />}
             {page === "preflop-charts" && <PreflopChartsPanel />}
             {page === "push-fold" && <PushFoldPanel />}
             {page === "icm" && (

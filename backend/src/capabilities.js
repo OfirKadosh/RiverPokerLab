@@ -9,6 +9,7 @@ function capabilities(localPreview=false){return {
   authentication:{mode:localPreview?'local-preview':'cookie-session',bearerTokens:false},
   solvers:{river:{enabled:true,valuation:'chip-ev',limits:river},turn:{enabled:true,valuation:'chip-ev',limits:turn},flop:{enabled:true,valuation:'chip-ev',limits:flop},icmTree:{enabled:true,valuation:'icm-tree-ev',streets:['flop','turn','river'],limits:require('./engine/tournamentTree').STRATEGY_LIMITS}},
   icm:{snapshot:true,closingCall:true,pushFold:{enabled:true,evaluation:"fixed-response-policy",limits:pushFold,solver:{model:"sampled-iterative-icm",limits:pushFoldSolve}},treeActions:{enabled:true,evaluation:"fixed-response-policy",streets:['flop','turn','river'],limits:require("./engine/tournamentTree").LIMITS},maxRemainingPlayers:9},
+  multiway:{enabled:true,modes:['cash','tournament'],model:'fixed-response-checkdown',limits:require('./engine/multiway').LIMITS},
   preflopCharts:{enabled:true,version:preflopCatalog().version,modes:['cash','tournament'],scope:'push-fold'},
   jobs:{storage:'process-memory',survivesServerRestart:false,restoresBrowserWorksheet:false},offlineSolving:false,
 };}
